@@ -1,0 +1,15 @@
+## Sequencing 
+* PCR  
+    - Primers  
+    - PCR conditions  
+    - QC  
+        + DNA concentration  
+        + Gel electrophoresis  
+* Library Prep  
+    - Clean-up  
+    - Barcode  
+    - QC  
+    - Clean-up  
+    - Normalization  
+    - Pooling  
+* Sequencing Run  

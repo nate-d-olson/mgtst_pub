@@ -1,0 +1,5 @@
+## Sequence Processing
+* Table - pipeline sequence budget
+    - number of reads filtered due to low quality
+    - number of reads merged
+    - number of chimeras

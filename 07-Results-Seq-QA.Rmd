@@ -1,0 +1,12 @@
+## Sequence QA
+
+* Wetlab QC  
+    * sample concentration results summary  
+    * qPCR  
+        * ERCC  
+        * bacterial quant (http://www.zymoresearch.com/dna/dna-analysis/femto-bacterial-dna-quantification-kit)  
+* Seq data QA  
+    * number of reads  
+    * read length distributions  
+    * PhiX error rate analysis  
+    * base quality summary  

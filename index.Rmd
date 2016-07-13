@@ -1,0 +1,14 @@
+--- 
+title: "Using A Two Sample Titration Mixture Design to Evaluate Normalization and Differential Abundance Methods."
+author: "Nate Olson"
+date: "`r Sys.Date()`"
+knit: "bookdown::render_book"
+output: bookdown::gitbook
+documentclass: book
+bibliography: [mgtst.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+github-repo: nate-d-olson/mgtst_pub
+---
+
+# Abstract

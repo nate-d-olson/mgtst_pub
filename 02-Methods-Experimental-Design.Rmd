@@ -1,0 +1,6 @@
+# Methods
+## Experimental Design
+
+* Two-Sample-Titration Design  
+* Sample Selection  
+* Technical Replicates  
