@@ -11,4 +11,30 @@ link-citations: yes
 github-repo: nate-d-olson/mgtst_pub
 ---
 
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(savR)
+library(mgtst)
+library(readr)
+library(tidyr)
+library(stringr)
+library(magrittr)
+library(knitr)
+library(devtools)
+library(sapkotaUtils)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(purrr)
+library(DT)
+library(Rqc)
+library(ShortRead)
+library(dada2)
+```
+
+```{r}
+data(biosample_info)
+data(tst_prep)
+data(sample_sheet) 
+data(pcr_16S_pico)
+```
 # Abstract
