@@ -1,0 +1,6 @@
+# Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+knitr::kable(s_info$packages)
+```

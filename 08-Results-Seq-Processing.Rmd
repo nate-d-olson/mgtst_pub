@@ -1,5 +1,14 @@
 ## Sequence Processing
+* Characterization of different pipelines
+      - number of clusters
+      - different taxonomic assignments
+* Statements/ Figures showing how datasets behave
+* number of assigned vs. non-assigned
+* difference in richness
+* make non-quantitative statements
+* capturing differences in quality across samples
+* number of features found across samples and replicates
 * Table - pipeline sequence budget
-    - number of reads filtered due to low quality
-    - number of reads merged
-    - number of chimeras
+      - number of reads filtered due to low quality
+      - number of reads merged
+      - number of chimeras

@@ -1,7 +1,157 @@
 ## Sequence Processing
 
-* QA  
-* Pipelines  
+### Sequencing Data Quality Assessment
+#### Source Data
+Names of source data files and md5 sums for provenance checking under session info tab.
+```{r sav_data_files}
+project_dir <- "~/Projects/16S_etec_mix_study/"
+sav_dir <- paste0(project_dir,"data/basespace_sav/")
+sav_list <- list(
+    march2016_v3 = paste0(sav_dir,"run_18071097_sav"),
+    basespace_v3 = paste0(sav_dir,"run_3861867_sav"),
+    april2016_v3 = paste0(sav_dir,"run_18527531_sav")
+)
+
+# sav_list %>% 
+#     map(list.files,full.names = TRUE, recursive = TRUE) %>% 
+#     flatten_chr() %>% md5table()
+```
+
+
+```{r fq_data_files}
+fastq_dir <- paste0(project_dir, "data/fastq/jhu_run2/")
+dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
+                           recursive = TRUE, full.names = TRUE)
+seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
+    grep(pattern = "fastq.gz", .,value = TRUE) %>%
+    str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
+    str_replace("-",".")
+names(dat_files) <- seq_ds_id
+# md5_tbl <- dat_files %>% md5table()
+```
+
+#### Error Rate
+```{r}
+error_df <- sav_list %>% map(savR) %>%
+    map_df(errorMetrics,.id = "ds") %>%
+    separate(ds, c("ds","chemistry"),sep = "_") %>%
+    mutate(read_len = if_else(chemistry == "v3",301, 251),
+           read = if_else(cycle < read_len, "R1","R2"))
+```
+
+#### QA Metrics
+
+To generate summaries of QA metrics for the 384 datasets in the study (192 samples with forward and reverse reads) used Rqc to calculate the quality metrics, 
+extracted the resulting data and generated summary plots more suitable to presenting QA data for large numbers of datasets. 
+
+Short Read package also has functions for extracting QA results and generating plots that could be used to supplement or inplace of the following Rqc based analysis.  
+
+* Accessor functions for ShortRead package QA (not exported)  
+    * Run Summary : .ppnCount, .df2a, .laneLbl, .plotReadQuality  
+    * Read Distribution : .plotReadOccurrences, .freqSequences  
+    * Cycle Specific : .plotCycleBaseCall, .plotCycleQuality  
+    * Tile Performance : .atQuantile, .colorkeyNames, .plotTileLocalCoords, .tileGeometry, .plotTileCounts, .plotTileQualityScore  
+    * Alignment : .plotAlignQuality  
+    * Multiple Alignment : .plotMultipleAlignmentCount  
+    * Depth of Coverage : .plotDepthOfCoverage  
+    * Adapter Contamination : .ppnCount  
+
+#### QA Data
+Issues with running rqcQA on files within knitr and R/ Rstudio in general.
+Issue with unused connections not closing. 
+Rqc `rqcQC-method` closes the connection but it remains open which throws an error when processing large numbers of files (no error for 96 but error for 160). 
+Spliting the input list into sets of 6 with 6 parallel workers (`rqcQA` uses BiocParallel's `bpmapply` function for parallelization) avoids does not throw an error. 
+Error potentially due to gzipped files opening two connections and RqcA only closes one of the connection. 
+Generated R script `run_rqca.R` to generate and save a list with the rqcA output. 
+
+Code from analysis that was moved to the script.
+```{r runQA, echo=TRUE, eval=FALSE}
+qa_list <- list()
+step_size <- 6 #for all data
+
+n_files <- length(dat_files)
+for(i in 0:((n_files/step_size) - 1)){
+    print(i)
+    qa_list <- c(qa_list,
+                      rqcQA(dat_files[(step_size * i+1):(step_size*(i + 1))],
+                          group = read_groups[(step_size *i+1):(step_size *(i+1))],
+                          workers = step_size))
+}
+
+names(qa_list) <- names(dat_files)
+names(read_groups) <- names(qa_list)
+```
+
+Loading qa_list from rds created by script
+```{r loadQA}
+# from script but not saved
+read_groups <- rep(NA,length(dat_files))
+read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
+read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
+read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
+read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
+
+qa_list <- readRDS("data/rqcQA_list.rds")
+```
+
+#### Tidying QA data
+__Metadata__
+```{r metadat}
+## Run 
+grp_df <- data_frame(read_group = read_groups, 
+                     seq_ds_id, 
+                     filename = basename(dat_files)) %>%
+    separate(read_group,c("plate","Read")) %>% 
+    mutate(ill_id = str_replace(filename, "_.*",""))
+
+## read count data 
+qa_file_info <- perFileInformation(qa_list) %>% 
+    select(-format,-path)
+
+## study metadata
+data(sample_sheet)
+meta_df <- sample_sheet %>% 
+    mutate(pos_ns = str_replace(pos, "_",""),
+           ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
+    filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
+    mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
+    left_join(grp_df) %>% left_join(qa_file_info)
+```
+
+
+__Read Level Metrics__
+```{r read_metrics}
+qa_read_df <- qa_list %>% map_df(perReadWidth) %>% left_join(meta_df) %>% 
+    mutate(len_prop = count/reads)
+
+qa_read_q_df <- qa_list %>% map_df(perReadQuality) %>% left_join(meta_df)
+
+qa_read_freq <- qa_list %>% map_df(perReadFrequency) %>% left_join(meta_df)
+```
+
+__Cycle Level Metrics__
+```{r cycle_metrics}
+## amplicon position
+amp_pos_df <- data_frame(cycle = rep(1:300, 2), 
+                         Read = rep(c("R1","R2"), each = 300),
+                         amp_pos = c(1:300,c(460 - 1:300)))
+
+qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>% 
+    as_data_frame() %>% 
+    mutate(cycle = as.numeric(as.character(cycle))) %>% 
+    filter(count != 0) %>% # not sure if this impacts the smoothing function ...
+    left_join(meta_df) %>% left_join(amp_pos_df)
+
+# qa_cycle_base_df <- qa_list %>% map_df(perCycleBasecall) %>% as_data_frame() %>% 
+    # mutate(cycle = as.numeric(as.character(cycle))) %>% 
+    # left_join(meta_df) %>% left_join(amp_pos_df)
+## Additional Cycle level metrics
+# qa_cycle_q_avg <- rqcCycleAverageQualityCalc(qa_list)
+# qa_cycle_bc_avg <- rqcCycleBaseCallsCalc(qa_list)
+# qa_cycle_GC <- rqcCycleGCCalc(qa_list) %>% as_data_frame()
+```
+
+### Pipelines  
     - mothur  
     - QIIME  
     - DADA2  
