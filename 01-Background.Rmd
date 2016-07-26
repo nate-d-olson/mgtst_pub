@@ -1,1 +1,7 @@
 # Background
+
+* Microbiome and 16S metagenomics  
+* Measurement process validation
+* Use of mixtures  
+* Normalization and differential abundance
+* Study objectives
