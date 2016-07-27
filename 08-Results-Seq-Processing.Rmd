@@ -1,6 +1,50 @@
 ## Sequence Processing
+Loading sequencing data
 ```{r}
-mrexp_mothur <- readRDS("data/mrexp_mothur.RDS")
+mrexp_filenames <- list(mothur = "data/mrexp_mothur.RDS",
+                        qiime_denovo_chimerafilt = "data/mrexp_qiime_denovo_chimera_filt.RDS",
+                        qiime_denovo_nochimerafilt = "data/mrexp_qiime_denovo_nochimera.RDS",
+                        qiime_openref_chimerafilt = "data/mrexp_qiime_refclus_chimera_filt.RDS",
+                        qiime_openref_nochimerafilt = "data/mrexp_qiime_refclus_nochimera.RDS")
+
+mrexp_obj <- mrexp_filenames %>% map(readRDS)
+fvarLabels(mrexp_obj$qiime_openref_chimerafilt) <- paste0("taxonomy",1:7)
+```
+
+Rename qiime samples for consistent set of ids
+```{r}
+get_new_ids <- function(mr_qiime, sample_sheet){
+
+      qiime_id_set <- pData(mr_qiime) %>% rownames()
+
+      id_fix_df <- sample_sheet %>% 
+            filter(seq_lab == "JHU",barcode_lab == "JHU") %>% 
+            select(id, pcr_16S_plate, pos) %>% 
+            mutate(pos = str_replace(pos, "_",""), 
+                   qiime_id = str_c(pcr_16S_plate, pos, sep = "-")) %>% 
+            filter(qiime_id %in% qiime_id_set) %>% 
+            group_by(id) %>% 
+            mutate(id2 = if_else(grepl(x = id, pattern = "B0_M0"),
+                                 paste(id,1:n(),sep = "_"),id))
+      id_fix_df$id2[match(id_fix_df$qiime_id, qiime_id_set)]
+}
+
+
+id_set <- get_new_ids(mrexp_obj$qiime_denovo_chimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_denovo_chimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_denovo_chimerafilt)$counts) <- id_set
+
+id_set <- get_new_ids(mrexp_obj$qiime_denovo_nochimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_denovo_nochimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_denovo_nochimerafilt)$counts) <- id_set
+
+id_set <- get_new_ids(mrexp_obj$qiime_openref_chimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_openref_chimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_openref_chimerafilt)$counts) <- id_set
+
+id_set <- get_new_ids(mrexp_obj$qiime_openref_nochimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_openref_nochimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_openref_nochimerafilt)$counts) <- id_set
 ```
 
 ### Pipeline characteristics
@@ -25,42 +69,39 @@ mrexp_mothur <- readRDS("data/mrexp_mothur.RDS")
 
 __Number of OTUs__
 ```{r}
-nrow(mrexp_mothur)
+mrexp_obj %>% map(nrow)
 ```
 
 
 __Number of Unique Genus__
 ```{r}
-tax_df <- fData(mrexp_mothur) %>% rownames_to_column(var = "OTU")
+tax_df <- mrexp_obj %>% map(fData) %>% map(rownames_to_column,var = "OTU") %>% 
+      map_df(as_tibble,.id = "pipe")
 ## Genus
-tax_df$taxonomy6 %>% unique() %>% length()
+#tax_df$taxonomy6 %>% unique() %>% length()
 ```
-
-__Number unclassified at Genus level__
 ```{r}
-tax_df$taxonomy6 %>% unique() %>% {grepl(x = .,pattern =  "unclassified")} %>% sum()
+tax_df %>% mutate(taxonomy6 = if_else(taxonomy6 == "g__","g__unclassified",taxonomy6))%>% 
+      group_by(pipe) %>% summarize(n_genus = n_distinct(taxonomy6), 
+                                   n_otu = n(), 
+                                   n_unclassified = grepl(x = taxonomy6,
+                                                          pattern =  "unclassified") %>% sum())
 ```
 Maybe include a plot showing proportion unclassified at different taxonomic levels
 
-
-__Counts per Sample__
+__Counts per sample__
 ```{r}
-## Tidying taxa
-tax_no_boot_df <- tax_df %>% select(-starts_with("bootstrap")) %>% as_tibble()
-```
-```{r}
-count_df <- assayData(mrexp_mothur)$counts %>% as.data.frame() %>% 
-      rownames_to_column(var = "OTU") %>% as_tibble() %>% 
-      gather("id","count",-OTU)
+count_df <- mrexp_obj %>% map(~assayData(.)$counts) %>% 
+      map(as.data.frame) %>% 
+      map(rownames_to_column, var = "OTU") %>% 
+      map_df(as_tibble,.id = "pipe") %>% 
+      gather("id","count",-OTU,-pipe)
 ```
 
+
 ```{r}
-tax_genus_df <- tax_df %>% select(OTU, taxonomy6) %>% as_tibble()
+tax_genus_df <- tax_df %>% select(pipe, OTU, taxonomy6) %>% as_tibble()
 tidy_count <- count_df %>% filter(count != 0) %>% left_join(tax_genus_df)
-```
-
-```{r}
-tidy_count
 ```
 
 __Number of Genus and OTU per sample__
@@ -69,7 +110,7 @@ Note the number of unclassified is the total number of OTUs not classified at th
 ```{r}
 sample_counts <- tidy_count %>%
       mutate(unclassified = grepl(taxonomy6,pattern =  "unclassified")) %>% 
-      group_by(id) %>% 
+      group_by(pipe, id) %>% 
       summarise(n_otu = n_distinct(OTU), 
                 n_genus = n_distinct(taxonomy6), 
                 n_total = sum(count),
@@ -84,29 +125,31 @@ __Features across samples and replicates__
 otu_occ - is the number of samples a OTU observed in
 ```{r}
 shared_otu_by_mix <- tidy_count %>% separate(id, c("bio_rep","mix","pcr","lab","seq"),
-                        sep = "_",remove = FALSE) %>% 
-      group_by(OTU,bio_rep,mix) %>% 
+                        sep = "_",remove = FALSE,extra = "merge") %>% 
+      group_by(pipe, OTU,bio_rep,mix) %>% 
       summarise(otu_occ = n_distinct(id))
 shared_otu_by_bio <- tidy_count %>% separate(id, c("bio_rep","mix","pcr","lab","seq"),
-                        sep = "_",remove = FALSE) %>% 
-      group_by(OTU,bio_rep) %>% 
+                        sep = "_",remove = FALSE, extra = "merge") %>%
+      group_by(pipe, OTU,bio_rep) %>%
       summarise(otu_occ = n_distinct(id))
 ```
 
+
 ```{r}
-ggplot(shared_otu_by_mix) + geom_bar(aes(x = otu_occ, fill = mix), position = "dodge") + facet_wrap(~bio_rep)
+ggplot(shared_otu_by_mix) + 
+      geom_bar(aes(x = otu_occ)) + facet_wrap(~pipe)
 ```
 
 ```{r}
 ggplot(shared_otu_by_bio) + 
-      geom_bar(aes(x = otu_occ)) + scale_y_log10() + facet_wrap(~bio_rep)
+      geom_bar(aes(x = otu_occ)) + scale_y_log10() + facet_grid(pipe~bio_rep)
 ```
 
 __OTU abundance distribution overall and by sample, mixture, replicate__
 ```{r}
-tidy_count %>% separate(id, c("bio_rep","mix","pcr","lab","seq"),sep = "_") %>% 
+tidy_count %>% separate(id, c("bio_rep","mix","pcr","lab","seq"),sep = "_",extra = "merge") %>% 
       ggplot() + geom_histogram(aes(x = count, fill = mix), position = "dodge") + 
-      facet_wrap(~bio_rep) + scale_y_log10()
+      facet_grid(bio_rep~pipe) + scale_y_log10()
 ```
 
 
