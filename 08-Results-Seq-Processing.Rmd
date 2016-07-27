@@ -1,14 +1,113 @@
 ## Sequence Processing
+```{r}
+mrexp_mothur <- readRDS("data/mrexp_mothur.RDS")
+```
+
+### Pipeline characteristics
+* Section objectives
+      * make non-quantitative statements
+      * capturing differences in quality across samples
 * Characterization of different pipelines
       - number of clusters
       - different taxonomic assignments
 * Statements/ Figures showing how datasets behave
 * number of assigned vs. non-assigned
-* difference in richness
-* make non-quantitative statements
-* capturing differences in quality across samples
+* __TODO__ difference in richness
+      * need to figure out how I want to normalize/ transform the data prior to calculating diversity values
 * number of features found across samples and replicates
-* Table - pipeline sequence budget
+* __TODO__ Table - pipeline sequence budget
       - number of reads filtered due to low quality
       - number of reads merged
       - number of chimeras
+      
+
+#### Developing Code for characterizing pipeline results
+
+__Number of OTUs__
+```{r}
+nrow(mrexp_mothur)
+```
+
+
+__Number of Unique Genus__
+```{r}
+tax_df <- fData(mrexp_mothur) %>% rownames_to_column(var = "OTU")
+## Genus
+tax_df$taxonomy6 %>% unique() %>% length()
+```
+
+__Number unclassified at Genus level__
+```{r}
+tax_df$taxonomy6 %>% unique() %>% {grepl(x = .,pattern =  "unclassified")} %>% sum()
+```
+Maybe include a plot showing proportion unclassified at different taxonomic levels
+
+
+__Counts per Sample__
+```{r}
+## Tidying taxa
+tax_no_boot_df <- tax_df %>% select(-starts_with("bootstrap")) %>% as_tibble()
+```
+```{r}
+count_df <- assayData(mrexp_mothur)$counts %>% as.data.frame() %>% 
+      rownames_to_column(var = "OTU") %>% as_tibble() %>% 
+      gather("id","count",-OTU)
+```
+
+```{r}
+tax_genus_df <- tax_df %>% select(OTU, taxonomy6) %>% as_tibble()
+tidy_count <- count_df %>% filter(count != 0) %>% left_join(tax_genus_df)
+```
+
+```{r}
+tidy_count
+```
+
+__Number of Genus and OTU per sample__
+Note the number of unclassified is the total number of OTUs not classified at the Genus level per sample not distinct unclassified values.  
+
+```{r}
+sample_counts <- tidy_count %>%
+      mutate(unclassified = grepl(taxonomy6,pattern =  "unclassified")) %>% 
+      group_by(id) %>% 
+      summarise(n_otu = n_distinct(OTU), 
+                n_genus = n_distinct(taxonomy6), 
+                n_total = sum(count),
+                n_unclassified = sum(unclassified))
+```
+
+```{r}
+sample_counts
+```
+
+__Features across samples and replicates__
+otu_occ - is the number of samples a OTU observed in
+```{r}
+shared_otu_by_mix <- tidy_count %>% separate(id, c("bio_rep","mix","pcr","lab","seq"),
+                        sep = "_",remove = FALSE) %>% 
+      group_by(OTU,bio_rep,mix) %>% 
+      summarise(otu_occ = n_distinct(id))
+shared_otu_by_bio <- tidy_count %>% separate(id, c("bio_rep","mix","pcr","lab","seq"),
+                        sep = "_",remove = FALSE) %>% 
+      group_by(OTU,bio_rep) %>% 
+      summarise(otu_occ = n_distinct(id))
+```
+
+```{r}
+ggplot(shared_otu_by_mix) + geom_bar(aes(x = otu_occ, fill = mix), position = "dodge") + facet_wrap(~bio_rep)
+```
+
+```{r}
+ggplot(shared_otu_by_bio) + 
+      geom_bar(aes(x = otu_occ)) + scale_y_log10() + facet_wrap(~bio_rep)
+```
+
+__OTU abundance distribution overall and by sample, mixture, replicate__
+```{r}
+tidy_count %>% separate(id, c("bio_rep","mix","pcr","lab","seq"),sep = "_") %>% 
+      ggplot() + geom_histogram(aes(x = count, fill = mix), position = "dodge") + 
+      facet_wrap(~bio_rep) + scale_y_log10()
+```
+
+
+
