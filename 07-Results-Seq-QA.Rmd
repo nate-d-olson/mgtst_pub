@@ -14,6 +14,22 @@
 knitr::include_graphics("reports/1st 16S_PCR_P1_P2_Gel_20160224.tif")
 ```
 
+
+#### Index PCR  
+* Barcode assignments  
+* Reaction information  
+* Post clean-up DNA concentrations
+
+#### Normalization
+* Normalization assay information  
+* Picogreen concentration
+
+#### Library Pooling
+* Assay methods   
+* QC  
+    * methods  
+    * results 
+
 ```{r post_clean_16S}
 # Concentraiton results after PCR clean-up
 pcr_16S_pico %>% DT::datatable()

@@ -2,15 +2,15 @@
 ## Experimental Design
 
 ## Two-Sample-Titration Design  
-Samples from a vaccine study were selected for use in the study.  See the sample selection vignette for sample description and details. 
-For the two-sample titration post-treatment samples (stool samples collected _after_ exposure to _E. coli_ ETEC) were titrated into pre-treatment samples (stool samples collected _before_ exposure to _E. coli_ ETEC) with $log_2$ changes in pre to post sample proportions \@ref(fig:tst_diagram). 
+Samples from a vaccine trial were selected for use in the study [@harro2011refinement]. 
+Five trial participants were selected based as thoes with no _Eshechichia coli_ detected in stool samples before exposure to Enterotoxigenic _Escherichia coli_ (ETEC)) and timepoints with the highest concentration of _E. coli_ after exposure [@pop2016individual].
+For the two-sample titration post-treatment samples (stool samples collected after exposure to _E. coli_ ETEC) were titrated into pre-treatment samples (stool samples collected _before_ exposure to _E. coli_ ETEC) with $log_2$ changes in pre to post sample proportions \@ref(fig:tst_diagram). 
 
 ```{r tst_diagram, echo=FALSE, fig.width = 4, fig.cap="Schematic of two sample titration process with the $log_2$ titrations used in the study."}
 knitr::include_graphics("img/two_sample_titration_diagram.png")
 ```
 
 ### Generating mixtures
-
 DNA concentrations and dilution volumes  
 
 ```{r}
@@ -29,22 +29,19 @@ ERCCs were spiked into mixtures for use in QC.
 * Calulate from `tst_prep`  
 * ERCC qPCR assay information  
 
-## Sample Selection  
-
 ## Sample Processing Workflow
-__NOTE__ Need to update for single sequencing lab.  
-An interlaboratory experimental design with technical replicates was used to enable characterization of sources of bias and variability in of individual stages of the sample processing procedure \@ref(fig:sample_workflow). 
-To eliminate confounding variability at different steps in the protocol; amplicon PCR, barcoded amplicons, and pooled libraries are processed at both laboratories (e.g. before barcoding and sequencing).   
+The resulting 45 two sample titrations were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (REF), \@ref(fig:sample_workflow). 
+The protocol consisted of an initial 16S rRNA PCR followed by a seperate sample indexing PCR. The concentration of the resulting indexed 16S PCR products were normalized using the SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA) then pooled and sequenced on a single Illumina MiSeq (Illumina Inc., San Diego, CA) run. 
 
 ```{r sample_workflow, echo=FALSE, fig.width = 4, fig.cap="Flow chart of the sample processing interlaboratory design annotated with the sources of bias and variability at each step of the sample processing procedure."}
 knitr::include_graphics("img/two_sample_titration_sample_processing_workflow.png")
 ```  
 
-__TODO__ Marc's bubble diagram to show replication steps  
+A total of 192 samples were sequenced including four PCR replicates of each of the 45 mixtures and 12 no template controls __[REPLICATE Bubble Diagram]__. 
+The samples were distributed across two 96 well plates with the two plates serving as technical replicates \@ref(fig:pcr_layout). 
 
-* PCR layout  
- 
-```{r fig.width = 6, fig.cap="PCR plate layout experimental design."}
+
+```{r pcr_layout, fig.width = 6, fig.cap="PCR plate layout experimental design."}
 sample_sheet %>%
     filter(kit_version == 'A') %>% 
     separate(pos, c("row","col"), sep = "_") %>% 
