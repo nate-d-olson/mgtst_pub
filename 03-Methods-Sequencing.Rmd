@@ -96,3 +96,6 @@ knitr::include_graphics("img/1st_PCR_PlateMap_20160224.jpg")
 |   |72 | 0.5|
 |Final Extension|72 |   5|
 |Hold |4|     forever|
+
+## Index Reaction
+* Reaction information 
