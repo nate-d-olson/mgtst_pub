@@ -81,8 +81,9 @@ __PCR Cocktail__
 
 * PCR Prep layout \@ref(fig:plate_map)  
 
-```{r plate_map, echo=FALSE, out.width = 600, fig.cap="Image of tubes layout prior to 16S PCR."}
-knitr::include_graphics("img/1st_PCR_PlateMap_20160224.jpg")
+```
+#{r plate_map, echo=FALSE, out.width = 600, fig.cap="Image of tubes layout prior to #16S PCR."}
+#knitr::include_graphics("img/1st_PCR_PlateMap_20160224.jpg")
 ```
 
 

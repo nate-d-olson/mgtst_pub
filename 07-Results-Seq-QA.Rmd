@@ -14,28 +14,6 @@
 The initial 16S PCR product was first verified for amplification and amplicon size using gel electrophoresis \@ref(fig:gel_16S).  
 The concentration of the PCR product was also assessed using pico green, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (postion F9, plate 1).  All but one of the no template control concentration measurements was less than 1 $ng/\mul$, when the one sample was checked with Qubit the concentration was too low to measure.   
 
-
-```{r gel_16S, echo=FALSE, out.width = 600, fig.cap="Agarose gel electrophoresis of 16S PCR products."}
-knitr::include_graphics("img/1st 16S_PCR_P1_P2_Gel_20160224.tif")
-```
-
-```{r 16S_pico, fig.cap= "Concentration measured using picrogreen of 16S PCR products post-cleanup. Low concentration samples were remeasured using QUBIT, and concentration values (ng/ul) are indicated as text near pico green data point."}
-pcr_16S_pico %<>% filter(pos != "Well", !is.na(pos)) 
-pcr_16S_qc <- sample_sheet %>% filter(barcode_lab == "JHU", seq_lab == "JHU") %>% 
-      rename(pcr_16S_plate = "plate") %>% 
-      select(sampleID, dilution, plate, pos) %>% 
-      mutate(pos = str_replace(pos, "_","")) %>% right_join(pcr_16S_pico)
-
-pcr_16S_qc %>% ggplot() + 
-      geom_point(aes(x = factor(dilution), y = conc_ngul)) + theme_bw() + 
-      facet_wrap(~sampleID, scales = "free_x", nrow = 1) +
-      geom_text(aes(x = factor(dilution), y = conc_ngul, label = qubit),nudge_y = -0.25, nudge_x = 1)
-```
-
-
-
-
-
 #### Index PCR  
 * Post clean-up DNA concentrations
 
@@ -48,158 +26,17 @@ pcr_16S_qc %>% ggplot() +
     * methods  
     * results 
 
-```{r post_clean_16S}
-# Concentraiton results after PCR clean-up
-pcr_16S_pico %>% DT::datatable()
-```
-
-__NOTES__
-Modify names for consistency and merging with sample sheet
-summary plot showing outliers
-plot of standard curve
-
-__END of NOTES__
-
 ### Seq Data QA  
 #### Read Counts   
-Two barcoded experimental sample has less than 50,000 reads. The rest of the samples with less than 50,000 reads are negative PCR controls (NTC).  
 
-```{r table_count}
-meta_df %>% mutate(exp_ntc = ifelse(sampleID == "NTC", "NTC","EXP")) %>% 
-    group_by(exp_ntc, Read, plate) %>% 
-    summarise(mean_lib_size = mean(reads),
-              min_lib_size = min(reads),
-              median = median(reads),
-              max_lib_size = max(reads)) %>% 
-    kable(caption = "Summary statistics for experimental and no template control samples by PCR plate and read.")
-```
-
-
-```{r fig_count, fig.cap="Number of reads per barcoded sample (Library Size), by read direction (X-facet) and replicate 16S PCR plate (Y-facet). Vertical line indicates 50,000 reads per barcoded sample."}
-meta_df %>%
-    ggplot() + 
-        geom_histogram(aes(x = reads), position = "dodge") + 
-        facet_grid(plate~Read) + scale_x_log10() + 
-        geom_rug(aes(x = reads, color = sampleID)) +
-        geom_vline(aes(xintercept = 50000), color = "grey80") +
-        theme_bw() + labs(x = "Library Size (log10)", 
-                          y = "Count", color = "Sample ID") +
-        theme(legend.position = "bottom")
-```
-
-```{r count_tbl}
-meta_df  %>% filter(sampleID != "NTC",reads < 50000) %>% 
-    select(sampleID, dilution, pos, plate, Read, reads) %>% 
-    spread(Read, reads) %>% 
-    kable(caption = "Barcoded experimental samples with less than 50,000 reads")
-``` 
 
 #### Read Length Distribution 
-Excluding negative control samples (NTC) only one sample had > 2.5% of the reads in the dataset less than 290 bp. 
-Biosample E01JH0016 dilution 5 from plate 1 replicates had greater than 10% of reads < 290 bp in length.   
-
-_code for calculating proportions_
-```{r len_bin}
-qa_read_len_bin <- qa_read_df %>% 
-    mutate(size_bin = ifelse(width > 290, ">290","<290")) %>% 
-    group_by(filename, id, sampleID, plate, dilution, size_bin,Read) %>%
-    summarise(size_prop = sum(len_prop))
-```
-
-```{r bin_fig, fig.cap="Histogram of the proportion of reads less than 290 bp for per barcoded sample."}
-qa_read_len_bin %>% filter(size_bin == "<290") %>% 
-    ggplot() + 
-        geom_histogram(aes(x = size_prop)) +
-        geom_rug(aes(x = size_prop, color = sampleID)) +
-        theme_bw() + 
-        labs(x = "Proportion of reads < 290 bp", color = "Sample ID")
-```
-
-For the experimental sample with > 10% of read shorter than 290 bp the shorter reads are 166 bp which is too short to generate merge contigs from forward and reverse reads.   
-
-```{r short_ds}
-short_samples <- qa_read_len_bin %>% 
-    filter(size_bin == "<290" & size_prop > 0.10, 
-           sampleID != "NTC") %>% .$filename
-```
-
-
-
-```{r fig_lowq, fig.cap="Distribution of read lengths for E01JH0016 dilution 5 plate 1. X-axis is ploted on a discrete not continuous scale."}
-qa_read_df %>% filter(filename %in% short_samples) %>% 
-    ggplot() + geom_bar(aes(x = as.factor(width), 
-                            y = count, fill = Read),
-                        stat="identity",position = "dodge") +
-    theme_bw() + 
-    labs(x = "Read Length", y = "Number of Reads", fill = "Direction")
-```
 
 #### PhiX Error Rate 
-The sequencing error rate data was obtained from the Basespace sequencing run report downloaded from Basespace (SAV file).
-Error rate is compared to the first sequencing run and a 16S public dataset on basespace ( 16S-Metagenomic-Library-Prep run id 3861867). 
-The error rate for the second run was lower for both R1 and R2 compared to the first run but still higher than the error rate for the public dataset.
 
-```{r phix_error_fig, fig.cap = "PhiX error rate for initial and reseuqencing of JHU barcoded samples compared to the public dataset."}
-ggplot(error_df) +
-    geom_point(aes(x = cycle, y = errorrate, color = ds),
-               alpha = 0.01) +
-    geom_smooth(aes(x = cycle, y = errorrate, color = ds)) +
-    theme_bw() +
-    labs(x = "Cycle", y = "PhiX Error Rate", color = "Dataset") +
-    facet_grid(chemistry~read, scales = "free_x")
-```
 
 #### Base Quality Score 
 ##### Read BQ
-Differences in forward and reverse read average base quality score distributions consistent between replicate plates. 
-A distinct population of barcoded datasets, NTC vs experimental samples, with a higher proportion of lower base quality scores for forward read datasets. 
-For reverse reads the popultion of datasets with lower base quality scores is more hetergeneous.  
 
-```{r fig_readq, fig.cap = "Distribution of base quality scores per barcoded samples."}
-qa_read_q_df %>% 
-    ggplot() + geom_density(aes(x = average, fill = sampleID,
-                                group = filename), alpha = 0.25) + 
-    facet_grid(plate~Read) + theme_bw() + 
-    labs(x = "Read Average Base Quality Score", y = "Density", fill = "Sample ID") + 
-    theme(legend.position = "bottom")
-```
 
 #### Cycle BQ
-Similar to the overall quality score distributions, 
-the NTC quality score by sequencing cycle is consistently lower quality compared to the experimental samples. 
-Cycle base quality score is more homogeneous from PCR plate 2 samples than plate 1.  
-
-```{r fig_cycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle."}
-qa_cycle_q_df %>% 
-    ggplot(aes(x = cycle, y = score)) + 
-    geom_smooth(aes(weight = count, color = sampleID, group = seq_ds_id)) + 
-    facet_grid(plate~Read) + theme_bw() + 
-    labs(x = "Sequencing Cycle", y = "Base Quality Score", color = "Sample ID")
-```
-
-Base quality score distribution across datasets for R1 and R2 reads by amplicon position. 
-This is not a read level analysis but average quality score for individual barcoded datasets.
-
-```{r fig_lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads."}
-qa_cycle_q_df %>% ggplot(aes(x = amp_pos, y = score)) + 
-    geom_vline(aes(xintercept = 300), color = "grey60") +
-    geom_vline(aes(xintercept = 160), color = "grey60") +
-    geom_smooth(aes(weight = count, color = sampleID, group = filename)) + 
-    facet_grid(plate~.) + theme_bw() + 
-    scale_x_continuous(breaks = c(0,150,300, 450)) +
-    labs(x = "Amplicon Position", 
-         y = "Base Quality Score", color = "Sample ID")
-```
-
-The quality scores for the two plates are consistent for most samples .
-A few other samples had lower base quality scores across the amplicon. 
-PCR plate 1 E01JH0017 dilution 4 samples have lower average quality, for amplicon positions > 200 bp. 
-
-```{r bq_sample, fig.height=8, fig.cap = "Smoothed average of the base quality score across the amplicon faceted by biological sample ID (X-axis) and dilution (Y-axis)"}
-qa_cycle_q_df %>% filter(sampleID !="NTC") %>% 
-    ggplot(aes(x = amp_pos, y = score)) + 
-    geom_smooth(aes(weight = count, color = plate, group = filename)) + 
-    facet_grid(dilution~sampleID) + theme_bw() + 
-    labs(x = "Amplicon Position", y = "Base Quality Score", color = "Sample ID") +
-    theme(legend.position = "bottom")
-```

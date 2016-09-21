@@ -1,4 +1,13 @@
 ## Normalization and Differential Abundance
 
 * Normalization Methods
+      * None
+      * TSS - total sum scaling
+      * CSS - cumulative sum scaling
+      * Senthil's method
+      * rarefaction
 * Differential Abundance Methods
+      * metagenomeFeatures
+      * DESeq
+      * EdgeR
+      * Limma?
