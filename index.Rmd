@@ -4,6 +4,7 @@ author: "Nate Olson"
 date: "`r Sys.Date()`"
 knit: "bookdown::render_book"
 output: bookdown::gitbook
+always_allow_html: yes
 documentclass: book
 bibliography: [mgtst.bib, packages.bib]
 biblio-style: apalike
