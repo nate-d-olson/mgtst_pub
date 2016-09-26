@@ -1,0 +1,9 @@
+---
+title: "Titration QC"
+author: "Nate Olson"
+date: "September 22, 2016"
+output: html_document
+---
+
+* QC titrations using bacterial concentrations
+* QC titrations using ERCC

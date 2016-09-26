@@ -1,0 +1,129 @@
+---
+title: "Bacterial Abundance qPCR"
+author: "Nate Olson"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(stringr)
+library(ggplot2)
+library(modelr)
+library(forcats)
+library(knitr)
+```
+
+
+## Summary
+* Objective - quantify bacterial abundance in starting DNA
+* Method - bacterial abundance quantified using zymo kit
+* Results  
+      - clean no template controls
+      - R^2 standard curve 0.99  
+      - Large fraction of samples (especially unmixed) with Ct values outside standard curve.
+* Conclusion - need to rerun samples, specifically unmixed samples, diluting so that Ct values are within standard curve.
+
+## Objective
+The proportion of pre and post exposure samples in individual titrations is dependent on the ratios at which the two samples were mixed. 
+This assumes that the pre and post samples have equivalent proportions of bacterial to non-bacterial DNA. 
+To validate this assumption the concentration of bacterial DNA was assayed using qPCR. 
+Additionally, the concentation of bacterial DNA in the titrations was assayed. 
+
+## Methods 
+* zymo qPCR assay - https://www.zymoresearch.com/dna/dna-analysis/femto-bacterial-dna-quantification-kit  
+* 45 Samples - all mixed and unmixed  
+* diluted samples - need to find out how they were diluted
+* triplicates per sample - 135 reactions  
+      * three qPCR plates, one replicate of each sample ran on each plate
+* 7 concentration standard curve - for the assay  
+      * issue with fourth standard  
+
+### Munging qPCR Data
+```{r}
+bac_con <- read_excel(path = "../data/MixStudy_Nate_20160919.xls",
+                      sheet = "QDNA_20160919",
+                      skip = 11, na = "Undetermined", col_names = FALSE)
+colnames(bac_con) <- c("well","sample_name",
+                       "plate1_Ct","plate1_quant",
+                       "plate2_Ct","plate2_quant",
+                       "plate3_Ct","plate3_quant")
+bac_con <- bac_con %>% gather("id","value", -well, -sample_name) %>% 
+      separate(id, c("plate","var"), sep = "_") %>% 
+      spread(var,value)
+```
+
+```{r}
+bac_std <- read_excel(path = "../data/MixStudy_Nate_20160919.xls",
+                      sheet = "QDNA_20160919",skip = 3, col_names = FALSE) %>% 
+      select(-X12, -X13, -X5,-X7,-X9) %>% filter(X2 %in% paste0("Std",1:7))
+colnames(bac_std) <- c("well","sample_name","conc","plate1","plate2","plate3")
+bac_std <- bac_std %>% gather("plate","Ct",-well, -sample_name, -conc) %>% 
+      mutate(conc = as.numeric(conc), Ct = as.numeric(Ct)) %>% filter(!is.na(Ct))
+## NAs introduced when converting samples with undetermined and omit Ct values.
+```
+
+### Results
+
+#### NTC Check
+For NTC (no template control) samples the Ct values were  Comparison of Ct values between NTC and samples. NTC Ct values > 30, and sample Ct values < 20, excluding NTC from the rest of the analysis.
+
+```{r}
+bac_con %>% mutate(sample_type = if_else(sample_name == "NTC", "NTC","samples")) %>% 
+ggplot() + geom_point(aes(x = sample_type, y = Ct, color = plate)) + theme_bw()
+```
+```{r}
+bac_con <- bac_con %>% filter(sample_name != "NTC")
+```
+
+### Analysis of Standard Curve
+Fitting the standard curve using a linear model, Ct~log10(concentration). Fitted model using the three plates as replicates and not fitting individual models for each plate, using a mixed effect model is the best approach.
+```{r}
+bac_std <- mutate(bac_std, log_conc = log10(conc))
+std_fit <- lm(log_conc~Ct, data = bac_std)
+std_slope <- std_fit$coefficients[2]
+std_intercept <- std_fit$coefficients[1]
+bac_fit <- bac_con %>% select(sample_name,plate, Ct) %>% add_predictions(std_fit)
+```
+
+```{r}
+summary(std_fit)
+```
+
+Samples have Ct values lower then the standard curve samples and fall outside of the standard curve. This is not ideal.
+Only 2 of the 10 unmixed pre and post treatment samples have Ct values within the standard curve for all three plates, and none of the remaining 8 have Ct within the standard curve for 2 of the three plates. The linearity of the standard curve outside of the standard concentration range is unknown. 
+The variability in concentration for the unmixed samples, especially post treatment biological replicates 2 and 3, is likely due to the sample concentration falling outside the range of the standard curve.
+```{r}
+min_std <- bac_std %>% filter(conc == 20) %>% select(plate, Ct) %>% rename(std_ct = Ct)
+bac_fit <- left_join(bac_fit, min_std) %>% 
+      mutate(relative_ct = if_else(Ct < std_ct, "outside","within")) %>% 
+      mutate(sam_type = if_else(grepl("\\(",sample_name),"unmixed","titration"))
+
+ggplot(bac_std) + geom_point(aes(y = log_conc, x = Ct)) + 
+      geom_abline(aes(slope = std_slope, intercept = std_intercept), color = "grey80") +
+      geom_point(data = bac_fit, aes(y = pred, x = Ct, shape = plate, color = relative_ct)) +
+      facet_wrap(~sam_type) +
+      theme_bw()
+```
+
+Difference in Ct value between unmixed samples and highest concentration (lowest Ct) standard. Samples with negative values are outside of the standard curve.
+```{r}
+bac_fit %>% filter(sam_type == "unmixed") %>% 
+            mutate(sample_name = str_replace(sample_name, ".*_", ""), 
+             sample_name = str_replace(sample_name, '\\('," "),
+             sample_name = str_replace(sample_name, '\\)',"")) %>% 
+      mutate(ct_diff = std_ct - Ct) %>% select(sample_name, plate, ct_diff) %>% 
+      spread(plate,ct_diff) %>% kable()
+```
+
+
+
+## Conclusions
+
+The samples should be diluted and run again.
+
+__Caveats__  
+
+* To reduce experimental design complexity, sample name confounded with well except for negative controls (No Template Control, NTC).
