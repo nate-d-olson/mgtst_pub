@@ -2,8 +2,31 @@
 title: "wet lab QC"
 author: "Nate Olson"
 date: "September 21, 2016"
-output: html_document
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
 ---
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(savR)
+library(mgtst)
+library(readr)
+library(tidyr)
+library(stringr)
+library(magrittr)
+library(knitr)
+library(devtools)
+library(sapkotaUtils)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(purrr)
+library(DT)
+library(Rqc)
+library(ShortRead)
+library(dada2)
+```
+
 
 ### Wetlab QC  
 * sample concentration results summary  
@@ -17,11 +40,11 @@ output: html_document
         - Need gel info - gel concentration, run info - V and time, ladder info - manufacturer and band sizes. 
 
 The initial 16S PCR product was first verified for amplification and amplicon size using gel electrophoresis \@ref(fig:gel_16S).  
-The concentration of the PCR product was also assessed using pico green, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (postion F9, plate 1).  All but one of the no template control concentration measurements was less than 1 $ng/\mul$, when the one sample was checked with Qubit the concentration was too low to measure.   
+The concentration of the PCR product was also assessed using pico green, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (postion F9, plate 1).  All but one of the no template control concentration measurements was less than 1 $ng/ \mu l$, when the one sample was checked with Qubit the concentration was too low to measure.   
 
 
 ```{r gel_16S, echo=FALSE, out.width = 600, fig.cap="Agarose gel electrophoresis of 16S PCR products."}
-knitr::include_graphics("img/1st 16S_PCR_P1_P2_Gel_20160224.tif")
+#knitr::include_graphics('../img/1st_16S_PCR_P1_P2_Gel_20160224.tif')
 ```
 
 ```{r 16S_pico, fig.cap= "Concentration measured using picrogreen of 16S PCR products post-cleanup. Low concentration samples were remeasured using QUBIT, and concentration values (ng/ul) are indicated as text near pico green data point."}

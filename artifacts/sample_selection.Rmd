@@ -2,12 +2,14 @@
 title: "Sample Selection"
 author: "Nate Olson"
 date: "September 19, 2016"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ## Sample Selection
 ```{r}
-load("data/etecExp.rda")
+load("../data/etecExp.rda")
 ## needed for mypar
 library(metagenomeSeq)
 library(Biobase)

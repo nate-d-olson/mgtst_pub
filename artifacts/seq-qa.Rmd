@@ -2,7 +2,10 @@
 title: "Seq QA"
 author: "Nate Olson"
 date: "September 21, 2016"
-output: html_document
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
 ---
 <!-- TODO 
 Need to clean-up - moving appropriate data objects to data, i.e. incorporating ProjectTemplate structure
@@ -119,7 +122,7 @@ read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
 read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
 read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
 
-qa_list <- readRDS("data/rqcQA_list.rds")
+qa_list <- readRDS("../data/rqcQA_list.rds")
 ```
 
 #### Tidying QA data

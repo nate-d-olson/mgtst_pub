@@ -2,6 +2,7 @@
 title: "Titration QC"
 author: "Nate Olson"
 date: "September 22, 2016"
+always_allow_html: yes
 output: html_document
 ---
 

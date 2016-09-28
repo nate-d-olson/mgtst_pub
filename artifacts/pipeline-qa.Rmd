@@ -2,17 +2,39 @@
 title: "Pipeline QA"
 author: "Nate Olson"
 date: "September 21, 2016"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(savR)
+library(mgtst)
+library(readr)
+library(tidyr)
+library(stringr)
+library(magrittr)
+library(knitr)
+library(devtools)
+library(sapkotaUtils)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(purrr)
+library(DT)
+library(Rqc)
+library(ShortRead)
+library(dada2)
+```
+
 
 ## Sequence Processing
 Loading sequencing data
 ```{r}
-mrexp_filenames <- list(mothur = "data/mrexp_mothur.RDS",
-                        qiime_denovo_chimerafilt = "data/mrexp_qiime_denovo_chimera_filt.RDS",
-                        qiime_denovo_nochimerafilt = "data/mrexp_qiime_denovo_nochimera.RDS",
-                        qiime_openref_chimerafilt = "data/mrexp_qiime_refclus_chimera_filt.RDS",
-                        qiime_openref_nochimerafilt = "data/mrexp_qiime_refclus_nochimera.RDS")
+mrexp_filenames <- list(mothur = "../data/mrexp_mothur.RDS",
+                        qiime_denovo_chimerafilt = "../data/mrexp_qiime_denovo_chimera_filt.RDS",
+                        qiime_denovo_nochimerafilt = "../data/mrexp_qiime_denovo_nochimera.RDS",
+                        qiime_openref_chimerafilt = "../data/mrexp_qiime_refclus_chimera_filt.RDS",
+                        qiime_openref_nochimerafilt = "../data/mrexp_qiime_refclus_nochimera.RDS")
 
 mrexp_obj <- mrexp_filenames %>% map(readRDS)
 fvarLabels(mrexp_obj$qiime_openref_chimerafilt) <- paste0("taxonomy",1:7)
