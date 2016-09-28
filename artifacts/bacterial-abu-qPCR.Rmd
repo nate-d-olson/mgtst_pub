@@ -1,10 +1,12 @@
 ---
 title: "Bacterial Abundance qPCR"
 author: "Nate Olson"
-date: "`r Sys.Date()`"
-output: html_document
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
 ---
-```{r}
+```{r echo=FALSE, message=FALSE}
 library(readxl)
 library(dplyr)
 library(tidyr)
@@ -18,13 +20,16 @@ library(knitr)
 
 
 ## Summary
-* Objective - quantify bacterial abundance in starting DNA
-* Method - bacterial abundance quantified using zymo kit
+* Objective - quantify bacterial abundance in starting DNA  
+* Method - bacterial abundance quantified using zymo kit  
 * Results  
-      - clean no template controls
-      - R^2 standard curve 0.99  
+      - clean no template controls  
+      - $R^2$ standard curve 0.99  
       - Large fraction of samples (especially unmixed) with Ct values outside standard curve.
 * Conclusion - need to rerun samples, specifically unmixed samples, diluting so that Ct values are within standard curve.
+
+### Questions
+* How much template was added to each reaction?
 
 ## Objective
 The proportion of pre and post exposure samples in individual titrations is dependent on the ratios at which the two samples were mixed. 
@@ -73,18 +78,27 @@ For NTC (no template control) samples the Ct values were  Comparison of Ct value
 ```{r}
 bac_con %>% mutate(sample_type = if_else(sample_name == "NTC", "NTC","samples")) %>% 
 ggplot() + geom_point(aes(x = sample_type, y = Ct, color = plate)) + theme_bw()
-```
-```{r}
+## Warning about missing value due to one NTC reaction with a Ct value of NA
+
+## plot shows okay to exclude NTC
 bac_con <- bac_con %>% filter(sample_name != "NTC")
 ```
 
+
 ### Analysis of Standard Curve
-Fitting the standard curve using a linear model, Ct~log10(concentration). Fitted model using the three plates as replicates and not fitting individual models for each plate, using a mixed effect model is the best approach.
+#### Fitting the standard curve using a linear model, Ct~log10(concentration). 
+
+Fitted model using the three plates as replicates and not fitting individual models for each plate. Using a random effect model is likely a better approach.
 ```{r}
 bac_std <- mutate(bac_std, log_conc = log10(conc))
 std_fit <- lm(log_conc~Ct, data = bac_std)
+# extracting values for plots
 std_slope <- std_fit$coefficients[2]
 std_intercept <- std_fit$coefficients[1]
+fit1_df <- tibble(plate = paste0("plate",c(1:3)),
+                  slope = std_fit$coefficients[2], 
+                  intercept = std_fit$coefficients[1],
+                  mod = "log_conc~Ct")
 bac_fit <- bac_con %>% select(sample_name,plate, Ct) %>% add_predictions(std_fit)
 ```
 
@@ -92,19 +106,97 @@ bac_fit <- bac_con %>% select(sample_name,plate, Ct) %>% add_predictions(std_fit
 summary(std_fit)
 ```
 
+```{r}
+std_fit2 <- lm(log_conc~plate/Ct, data = bac_std)
+summary(std_fit2)
+bac_fit <- bac_con %>% select(sample_name,plate, Ct) %>% add_predictions(std_fit2)
+std_coef <- std_fit2 %>% coefficients()
+coef_df <- frame_data(
+      ~plate, ~intercept, ~slope,
+      "plate1",std_coef[1], std_coef[4],
+      "plate2",std_coef[1] + std_coef[2], std_coef[5],
+      "plate3",std_coef[1] + std_coef[3], std_coef[6]
+)
+fit2_df <- coef_df %>% mutate(mod = "log_conc~plate/Ct")
+```
+
+```{r}
+std_fit3 <- lm(log_conc~plate*Ct, data = bac_std)
+std_coef <- std_fit3 %>% coefficients()
+## not sure if I need to add Ct
+fit3_df <- frame_data(
+      ~plate, ~intercept, ~slope,
+      "plate1", std_coef[1], std_coef[4],
+      "plate2",std_coef[1] + std_coef[2], std_coef[4] + std_coef[5],
+      "plate3", std_coef[1] + std_coef[3], std_coef[4] + std_coef[6]
+      ) %>% 
+      mutate(mod = "log_conc~plate*Ct")
+```
+
+```{r}
+summary(std_fit3)
+fit3_df
+```
+
+
+```{r}
+library(lme4)
+std_fit4 <- lmer(log_conc~ Ct + (1|plate), data = bac_std)
+fit4_df <- tibble(plate = paste0("plate",c(1:3)),
+                  slope = coef(std_fit4)$plate[1,2], 
+                  intercept = coef(std_fit4)$plate[1,1],
+                  mod = "log_conc~ Ct + (1|plate)")
+```
+
+```{r}
+coef(std_fit4)
+summary(std_fit4)
+```
+
+
+##### Comparing Regression Models
+Model Matrix
+```{r}
+std_fit$model
+```
+
+```{r}
+std_fit2$model
+```
+
+```{r}
+std_fit3$qr
+```
+
+
+```{r}
+fit_coefs <- bind_rows(fit1_df, fit2_df, fit3_df,fit4_df)
+ggplot(fit_coefs) + geom_point(data = bac_std, aes(y = log_conc, x = Ct)) +
+      geom_abline(aes(slope = slope, intercept = intercept, color = mod, linetype = mod)) +
+      facet_grid(.~plate) + theme_bw()
+```
+
+
+
+#### Samples outside of standard curve range.
 Samples have Ct values lower then the standard curve samples and fall outside of the standard curve. This is not ideal.
 Only 2 of the 10 unmixed pre and post treatment samples have Ct values within the standard curve for all three plates, and none of the remaining 8 have Ct within the standard curve for 2 of the three plates. The linearity of the standard curve outside of the standard concentration range is unknown. 
-The variability in concentration for the unmixed samples, especially post treatment biological replicates 2 and 3, is likely due to the sample concentration falling outside the range of the standard curve.
+
 ```{r}
 min_std <- bac_std %>% filter(conc == 20) %>% select(plate, Ct) %>% rename(std_ct = Ct)
 bac_fit <- left_join(bac_fit, min_std) %>% 
       mutate(relative_ct = if_else(Ct < std_ct, "outside","within")) %>% 
       mutate(sam_type = if_else(grepl("\\(",sample_name),"unmixed","titration"))
 
-ggplot(bac_std) + geom_point(aes(y = log_conc, x = Ct)) + 
-      geom_abline(aes(slope = std_slope, intercept = std_intercept), color = "grey80") +
+# ggplot(bac_std) + geom_point(aes(y = log_conc, x = Ct)) + 
+#       geom_abline(aes(slope = std_slope, intercept = std_intercept), color = "grey80") +
+#       geom_point(data = bac_fit, aes(y = pred, x = Ct, shape = plate, color = relative_ct)) +
+#       facet_grid(plate~sam_type) +
+#       theme_bw()
+ggplot(bac_std) + geom_point(aes(y = log_conc, x = Ct)) +
+      geom_abline(data = coef_df, aes(slope = slope, intercept = intercept), color = "grey80") +
       geom_point(data = bac_fit, aes(y = pred, x = Ct, shape = plate, color = relative_ct)) +
-      facet_wrap(~sam_type) +
+      facet_grid(plate~sam_type) +
       theme_bw()
 ```
 
@@ -116,6 +208,86 @@ bac_fit %>% filter(sam_type == "unmixed") %>%
              sample_name = str_replace(sample_name, '\\)',"")) %>% 
       mutate(ct_diff = std_ct - Ct) %>% select(sample_name, plate, ct_diff) %>% 
       spread(plate,ct_diff) %>% kable()
+```
+
+#### Variability of samples outside of the standard curve 
+The variability in concentration for the unmixed samples, especially post treatment biological replicates 2 (7_2(Post)) and 3 (8_3(Post)), is likely due to the sample concentration falling outside the range of the standard curve.
+
+Dashed line is at 20ng/ul, to indicate the highest concentation standard. 
+```{r}
+bac_fit <- bac_fit %>% 
+      mutate(quant = 10^pred) %>% 
+      group_by(sample_name) %>% 
+      mutate(quant_min = min(quant), quant_max = max(quant)) %>% 
+      ungroup() %>% 
+      mutate(sample_name = fct_reorder(sample_name, quant, fun = "median"))
+
+ggplot(bac_fit) + 
+      geom_hline(aes(yintercept = 20), linetype = 2) +
+      geom_linerange(aes(x = sample_name,ymin = quant_min, ymax = quant_max), color = "grey60") +
+      geom_point(aes(y = quant, x = sample_name, color = relative_ct, shape = plate)) +
+      theme_bw() + coord_flip()
+```
+
+Relationship between standard deviation and median concentration values.
+```{r}
+bac_var <- bac_fit %>% group_by(sample_name) %>% 
+      mutate(quant_med = median(quant), quant_sd = sd(quant),
+             relative_ct_binary = if_else(relative_ct == "within", 0,1), 
+             n_within = sum(relative_ct_binary) %>% as.factor())
+ggplot(bac_var) + 
+      geom_point(aes(x = quant_med, y = quant_sd, color = n_within)) + 
+      theme_bw() + 
+      labs(x = "Median (ng/ul)", y = "Standard Deviation (ng/ul)", color = "# within standard curve") + 
+      theme(legend.position = "bottom")
+```
+
+Relationship between median and standard deviation Ct values.
+```{r}
+bac_var <- bac_fit %>% group_by(sample_name) %>% 
+      mutate(Ct_med = median(Ct), Ct_sd = sd(Ct),
+             relative_ct_binary = if_else(relative_ct == "within", 0,1), 
+             n_within = sum(relative_ct_binary) %>% as.factor())
+ggplot(bac_var) + 
+      geom_point(aes(x = Ct_med, y = Ct_sd, color = n_within)) + 
+      theme_bw() + 
+      labs(x = "Median Ct", y = "Standard Deviation Ct", color = "# within standard curve") + 
+      theme(legend.position = "bottom")
+```
+
+### Tritration Concentration Deviation from Expected Value
+
+```{r}
+bac_unmixed <- bac_fit %>% filter(sam_type == "unmixed") %>% 
+            mutate(sample_name = str_replace(sample_name, ".*_", ""), 
+                   sample_name = str_replace(sample_name, '\\('," "),
+                   sample_name = str_replace(sample_name, '\\)',"")) %>% 
+            separate(sample_name,into = c("bio_rep","titration"),remove = FALSE) %>% 
+            mutate(titration_factor = if_else(titration == "Pre", 20, 0)) %>% 
+            select(bio_rep, plate,pred, titration) %>% 
+            spread(titration,pred)
+```
+
+```{r}
+bac_mixed <- bac_fit %>% filter(sam_type == "titration") %>% 
+      separate(sample_name, into = c("bio_rep","titration"), remove = FALSE) %>% 
+      mutate(titration_factor = str_replace(titration, "M","") %>% as.numeric())
+```
+
+```{r}
+bac_fit2 <- left_join(bac_mixed, bac_unmixed) %>% select(-sample_name, -Ct, -std_ct, -sam_type) %>% 
+      mutate(exp_pred = Post*(2^-titration_factor) + Pre*(1-2^-titration_factor))
+```
+
+Expected Concentration - calculation based on concentration measurements for pre and post unmixed samples
+Estimated Concentration - calculated using standard curve
+
+```{r}
+bac_fit2 %>% ggplot(aes(x = 10^exp_pred, y = 10^pred, color = plate, shape = relative_ct)) + 
+      geom_point() + 
+      geom_abline(aes(intercept = 0, slope = 1)) + 
+      facet_grid(~bio_rep, scales = "free") +
+      labs(x = "Expected (ng/ul)", y = "Estimated (ng/ul)") + theme_bw()
 ```
 
 
