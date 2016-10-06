@@ -1,7 +1,7 @@
 ---
 title: "Pipeline QA"
 author: "Nate Olson"
-date: "September 21, 2016"
+date: '`r Sys.Date()`'
 output:
   pdf_document: default
   html_document: default
@@ -31,10 +31,11 @@ library(dada2)
 Loading sequencing data
 ```{r}
 mrexp_filenames <- list(mothur = "../data/mrexp_mothur.RDS",
-                        qiime_denovo_chimerafilt = "../data/mrexp_qiime_denovo_chimera_filt.RDS",
-                        qiime_denovo_nochimerafilt = "../data/mrexp_qiime_denovo_nochimera.RDS",
-                        qiime_openref_chimerafilt = "../data/mrexp_qiime_refclus_chimera_filt.RDS",
-                        qiime_openref_nochimerafilt = "../data/mrexp_qiime_refclus_nochimera.RDS")
+      qiime_denovo_chimerafilt = "../data/mrexp_qiime_denovo_chimera_filt.RDS",
+      qiime_denovo_nochimerafilt = "../data/mrexp_qiime_denovo_nochimera.RDS",
+      qiime_openref_chimerafilt = "../data/mrexp_qiime_refclus_chimera_filt.RDS",
+      qiime_openref_nochimerafilt = "../data/mrexp_qiime_refclus_nochimera.RDS",
+      dada = "../data/mrexp_dada2.RDS")
 
 mrexp_obj <- mrexp_filenames %>% map(readRDS)
 fvarLabels(mrexp_obj$qiime_openref_chimerafilt) <- paste0("taxonomy",1:7)
@@ -100,3 +101,38 @@ __Number of OTUs__
 ```{r}
 mrexp_obj %>% map(nrow)
 ```
+
+### Feature Count Distributions
+
+```{r}
+extract_count_df <- function(mrexp){
+     mrexp@assayData$counts %>% as_data_frame() %>% 
+      rownames_to_column(var = "otu") %>% 
+      gather("sample_name","count",-otu) %>% 
+      separate(sample_name,into = c("bio_rep","titration","plate","lib","sq"), sep = "_")
+}
+
+count_df <- mrexp_obj %>% map_df(extract_count_df, .id = "pipeline")
+```
+
+```{r}
+count_df %>% filter(count != 0) %>%  ggplot() + geom_histogram(aes(x = log2(count))) + facet_wrap(~pipeline) + theme_bw()
+```
+
+Feature count distribution for the dada2 pipeline is distinct from feature abundances from other pipelines with a bimodal distribution at 2^7 (128).
+```{r}
+count_df %>% filter(count != 0, pipeline == "dada") %>% 
+      ggplot() + geom_histogram(aes(x = log2(count)),bins = 15) + theme_bw()
+```
+
+Non-log transformed feature count distribution, peak close to 0. 
+```{r}
+count_df %>% filter(count != 0, pipeline == "dada") %>% 
+      ggplot() + geom_histogram(aes(x = count),bins = 100) + theme_bw()
+```
+
+```{r}
+count_df %>% filter(count != 0, pipeline == "dada") %>% 
+      ggplot() + geom_histogram(aes(x = count),bins = 100) + theme_bw() + scale_y_log10()
+```
+
