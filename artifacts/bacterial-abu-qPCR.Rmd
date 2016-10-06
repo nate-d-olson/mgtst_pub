@@ -68,6 +68,7 @@ colnames(bac_std) <- c("well","sample_name","conc","plate1","plate2","plate3")
 bac_std <- bac_std %>% gather("plate","Ct",-well, -sample_name, -conc) %>% 
       mutate(conc = as.numeric(conc), Ct = as.numeric(Ct)) %>% filter(!is.na(Ct))
 ## NAs introduced when converting samples with undetermined and omit Ct values.
+bac_std <- mutate(bac_std, log_conc = log10(conc))
 ```
 
 ### Results
@@ -86,29 +87,14 @@ bac_con <- bac_con %>% filter(sample_name != "NTC")
 
 
 ### Analysis of Standard Curve
-#### Fitting the standard curve using a linear model, Ct~log10(concentration). 
-
-Fitted model using the three plates as replicates and not fitting individual models for each plate. Using a random effect model is likely a better approach.
-```{r}
-bac_std <- mutate(bac_std, log_conc = log10(conc))
-std_fit <- lm(log_conc~Ct, data = bac_std)
-# extracting values for plots
-std_slope <- std_fit$coefficients[2]
-std_intercept <- std_fit$coefficients[1]
-fit1_df <- tibble(plate = paste0("plate",c(1:3)),
-                  slope = std_fit$coefficients[2], 
-                  intercept = std_fit$coefficients[1],
-                  mod = "log_conc~Ct")
-bac_fit <- bac_con %>% select(sample_name,plate, Ct) %>% add_predictions(std_fit)
-```
-
-```{r}
-summary(std_fit)
-```
 
 ```{r}
 std_fit2 <- lm(log_conc~plate/Ct, data = bac_std)
 summary(std_fit2)
+```
+
+
+```{r}
 bac_fit <- bac_con %>% select(sample_name,plate, Ct) %>% add_predictions(std_fit2)
 std_coef <- std_fit2 %>% coefficients()
 coef_df <- frame_data(
@@ -118,59 +104,7 @@ coef_df <- frame_data(
       "plate3",std_coef[1] + std_coef[3], std_coef[6]
 )
 fit2_df <- coef_df %>% mutate(mod = "log_conc~plate/Ct")
-```
-
-```{r}
-std_fit3 <- lm(log_conc~plate*Ct, data = bac_std)
-std_coef <- std_fit3 %>% coefficients()
-## not sure if I need to add Ct
-fit3_df <- frame_data(
-      ~plate, ~intercept, ~slope,
-      "plate1", std_coef[1], std_coef[4],
-      "plate2",std_coef[1] + std_coef[2], std_coef[4] + std_coef[5],
-      "plate3", std_coef[1] + std_coef[3], std_coef[4] + std_coef[6]
-      ) %>% 
-      mutate(mod = "log_conc~plate*Ct")
-```
-
-```{r}
-summary(std_fit3)
-fit3_df
-```
-
-
-```{r}
-library(lme4)
-std_fit4 <- lmer(log_conc~ Ct + (1|plate), data = bac_std)
-fit4_df <- tibble(plate = paste0("plate",c(1:3)),
-                  slope = coef(std_fit4)$plate[1,2], 
-                  intercept = coef(std_fit4)$plate[1,1],
-                  mod = "log_conc~ Ct + (1|plate)")
-```
-
-```{r}
-coef(std_fit4)
-summary(std_fit4)
-```
-
-
-##### Comparing Regression Models
-Model Matrix
-```{r}
-std_fit$model
-```
-
-```{r}
-std_fit2$model
-```
-
-```{r}
-std_fit3$qr
-```
-
-
-```{r}
-fit_coefs <- bind_rows(fit1_df, fit2_df, fit3_df,fit4_df)
+fit_coefs <- fit2_df
 ggplot(fit_coefs) + geom_point(data = bac_std, aes(y = log_conc, x = Ct)) +
       geom_abline(aes(slope = slope, intercept = intercept, color = mod, linetype = mod)) +
       facet_grid(.~plate) + theme_bw()
@@ -188,11 +122,6 @@ bac_fit <- left_join(bac_fit, min_std) %>%
       mutate(relative_ct = if_else(Ct < std_ct, "outside","within")) %>% 
       mutate(sam_type = if_else(grepl("\\(",sample_name),"unmixed","titration"))
 
-# ggplot(bac_std) + geom_point(aes(y = log_conc, x = Ct)) + 
-#       geom_abline(aes(slope = std_slope, intercept = std_intercept), color = "grey80") +
-#       geom_point(data = bac_fit, aes(y = pred, x = Ct, shape = plate, color = relative_ct)) +
-#       facet_grid(plate~sam_type) +
-#       theme_bw()
 ggplot(bac_std) + geom_point(aes(y = log_conc, x = Ct)) +
       geom_abline(data = coef_df, aes(slope = slope, intercept = intercept), color = "grey80") +
       geom_point(data = bac_fit, aes(y = pred, x = Ct, shape = plate, color = relative_ct)) +
