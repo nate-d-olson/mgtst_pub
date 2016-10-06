@@ -21,15 +21,21 @@ library(knitr)
 
 ## Summary
 * Objective - quantify bacterial abundance in starting DNA  
-* Method - bacterial abundance quantified using zymo kit  
+* Method - bacterial abundance quantified using zymo bacterial concentration assay 
+      - The assay targets the 16S rRNA gene and uses _E. coli_ as a standard. 
+      - _E. coli_ genome is approximatly 5 Mb with 6 copies of the 16S rRNA gene. 
 * Results  
-      - clean no template controls  
+      - Clean no template controls  
       - $R^2$ standard curve 0.99  
       - Large fraction of samples (especially unmixed) with Ct values outside standard curve.
-* Conclusion - need to rerun samples, specifically unmixed samples, diluting so that Ct values are within standard curve.
+* Conclusions
+      - $R^2$ for standard curve close to 1, but might want to consider only fitting to three highest concentration standard due to lower residual standard error. 
+      - High estimated DNA concentration for post treatment unmixed samples due to Ct values outside of the standard curve resulted in high post to pre treatment sample concentration ratios. 
+      - Should consider diluting and rerunning samples with multiple replicates outside of the standard curve to verify concentration estimates.
 
 ### Questions
 * How much template was added to each reaction?
+* Deviations in the average population genome size and 16S rRNA gene copy number per genome will bias the abundance estimate. May want to consider reporting abundance measurements as number of 16S rRNA gene copies rather than bacterial DNA concentration.
 
 ## Objective
 The proportion of pre and post exposure samples in individual titrations is dependent on the ratios at which the two samples were mixed. 
@@ -48,16 +54,27 @@ Additionally, the concentation of bacterial DNA in the titrations was assayed.
 
 ### Munging qPCR Data
 ```{r}
-bac_con <- read_excel(path = "../data/MixStudy_Nate_20160919.xls",
+bac_con_raw <- read_excel(path = "../data/MixStudy_Nate_20160919.xls",
                       sheet = "QDNA_20160919",
                       skip = 11, na = "Undetermined", col_names = FALSE)
-colnames(bac_con) <- c("well","sample_name",
+colnames(bac_con_raw) <- c("well","sample_name",
                        "plate1_Ct","plate1_quant",
                        "plate2_Ct","plate2_quant",
                        "plate3_Ct","plate3_quant")
-bac_con <- bac_con %>% gather("id","value", -well, -sample_name) %>% 
+
+bac_con <- bac_con_raw %>% gather("id","value", -well, -sample_name) %>% 
       separate(id, c("plate","var"), sep = "_") %>% 
-      spread(var,value)
+      spread(var,value) %>% 
+      mutate(sam_type = if_else(grepl('\\(', sample_name), "unmixed","titration"),
+             sam_type = if_else(sample_name == "NTC", "NTC",sam_type)) %>% 
+      rename(stine_quant = quant)
+
+bac_unmixed <- bac_con %>% filter(sam_type == "unmixed") %>% 
+            mutate(sample_name = str_replace(sample_name, ".*_", ""), 
+                   sample_name = str_replace(sample_name, '\\('," "),
+                   sample_name = str_replace(sample_name, '\\)',""))
+
+bac_con <- bac_con %>% filter(sam_type != "unmixed") %>% bind_rows(bac_unmixed)
 ```
 
 ```{r}
@@ -71,31 +88,43 @@ bac_std <- bac_std %>% gather("plate","Ct",-well, -sample_name, -conc) %>%
 bac_std <- mutate(bac_std, log_conc = log10(conc))
 ```
 
-### Results
+## Results
 
-#### NTC Check
-For NTC (no template control) samples the Ct values were  Comparison of Ct values between NTC and samples. NTC Ct values > 30, and sample Ct values < 20, excluding NTC from the rest of the analysis.
+### NTC Check
+For NTC (no template control) samples with assigned Ct values, the Ct values were significantly different from the sample Ct values. Excluding NTC from the rest of the analysis. Standad curve adjusted $R^2$ is 0.9947.
 
 ```{r}
-bac_con %>% mutate(sample_type = if_else(sample_name == "NTC", "NTC","samples")) %>% 
-ggplot() + geom_point(aes(x = sample_type, y = Ct, color = plate)) + theme_bw()
+ntc_sam_ct <- bac_con %>% 
+      mutate(sample_type = if_else(sample_name == "NTC", "NTC","samples")) %>% 
+      ggplot() + geom_point(aes(x = sample_type, y = Ct, color = plate)) + theme_bw()
 ## Warning about missing value due to one NTC reaction with a Ct value of NA
 
 ## plot shows okay to exclude NTC
 bac_con <- bac_con %>% filter(sample_name != "NTC")
 ```
 
+```{r fig.cap="Comparison of sample and NTC Ct values.", warning=FALSE}
+ntc_sam_ct
+```
 
-### Analysis of Standard Curve
 
+### Standard Curve Analysis
+The standard curve was fit using a linear model with independent estimated slope and intercepts for the three replicate plates.  
 ```{r}
 std_fit2 <- lm(log_conc~plate/Ct, data = bac_std)
 summary(std_fit2)
 ```
 
+Only fitting linear models to three highest concentration standard results in lower $R^2$ but also lower residual standard error.
+```{r}
+bac_std_high <- bac_std %>% filter(conc > 0.1)
+std_fit_high <- lm(log_conc~plate/Ct, data = bac_std_high)
+summary(std_fit_high)
+```
+
 
 ```{r}
-bac_fit <- bac_con %>% select(sample_name,plate, Ct) %>% add_predictions(std_fit2)
+bac_fit <- bac_con %>% select(sample_name,plate, Ct, sam_type, stine_quant) %>% add_predictions(std_fit2)
 std_coef <- std_fit2 %>% coefficients()
 coef_df <- frame_data(
       ~plate, ~intercept, ~slope,
@@ -103,118 +132,111 @@ coef_df <- frame_data(
       "plate2",std_coef[1] + std_coef[2], std_coef[5],
       "plate3",std_coef[1] + std_coef[3], std_coef[6]
 )
+knitr::kable(coef_df, caption = "Slope and intercepts for each plate infered using a linear model.")
+```
+
+```{r fig.cap="Standard curve fit using a linear model 'log(concentration)~Ct/plate'."}
 fit2_df <- coef_df %>% mutate(mod = "log_conc~plate/Ct")
 fit_coefs <- fit2_df
 ggplot(fit_coefs) + geom_point(data = bac_std, aes(y = log_conc, x = Ct)) +
-      geom_abline(aes(slope = slope, intercept = intercept, color = mod, linetype = mod)) +
-      facet_grid(.~plate) + theme_bw()
+      geom_abline(aes(slope = slope, intercept = intercept), color = "grey60") +
+      facet_grid(.~plate) + theme_bw() + labs(y = "DNA Concentration log10(ng/ul)")
 ```
 
 
 
-#### Samples outside of standard curve range.
-Samples have Ct values lower then the standard curve samples and fall outside of the standard curve. This is not ideal.
-Only 2 of the 10 unmixed pre and post treatment samples have Ct values within the standard curve for all three plates, and none of the remaining 8 have Ct within the standard curve for 2 of the three plates. The linearity of the standard curve outside of the standard concentration range is unknown. 
+#### Predicted Sample Concentrations
+The predicted sample concentration ranges from 1.35 ng/ul to over 218 ng/ul.
+Samples have Ct values lower then the standard curve samples and fall outside of the standard curve. 
 
 ```{r}
-min_std <- bac_std %>% filter(conc == 20) %>% select(plate, Ct) %>% rename(std_ct = Ct)
-bac_fit <- left_join(bac_fit, min_std) %>% 
-      mutate(relative_ct = if_else(Ct < std_ct, "outside","within")) %>% 
-      mutate(sam_type = if_else(grepl("\\(",sample_name),"unmixed","titration"))
+min_std <- bac_std %>% filter(conc == 20) %>% select(plate, Ct) %>% rename(min_ct = Ct)
+bac_fit <- bac_fit %>% left_join(min_std) %>% 
+      mutate(relative_ct = if_else(Ct < min_ct, "outside","inside"))
+```
 
+```{r fig.cap= "Estimated sample concentrations relative to standard curve and standards (black points)."}
 ggplot(bac_std) + geom_point(aes(y = log_conc, x = Ct)) +
       geom_abline(data = coef_df, aes(slope = slope, intercept = intercept), color = "grey80") +
-      geom_point(data = bac_fit, aes(y = pred, x = Ct, shape = plate, color = relative_ct)) +
+      geom_point(data = bac_fit, aes(y = pred, x = Ct, shape = relative_ct, color = relative_ct)) +
       facet_grid(plate~sam_type) +
-      theme_bw()
+      theme_bw() + labs(y = "DNA Concentration log10(ng/ul)", 
+                        color = "Ct relative to std. curve", shape = "Ct relative to std. curve") +
+      theme(legend.position = "bottom")
 ```
 
-Difference in Ct value between unmixed samples and highest concentration (lowest Ct) standard. Samples with negative values are outside of the standard curve.
-```{r}
-bac_fit %>% filter(sam_type == "unmixed") %>% 
-            mutate(sample_name = str_replace(sample_name, ".*_", ""), 
-             sample_name = str_replace(sample_name, '\\('," "),
-             sample_name = str_replace(sample_name, '\\)',"")) %>% 
-      mutate(ct_diff = std_ct - Ct) %>% select(sample_name, plate, ct_diff) %>% 
-      spread(plate,ct_diff) %>% kable()
-```
 
-#### Variability of samples outside of the standard curve 
-The variability in concentration for the unmixed samples, especially post treatment biological replicates 2 (7_2(Post)) and 3 (8_3(Post)), is likely due to the sample concentration falling outside the range of the standard curve.
+Only 2 of the 10 unmixed pre and post treatment samples have Ct values within the standard curve for all three plates, and  of the remaining 8 have Ct within the standard curve for 2 of the three plates. The linearity of the standard curve outside of the standard concentration range is unknown. Estimated concentrations less than 20 ng/ul (the highest concentration standard) but Ct values outside of the standard curve due to the deviation of the model from the 20 ng/ul standard. 
 
-Dashed line is at 20ng/ul, to indicate the highest concentation standard. 
-```{r}
+```{r fig.cap = "Variability of sample concentration relative to 20 ng/ul standard for unmixed pre and post samples."}
 bac_fit <- bac_fit %>% 
       mutate(quant = 10^pred) %>% 
       group_by(sample_name) %>% 
-      mutate(quant_min = min(quant), quant_max = max(quant)) %>% 
-      ungroup() %>% 
-      mutate(sample_name = fct_reorder(sample_name, quant, fun = "median"))
-
-ggplot(bac_fit) + 
-      geom_hline(aes(yintercept = 20), linetype = 2) +
-      geom_linerange(aes(x = sample_name,ymin = quant_min, ymax = quant_max), color = "grey60") +
-      geom_point(aes(y = quant, x = sample_name, color = relative_ct, shape = plate)) +
-      theme_bw() + coord_flip()
+      mutate(quant_min = min(quant), quant_max = max(quant)) #%>% 
+      #ungroup() %>% 
+      #mutate(sample_name = fct_reorder(sample_name, quant, fun = "median"))
+bac_fit %>% filter(sam_type == "unmixed") %>% 
+      ggplot() + 
+            geom_hline(aes(yintercept = 20), linetype = 2) +
+            geom_linerange(aes(x = sample_name,ymin = quant_min, ymax = quant_max), color = "grey60") +
+            geom_point(aes(y = quant, x = sample_name, color = relative_ct, shape = plate)) +
+            theme_bw() + labs(x = "Sample Names", y = "DNA concentration (ng/ul)") + coord_flip()
 ```
 
-Relationship between standard deviation and median concentration values.
+The variability in concentration for the unmixed samples, especially post treatment biological replicates 2 ('2 Post') and 3 ('3 Post'), is likely due to the sample concentration falling outside the range of the standard curve. Dashed line is at 20ng/ul, to indicate the highest concentation standard. 
 ```{r}
-bac_var <- bac_fit %>% group_by(sample_name) %>% 
-      mutate(quant_med = median(quant), quant_sd = sd(quant),
-             relative_ct_binary = if_else(relative_ct == "within", 0,1), 
-             n_within = sum(relative_ct_binary) %>% as.factor())
-ggplot(bac_var) + 
-      geom_point(aes(x = quant_med, y = quant_sd, color = n_within)) + 
-      theme_bw() + 
-      labs(x = "Median (ng/ul)", y = "Standard Deviation (ng/ul)", color = "# within standard curve") + 
-      theme(legend.position = "bottom")
+bac_fit %>% ungroup() %>% 
+      mutate(sample_name = fct_reorder(sample_name, quant, fun = "median")) %>% 
+      ggplot() + 
+            geom_hline(aes(yintercept = 20), linetype = 2) +
+            geom_linerange(aes(x = sample_name,ymin = quant_min, ymax = quant_max), 
+                           color = "grey60") +
+            geom_point(aes(y = quant, x = sample_name, color = relative_ct, shape = plate)) +
+            theme_bw() + coord_flip()
 ```
 
-Relationship between median and standard deviation Ct values.
+### Comparison of Concentration Estimates
+Using methods shown above ("Nate") compared to values provided by Shan and Colin ("Stine").
 ```{r}
-bac_var <- bac_fit %>% group_by(sample_name) %>% 
-      mutate(Ct_med = median(Ct), Ct_sd = sd(Ct),
-             relative_ct_binary = if_else(relative_ct == "within", 0,1), 
-             n_within = sum(relative_ct_binary) %>% as.factor())
-ggplot(bac_var) + 
-      geom_point(aes(x = Ct_med, y = Ct_sd, color = n_within)) + 
-      theme_bw() + 
-      labs(x = "Median Ct", y = "Standard Deviation Ct", color = "# within standard curve") + 
-      theme(legend.position = "bottom")
+bac_fit %>% ggplot() + geom_point(aes(x = quant, y = stine_quant, color = plate, shape = plate)) + theme_bw() + labs(x = "Nate", y = "Stine")
 ```
 
-### Tritration Concentration Deviation from Expected Value
 
+### Unmixed Sample Concentration Ratios
 ```{r}
-bac_unmixed <- bac_fit %>% filter(sam_type == "unmixed") %>% 
-            mutate(sample_name = str_replace(sample_name, ".*_", ""), 
-                   sample_name = str_replace(sample_name, '\\('," "),
-                   sample_name = str_replace(sample_name, '\\)',"")) %>% 
+bac_unmixed <- bac_fit %>% ungroup() %>% filter(sam_type == "unmixed") %>% 
             separate(sample_name,into = c("bio_rep","titration"),remove = FALSE) %>% 
             mutate(titration_factor = if_else(titration == "Pre", 20, 0)) %>% 
             select(bio_rep, plate,pred, titration) %>% 
             spread(titration,pred)
 ```
 
+Estimated concentration ratios for pre and post samples (post/pre). 
 ```{r}
-bac_mixed <- bac_fit %>% filter(sam_type == "titration") %>% 
+bac_unmixed %>% group_by(bio_rep) %>% summarise(con_ratio = 10^median(Post)/10^median(Pre)) %>% kable()
+```
+
+### Tritration Concentration Deviation from Predicted Value
+Calculating expected bacterial DNA concentration for titrations using estimated unmixed sample concentrations based on how the titrations were generated. 
+```{r}
+bac_mixed <- bac_fit %>% ungroup() %>% filter(sam_type == "titration") %>% 
       separate(sample_name, into = c("bio_rep","titration"), remove = FALSE) %>% 
       mutate(titration_factor = str_replace(titration, "M","") %>% as.numeric())
 ```
 
 ```{r}
-bac_fit2 <- left_join(bac_mixed, bac_unmixed) %>% select(-sample_name, -Ct, -std_ct, -sam_type) %>% 
+bac_fit2 <- left_join(bac_mixed, bac_unmixed) %>% select(-sample_name, -Ct, -min_ct, -sam_type) %>% 
       mutate(exp_pred = Post*(2^-titration_factor) + Pre*(1-2^-titration_factor))
 ```
 
-Expected Concentration - calculation based on concentration measurements for pre and post unmixed samples
-Estimated Concentration - calculated using standard curve
 
-```{r}
-bac_fit2 %>% ggplot(aes(x = 10^exp_pred, y = 10^pred, color = plate, shape = relative_ct)) + 
+
+
+
+```{r fig.cap = "Correlation between predicted and estimated titration bacterial DNA concentrations. Predicted Concentration - calculation based on concentration measurements for pre and post unmixed samples. Estimated Concentration - calculated using standard curve. Dashed line indicates the expected 1:1 relationship."}
+bac_fit2 %>% ggplot(aes(x = 10^exp_pred, y = 10^pred, color = plate, shape = plate)) + 
       geom_point() + 
-      geom_abline(aes(intercept = 0, slope = 1)) + 
+      geom_abline(aes(intercept = 0, slope = 1), color = "grey60",linetype = 2) + 
       facet_grid(~bio_rep, scales = "free") +
       labs(x = "Expected (ng/ul)", y = "Estimated (ng/ul)") + theme_bw()
 ```
@@ -223,7 +245,11 @@ bac_fit2 %>% ggplot(aes(x = 10^exp_pred, y = 10^pred, color = plate, shape = rel
 
 ## Conclusions
 
-The samples should be diluted and run again.
+* High $R^2$ for standard curve, might want to consider only fitting to three highest concentration standard due to lower residual standard error.
+* High estimated DNA concentration for post treatment unmixed samples due to Ct values outside of the standard curve resulted in high post to pre treatment sample concentration ratios. 
+* Should consider diluting and rerunning samples with multiple replicates outside of the standard curve to verify concentration estimates.
+
+
 
 __Caveats__  
 
