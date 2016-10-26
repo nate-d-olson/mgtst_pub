@@ -1,0 +1,105 @@
+---
+title: "Mothur Pipeline"
+author: "Nate Olson"
+date: "October 26, 2016"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(readr)
+library(forcats)
+
+mothur_dir <- file.path("~/Projects/16S_etec_mix_study/analysis/pipelines/mothur/data/process")
+```
+
+## Pipeline Summary
+- merging paired end reads using needleman and filtering merged contigs
+- aligns sequences to reference alignment - SILVA
+    - find closet match in reference multiple sequence alignment using a k-mer based method then aligns to closest match using needleman
+- Removes duplicates and pre.clustering to reduce the number of sequences clustered
+    - Pre.cluster - pseudo-single linkage algorithm
+        - Ranks sequences in order of abundance - clusters less abundant sequences within the specified edit distance from the more abundant sequences
+- Chimera filtering using UCHIME
+    - looks for chimeras using more abundant sequences within a sample as reference
+- Classify sequences using RDP with 80% threshold
+- performs average neighbor clustering - distance threshold 0.03 after splitting sequences based on taxonomy
+    - level 4- Order
+- Classifies OTUs based on the consensus of the sequence classifications for the sequences assigned to the OTU
+
+## Pipeline Budget
+__NOTE__ Current work does not include total number of unique in the dataset 
+
+- number of raw sequences
+__NOTE__ Need to get from seq/barcode files
+
+
+### number of successfully merged pairs
+- total number and unique merged pairs passing initial filter by sample, based on length (500 bp), number of ambiguous bases (0), and maximum homopolymer length (8) 
+
+```{r}
+merged_count <- file.path(mothur_dir, "mgtst.trim.contigs.good.good.count_table") %>% 
+      read_tsv() %>% 
+      gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
+      group_by(id) %>% summarise(merged_total = sum(count), merged_unique = n())
+```
+
+
+#### number of sequences successfully aligned to reference alignment
+
+```{r}
+aligned_countfile <- "mgtst.trim.contigs.good.unique.good.filter.count_table"
+aligned_count <- file.path(mothur_dir, aligned_countfile) %>% 
+      read_tsv() %>% 
+      gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
+      group_by(id) %>% summarise(aligned_total = sum(count), aligned_unique = n())
+```
+
+### number of features after pre-clustering 
+
+```{r}
+precluster_countfile <- paste0("mgtst.trim.contigs.good.unique.good.filter.",
+                            "unique.precluster.count_table")
+precluster_count <- file.path(mothur_dir, precluster_countfile) %>% 
+      read_tsv() %>% 
+      gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
+      group_by(id) %>% summarise(precluster_total = sum(count), precluster_unique = n())
+```
+
+### number of features and sequences after chimera filtering
+
+```{r}
+chimera_countfile <- paste0("mgtst.trim.contigs.good.unique.good.filter.",
+                            "unique.precluster.denovo.uchime.pick.count_table")
+chimera_count <- file.path(mothur_dir, chimera_countfile) %>% 
+      read_tsv() %>% 
+      gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
+      group_by(id) %>% summarise(chimera_total = sum(count), chimera_unique = n())
+```
+
+
+Combining count results
+```{r}
+count_df <- bind_rows(merged_count, aligned_count, precluster_count, chimera_count) %>% 
+      gather("pipe_step","value",-id) %>% 
+      separate(pipe_step, c("pipe_step","count_type")) %>% 
+      mutate(pipe_step = fct_relevel(pipe_step, c("merged","aligned","precluster","chimera")),
+             step_num = as.numeric(pipe_step))
+ 
+```
+
+
+## Pipeline Results
+
+```{r}
+count_df %>% 
+ ggplot() + geom_bar(aes(x = id, y = value, fill = pipe_step), stat = "identity", position = "dodge") + 
+      facet_wrap(~count_type, ncol = 1, scale = "free_y")
+```
+
+```{r}
+count_df %>% 
+ ggplot() + geom_boxplot(aes(x = pipe_step, y = value)) + 
+      facet_wrap(~count_type, ncol = 1, scale = "free_y")
+```
+
