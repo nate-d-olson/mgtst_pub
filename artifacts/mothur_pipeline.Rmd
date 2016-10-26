@@ -31,7 +31,14 @@ mothur_dir <- file.path("~/Projects/16S_etec_mix_study/analysis/pipelines/mothur
 __NOTE__ Current work does not include total number of unique in the dataset 
 
 - number of raw sequences
-__NOTE__ Need to get from seq/barcode files
+```{r}
+seq_meta <- readRDS("../data/seq_metadata_df.RDS")
+```
+
+```{r}
+raw_count <- seq_meta %>% filter(Read == "R1") %>% select(ill_id,reads) %>% 
+      dplyr::rename(id = ill_id, total = reads) %>% mutate(pipe_step = "raw")
+```
 
 
 ### number of successfully merged pairs
@@ -41,7 +48,7 @@ __NOTE__ Need to get from seq/barcode files
 merged_count <- file.path(mothur_dir, "mgtst.trim.contigs.good.good.count_table") %>% 
       read_tsv() %>% 
       gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
-      group_by(id) %>% summarise(merged_total = sum(count), merged_unique = n())
+      group_by(id) %>% summarise(total = sum(count), unique = n()) %>% mutate(pipe_step = "merged")
 ```
 
 
@@ -52,7 +59,7 @@ aligned_countfile <- "mgtst.trim.contigs.good.unique.good.filter.count_table"
 aligned_count <- file.path(mothur_dir, aligned_countfile) %>% 
       read_tsv() %>% 
       gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
-      group_by(id) %>% summarise(aligned_total = sum(count), aligned_unique = n())
+      group_by(id) %>% summarise(total = sum(count), unique = n()) %>% mutate(pipe_step = "aligned")
 ```
 
 ### number of features after pre-clustering 
@@ -63,7 +70,7 @@ precluster_countfile <- paste0("mgtst.trim.contigs.good.unique.good.filter.",
 precluster_count <- file.path(mothur_dir, precluster_countfile) %>% 
       read_tsv() %>% 
       gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
-      group_by(id) %>% summarise(precluster_total = sum(count), precluster_unique = n())
+      group_by(id) %>% summarise(total = sum(count), unique = n()) %>% mutate(pipe_step = "precluster")
 ```
 
 ### number of features and sequences after chimera filtering
@@ -74,32 +81,29 @@ chimera_countfile <- paste0("mgtst.trim.contigs.good.unique.good.filter.",
 chimera_count <- file.path(mothur_dir, chimera_countfile) %>% 
       read_tsv() %>% 
       gather("id","count",-Representative_Sequence,-total) %>%  filter(count != 0) %>% 
-      group_by(id) %>% summarise(chimera_total = sum(count), chimera_unique = n())
+      group_by(id) %>% summarise(total = sum(count), unique = n()) %>% mutate(pipe_step = "chimera")
 ```
 
 
 Combining count results
 ```{r}
-count_df <- bind_rows(merged_count, aligned_count, precluster_count, chimera_count) %>% 
-      gather("pipe_step","value",-id) %>% 
-      separate(pipe_step, c("pipe_step","count_type")) %>% 
-      mutate(pipe_step = fct_relevel(pipe_step, c("merged","aligned","precluster","chimera")),
+count_df <- bind_rows(raw_count, merged_count, aligned_count, precluster_count,chimera_count) %>% 
+      gather("count_type","value", -id, -pipe_step) %>% 
+      mutate(pipe_step = fct_relevel(pipe_step, c("raw","merged","aligned","precluster","chimera")),
              step_num = as.numeric(pipe_step))
- 
 ```
 
-
-## Pipeline Results
+## Pipeline Processing 
+Few sequences filtered from the dataset after the initial quality filtering.  
+Sequences are either merged with others for new features with only singletons being excluded from the dataset.  
+Individual lines indicate the total number of seuqences and number of unique sequences or features at each stage in the pipeline.  
+Might want to futher characterize loss at each step as the total number and features being filtered.
 
 ```{r}
 count_df %>% 
- ggplot() + geom_bar(aes(x = id, y = value, fill = pipe_step), stat = "identity", position = "dodge") + 
-      facet_wrap(~count_type, ncol = 1, scale = "free_y")
-```
-
-```{r}
-count_df %>% 
- ggplot() + geom_boxplot(aes(x = pipe_step, y = value)) + 
-      facet_wrap(~count_type, ncol = 1, scale = "free_y")
+ ggplot() + geom_path(aes(x = step_num, y = value, group = id), alpha = 0.25) + 
+      facet_grid(count_type~.,scale = "free_y") + 
+      scale_x_continuous(breaks = 1:5,label = c("Raw","Merged","Aligned","Precluster","Chimera")) +
+      theme_bw() + labs(x = "Pipeline Step",y = "Count")
 ```
 
