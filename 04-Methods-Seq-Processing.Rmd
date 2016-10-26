@@ -1,15 +1,12 @@
 ## Sequence Processing
-
-### Sequencing Data Quality Assessment
-
-#### Error Rate
-
-#### QA Metrics
-
-### Pipelines  
 Sequence data was processed using a number of commonly used pipelines.
-* The Mothur (version 1.37, http://www.mothur.org/) pipeline used was based on the MiSeq SOP [@schloss2009introducing]. 
-Modifications to the SOP as a different 16S region was sequenced than the region the SOP was developed for, see the Makefile in the project github repository (__TODO__ add website) and supplemental material  for details __TODO__ add pipeline details to supplemental.
+* The Mothur (version 1.37, http://www.mothur.org/) pipeline used was based on the MiSeq SOP [@schloss2009introducing,@kozich2013development]. 
+Modifications to the SOP as a different 16S rRNA region was sequenced than the region the SOP was developed for, see the Makefile in the project github repository (__TODO__ add website). The mothur pipeline included an initial pre-processing step where forward and reverse reads were merge using the Needleman-Wunsch algorithm. 
+Low quality reads, presence of ambiguous bases, reads that failed alignment to the SILVA reference database (https://www.arb-silva.de/), and chimeras were filtered from the dataset. 
+Chimera filtering was performed using UChime without a reference database (REF). 
+Average neighbor clustering for OTU clustering using pairwise sequences distances calculated from the reference based multiple sequence alignment. 
+The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set. 
+
 * Four different pipelines using QIIME were used to process the sequencing data.  The methods included open reference and _de novo_ clustering with and without chimera removal [@caporaso2010qiime]. 
 * DADA2 an R native pipeline was also used to process the sequencing data [@callahan2016dada2].
 * Pop (https://github.com/MihaiPop/GEMS-db), the pipeline uses Sickle for read trimming [@sickle], XZY for merging paired-end reads, DNAclust for OTU assignment [@ghodsi2011dnaclust], and BLAST for taxonomic annotation [@altschul1990basic].

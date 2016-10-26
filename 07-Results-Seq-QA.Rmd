@@ -1,6 +1,6 @@
 ## Sequence QA
 
-### Wetlab QC  
+### Titration Validation 
 * sample concentration results summary  
     + bacterial quant (http://www.zymoresearch.com/dna/dna-analysis/femto-bacterial-dna-quantification-kit)  
     

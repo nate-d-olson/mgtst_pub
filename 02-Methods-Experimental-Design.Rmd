@@ -4,56 +4,22 @@
 ## Two-Sample-Titration Design  
 Samples from a vaccine trial were selected for use in the study [@harro2011refinement]. 
 Five trial participants were selected based as thoes with no _Eshechichia coli_ detected in stool samples before exposure to Enterotoxigenic _Escherichia coli_ (ETEC)) and timepoints with the highest concentration of _E. coli_ after exposure [@pop2016individual].
-For the two-sample titration post-treatment samples (stool samples collected after exposure to _E. coli_ ETEC) were titrated into pre-treatment samples (stool samples collected _before_ exposure to _E. coli_ ETEC) with $log_2$ changes in pre to post sample proportions \@ref(fig:tst_diagram). 
+For the two-sample titration post-treatment samples (stool samples collected after exposure to _E. coli_ ETEC) were titrated into pre-treatment samples (stool samples collected _before_ exposure to _E. coli_ ETEC) with $log_2$ changes in pre to post sample proportions \@ref(fig:experimenta_design) (Panel B). 
 
-```{r tst_diagram, echo=FALSE, fig.width = 4, fig.cap="Schematic of two sample titration process with the $log_2$ titrations used in the study."}
+```{r experimental_design, echo=FALSE, fig.width = 4, fig.cap="Schematic of two sample titration process with the $log_2$ titrations used in the study."}
 knitr::include_graphics("img/two_sample_titration_diagram.png")
 ```
 
-### Generating mixtures
-DNA concentrations and dilution volumes  
-
-```{r}
-biosample_info  %>% knitr::kable()
-## calculate dilution concentrations
-```
-
-Volumes used to generate mixtures  
-
-```{r}
-tst_prep  %>% knitr::kable()
-```
-
-ERCCs were spiked into mixtures for use in QC.  
-* ERCC plasmid prep  
-* Calulate from `tst_prep`  
-* ERCC qPCR assay information  
+### Titration Validation
+* ERCCs were spiked into mixtures for use in QC.  
+      * ERCC plasmid prep   
+      * ERCC qPCR assay information  
+* Bacterial DNA concentration
 
 ## Sample Processing Workflow
-The resulting 45 two sample titrations were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (REF), \@ref(fig:sample_workflow). 
-The protocol consisted of an initial 16S rRNA PCR followed by a seperate sample indexing PCR. The concentration of the resulting indexed 16S PCR products were normalized using the SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA) then pooled and sequenced on a single Illumina MiSeq (Illumina Inc., San Diego, CA) run. 
-
-```{r sample_workflow, echo=FALSE, fig.width = 4, fig.cap="Flow chart of the sample processing interlaboratory design annotated with the sources of bias and variability at each step of the sample processing procedure."}
-knitr::include_graphics("img/two_sample_titration_sample_processing_workflow.png")
-```  
-
-A total of 192 samples were sequenced including four PCR replicates of each of the 45 mixtures and 12 no template controls __[REPLICATE Bubble Diagram]__. 
-The samples were distributed across two 96 well plates with the two plates serving as technical replicates \@ref(fig:pcr_layout). 
+The resulting 45 two sample titrations were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (REF). 
+The protocol consisted of an initial 16S rRNA PCR followed by a seperate sample indexing PCR. The concentration of the resulting indexed 16S PCR products were normalized using the SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA) then pooled and sequenced on a single Illumina MiSeq (Illumina Inc., San Diego, CA) run. A total of 192 samples were sequenced including four PCR replicates of each of the 45 mixtures and 12 no template controls \@ref(fig:experimental_design). 
+The samples were distributed across two 96 well plates with the two plates serving as technical replicates. 
+* Multiple laboratory information
 
 
-```{r pcr_layout, fig.width = 6, fig.cap="PCR plate layout experimental design."}
-sample_sheet %>%
-    filter(kit_version == 'A') %>% 
-    separate(pos, c("row","col"), sep = "_") %>% 
-    mutate(col = as.numeric(col)) %>%
- ggplot(aes(x=col, y=row)) +
-    # geom_point(data=expand.grid(seq(1,12), seq(1,8)), aes(x=Var1, y=Var2),
-    #            color='grey90', fill='white', shape=21, size=6) +
-    geom_point(aes(color = sampleID), size=10) +
-    geom_text(aes(label = dilution)) +
-    coord_fixed(ratio=(13/12)/(9/8), xlim=c(0.5,12.5), ylim=c(0.5,8.5)) +
-    # scale_y_reverse(breaks=seq(1,8), labels=LETTERS[1:8]) +
-    scale_x_continuous(breaks=seq(1,12)) +
-    labs(title="PCR Layout") +
-    theme_bw()
-```
