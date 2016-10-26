@@ -194,6 +194,23 @@ bac_fit %>% ungroup() %>%
             geom_point(aes(y = quant, x = sample_name, color = relative_ct, shape = plate)) +
             theme_bw() + coord_flip()
 ```
+Samples with Ct values outside of the standard curve.
+```{r}
+bac_fit %>% filter(relative_ct == "outside") %>% ungroup() %>% 
+      mutate(sample_name = fct_reorder(sample_name, quant, fun = "median")) %>% 
+      ggplot() + 
+            geom_hline(aes(yintercept = 20), linetype = 2) +
+            geom_linerange(aes(x = sample_name,ymin = quant_min, ymax = quant_max), 
+                           color = "grey60") +
+            geom_point(aes(y = quant, x = sample_name, color = relative_ct, shape = plate)) +
+            theme_bw() + coord_flip()
+```
+
+List of mixture samples with Ct values outside of standard curve.
+```{r}
+bac_fit %>% filter(relative_ct == "outside",sam_type == "titration") %>% .$sample_name %>% unique()
+```
+
 
 ### Comparison of Concentration Estimates
 Using methods shown above ("Nate") compared to values provided by Shan and Colin ("Stine").
