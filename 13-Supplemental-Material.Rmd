@@ -1,0 +1,42 @@
+---
+title: "Supplemental Material"
+author: "Nate Olson"
+date: "October 25, 2016"
+output: html_document
+---
+
+# Supplemental
+## Sample Selection
+
+## wetlab QC
+
+* sample concentration results summary
+
+## Seq data QA
+
+* number of reads
+* read length distributions
+* PhiX error rate analysis
+* base quality summary 
+
+## Pipeline 
+
+* Seq budget - summarize fate of sequences, number successful merged read pairs, chimera filtered, alignment?, ect.
+    * Table - pipeline sequence budget
+        * number of reads filtered due to low quality
+        * number of reads merged
+        * number of chimeras
+
+## Characterizing Sources of variability
+### Response Variance
+* Experimental replicate variance - how is the variance correlated with different types of technical replicates, how does the variance differ for pipelines
+    * section objective - characterize count variance between PCR replicates  
+        * is the variance correlated with experimental values e.g. biological sample, PCR plate, well, sequencing depth, or observed count value  
+    * Figure - relationship between count and PCR replicate variance
+    
+
+### Response linearity 
+* section objective - demonstrate how the dataset is used to characterize relative abundance estimates and identify potential sources of bias
+* Figure observed vs expected plots
+* Figure representative OTUs showing different types of response linearity
+* Differentiating between high and low linearity OTUs
