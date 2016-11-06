@@ -1,0 +1,270 @@
+---
+title: "Normalization - Neg Binomial"
+author: "Nate Olson"
+date: "August 2, 2016"
+output: html_document
+---
+
+## Objective
+Based on conversation with Hector model technical replicate count value residuals using Deseq negative binomial model.
+
+## Loading Libraries
+```{r setup, echo=FALSE, message=FALSE}
+library(mgtst)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(purrr)
+library(stringr)
+library(plotly)
+library(metagenomeSeq)
+```
+
+## Loading sequencing data
+```{r load_dat}
+mrexp_filenames <- list(mothur = "../data/mrexp_mothur.RDS",
+                        qiime_denovo_chimerafilt = "../data/mrexp_qiime_denovo_chimera_filt.RDS",
+                        qiime_denovo_nochimerafilt = "../data/mrexp_qiime_denovo_nochimera.RDS",
+                        qiime_openref_chimerafilt = "../data/mrexp_qiime_refclus_chimera_filt.RDS",
+                        qiime_openref_nochimerafilt = "../data/mrexp_qiime_refclus_nochimera.RDS")
+
+mrexp_obj <- mrexp_filenames %>% map(readRDS)
+fvarLabels(mrexp_obj$qiime_openref_chimerafilt) <- paste0("taxonomy",1:7)
+```
+
+Rename qiime samples for consistent set of ids
+```{r}
+get_new_ids <- function(mr_qiime, sample_sheet){
+
+      qiime_id_set <- pData(mr_qiime) %>% rownames()
+
+      id_fix_df <- sample_sheet %>% 
+            filter(seq_lab == "JHU",barcode_lab == "JHU") %>% 
+            select(id, pcr_16S_plate, pos) %>% 
+            mutate(pos = str_replace(pos, "_",""), 
+                   qiime_id = str_c(pcr_16S_plate, pos, sep = "-")) %>% 
+            filter(qiime_id %in% qiime_id_set) %>% 
+            group_by(id) %>% 
+            mutate(id2 = if_else(grepl(x = id, pattern = "B0_M0"),
+                                 paste(id,1:n(),sep = "_"),id))
+      id_fix_df$id2[match(id_fix_df$qiime_id, qiime_id_set)]
+}
+
+
+id_set <- get_new_ids(mrexp_obj$qiime_denovo_chimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_denovo_chimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_denovo_chimerafilt)$counts) <- id_set
+
+id_set <- get_new_ids(mrexp_obj$qiime_denovo_nochimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_denovo_nochimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_denovo_nochimerafilt)$counts) <- id_set
+
+id_set <- get_new_ids(mrexp_obj$qiime_openref_chimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_openref_chimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_openref_chimerafilt)$counts) <- id_set
+
+id_set <- get_new_ids(mrexp_obj$qiime_openref_nochimerafilt, sample_sheet)
+rownames(pData(mrexp_obj$qiime_openref_nochimerafilt)) <- id_set
+colnames(assayData(mrexp_obj$qiime_openref_nochimerafilt)$counts) <- id_set
+```
+
+
+## Model Description
+__Notation__  
+
+* $i \dots n$ - OTU index  
+* $j \dots m$ - mix index  
+* $r \dots l$ - PCR replicate index  
+* $y$ - count  
+* $\mu_{ij}$ - mean count OTU $i$ Mix $j$   
+* $\rho_{ij}$ - proportion of OTU $i$ in mix $j$  
+* $S_{jr}$ - total count, size factor mix $j$ replicate $r$    
+
+__Model__  
+$y_{ijr}=\mu_{ij} + \epsilon_{ijr}$
+
+$s_j$ - number of sequences per mix  
+
+$\mu_{ij} = f(s_j)$  
+
+How much variance explained by mean - think negative binomial?  
+
+$\mathbf{E}y_{ijr}=\mu_{ij}=\rho_{ij}s_{jr}$   
+
+$Var(y_{ijr}) = \rho_{ij}^{2}S_{jr}^{2} + \delta_{ij}^2$  
+
+$\rho_{ijr}=\rho_i + \rho_j +plate_{jr} + \dots$   
+expected variance $\rho_{ij}^2$ everything comes from that 
+
+
+### Fitting Model
+Using QIIME open reference no chimera filtering, `qiime_openref_nochimerafilt`.
+
+```{r}
+qiime_std <- mrexp_obj$qiime_openref_nochimerafilt
+```
+
+## Tidy Data
+Focusing on biological replicate 1 no normalization or scaling
+```{r}
+sam_dat <- pData(qiime_std) %>% rownames_to_column(var = "samID") %>% 
+      mutate(sample_total = colSums(qiime_std))
+```
+
+No transformation or normalization
+```{r}
+qiime_std_df <- assayData(qiime_std)[['counts']] %>% as.data.frame() %>% 
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% 
+        left_join(sam_dat) %>% 
+      select(-pos_ns, -barcode_lab, -seq_lab, -samID) %>% as_tibble()
+```
+
+Log transforming counts.
+```{r}
+qiime_log2_df <- MRcounts(qiime_std,norm = FALSE, log = FALSE) %>% as.data.frame() %>% 
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% mutate(count = log2(count + 1)) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+Total sum scaling - proportion
+```{r}
+qiime_tss_df <- assayData(qiime_std)[['counts']] %>% {t(t(.)/rowSums(t(.)))} %>%
+     as.data.frame() %>% rownames_to_column(var = "otu") %>%
+     gather("samID","count", -otu) %>% left_join(sam_dat) %>%
+    select(-pos_ns, -barcode_lab, -seq_lab, -samID) %>% as_tibble()
+```
+
+
+```{r}
+qiime_tsslog2_df <- assayData(qiime_std)[['counts']] %>% {t(t(.)/rowSums(t(.)))} %>%
+        as.data.frame() %>% rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% mutate(count = log2(count + 1)) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+
+```{r}
+qiime_css_df <- cumNormMat(qiime_std, p = 0.75) %>% as.data.frame() %>%
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+```{r}
+qiime_csslog2_df <- cumNormMat(qiime_std, p = 0.75) %>% as.data.frame() %>% 
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% mutate(count = log2(count + 1)) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+Only working with one biological replicate while developing methods.
+
+```{r}
+qiime_std_df <- qiime_std_df %>% 
+      filter(sampleID %in% "E01JH0038") #%>%
+      #select(-id,-kit_version, -For_Index_ID, -Rev_Index_ID) #removing extra columns
+```
+
+- $s_{jr}$: `sample_total`  
+- $\rho_{ij}$: `mix_prop_otu`
+- $\delta_{ij}^2$: `mix_var`__NOT SURE THIS IS CORRECT__
+```{r}
+y_exp_df <- qiime_std_df %>% 
+      # rho ij
+      group_by(otu, sampleID, dilution) %>% 
+      mutate(mix_otu_count = sum(count), 
+             mix_total = sum(sample_total), 
+             mix_prop_otu = mix_otu_count/mix_total,
+             mix_mu = mix_prop_otu * sample_total,
+             mix_var = mix_mu + var(count)) %>% 
+      filter(mix_mu != 0) # removing OTUs with no observations
+```
+
+Quick check to see if the values make sense, higher $\mu_{ij}$ for replicates with larger `sample_totals`.
+```{r}
+y_exp_df
+```
+
+Plots comparing mean and variance
+```{r}
+y_exp_df %>%
+      ggplot() + geom_point(aes(x = mix_mu, y = mix_var, color = as.factor(dilution)))
+```
+
+```{r}
+y_exp_df %>%
+      ggplot() + geom_point(aes(x = mix_mu, y = mix_var, color = as.factor(dilution))) + scale_x_log10()
+```
+
+```{r}
+y_exp_df %>%
+      ggplot() + geom_point(aes(x = mix_mu, y = mix_var, color = as.factor(dilution))) + scale_x_log10() + scale_y_log10()
+```
+
+## Unbiased estimate of shot-noise 
+slide 44 - https://bioconductor.org/help/course-materials/2010/BioC2010/2010-07-29_DESeq_Bioc-Meeting_Seattle.pdf
+
+### Model Description
+__Notation__  
+
+* $i \dots n$ - OTU index  
+* $j \dots m$ - mix index  
+* $r \dots l$ - PCR replicate index  
+* $y$ - count  
+* $\mu_{ij}$ - mean count OTU $i$ Mix $j$   
+* $\rho_{ij}$ - proportion of OTU $i$ in mix $j$  
+* $S_{jr}$ - total count, size factor mix $j$ replicate $r$    
+
+__Model__  
+$y_{ijr}=\mu_{ij} + \epsilon_{ijr}$
+
+$s_j$ - number of sequences per mix  
+
+$\mu_{ij} = f(s_j)$  
+
+How much variance explained by mean - think negative binomial  
+
+__This is not right__
+$\mathbf{E}y_{ijr}=\mu_{ij}=\rho_{ij}s_{jr}$   
+
+$\rho_{ijr}=y_ijr
+
+$Var(y_{ijr}) = \rho_{ij}^{2}S_{jr}^{2} + \delta_{ij}^2$  
+
+$\rho_{ijr}=\rho_i + \rho_j +plate_{jr} + \dots$   
+expected variance $\rho_{ij}^2$ everything comes from that
+
+- $s_{jr}$: `sample_total`  
+- $\rho_{ij}$: `mix_prop_otu`
+- $\delta_{ij}^2$: `mix_var`__NOT SURE THIS IS CORRECT__
+```{r}
+y_exp_df <- qiime_std_df %>% 
+      # rho ij
+      group_by(otu, sampleID, dilution) %>% 
+      mutate(mix_otu_count = sum(count), 
+             mix_total = sum(sample_total), 
+             mix_prop_otu = mix_otu_count/mix_total,
+             mix_mu = mix_prop_otu * sample_total,
+             mix_var = mix_mu + var(mix_prop_otu*sample_total)) %>% 
+      filter(mix_mu != 0) # removing OTUs with no observations
+```
+
+```{r}
+y_exp_df %>%
+      ggplot() + geom_point(aes(x = mix_mu, y = mix_var, color = as.factor(dilution)))
+```
+
+#### Import to DESeq2
+```{r}
+library(DESeq2)
+countData <- assayData(qiime_std)[['counts']]
+colData <- sam_dat
+colData$dilution <- factor(colData$dilution)
+dds <- DESeqDataSetFromMatrix(countData, 
+                              colData, 
+                              design = ~samID)
+```

@@ -1,0 +1,387 @@
+---
+title: "Normalization - Variance and Bias"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+# Objective:
+Evaluate the bias and variance of different normalization methods used the marker gene two-sample titration study dataset.  
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(mgtst)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(purrr)
+library(plotly)
+library(metagenomeSeq)
+```
+
+
+## Loading data
+```{r}
+proj_dir <- "~/Projects/16S_etec_mix_study"
+pipe_dir <- file.path(proj_dir, "analysis","pipelines")
+qiime_dir <- file.path(pipe_dir, "qiime")
+qiime_std <- readRDS(file.path(qiime_dir, "otus_uc_fast","mrexp_obj.rds"))
+qiime_std <- qiime_std[,which(pData(qiime_std)$sampleID != "NTC" & 
+                            pData(qiime_std)$id != "B4_M6_P1_L1_S1")]
+```
+
+## Tidy Data
+Focusing on biological replicate 1 no normalization or scaling
+```{r}
+sam_dat <- pData(qiime_std) %>% rownames_to_column(var = "samID") %>% 
+      mutate(sample_total = colSums(qiime_std))
+```
+
+```{r}
+qiime_std_df <- assayData(qiime_std)[['counts']] %>% as.data.frame() %>% 
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+Log transforming counts.
+```{r}
+qiime_log2_df <- MRcounts(qiime_std,norm = FALSE, log = FALSE) %>% as.data.frame() %>% 
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% mutate(count = log2(count + 1)) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+```{r}
+qiime_css_df <- cumNormMat(qiime_std, p = 0.75) %>% as.data.frame() %>%
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+```{r}
+qiime_csslog2_df <- cumNormMat(qiime_std, p = 0.75) %>% as.data.frame() %>% 
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% mutate(count = log2(count + 1)) %>% 
+        left_join(sam_dat) %>% select(-pos_ns, -barcode_lab, -seq_lab, -samID)
+```
+
+### Mean count vs. Standard Deviation count
+Variability between technical replicates. The variability is correlated with the counts.
+
+```{r}
+get_var_df <- function(count_df){
+      count_df %>% filter(sampleID =="E01JH0004") %>% 
+            group_by(dilution) %>%
+                  mutate(sample_max = max(sample_total),
+                         sample_min = min(sample_total),
+                         sample_range = sample_max - sample_min) %>%
+            group_by(otu,dilution) %>%
+                  summarise(total_count = sum(count),
+                            mean_count = mean(count),
+                            var_count = var(count),
+                            sd_count = sd(count),
+                            sample_range = median(sample_range),
+                            n_range = length(unique(sample_range)))
+}
+```
+
+```{r}
+bio1_var <- qiime_std_df %>% get_var_df()
+bio1_log2_var <- qiime_log2_df %>% get_var_df()
+bio1_css_var <- qiime_css_df %>% get_var_df()
+bio1_csslog2_var <- qiime_csslog2_df %>% get_var_df()
+```
+
+
+```{r}
+bio1_var %>% filter(total_count != 0) %>% 
+      ggplot() + geom_hex(aes(x = mean_count, y = sd_count)) +
+      geom_smooth(aes(x = mean_count, y = sd_count), color = "darkorange") +
+      scale_y_log10() + 
+      scale_x_log10() + 
+      theme_bw() + 
+      labs(x = "Mean Count", y = "Count StDev", 
+           title = "No Transformation or Normalization")
+```
+
+Overall the OTU count standard deviation between replicates does not increase with difference in total counts per sample. 
+Though the count standard deviations outliers increase with sample range
+```{r}
+bio1_var %>% filter(total_count != 0) %>% 
+      ggplot(aes(x = jitter(sample_range), y = sd_count)) + 
+      geom_point(alpha = 0.1) +
+      geom_smooth(color = "darkorange") +
+      theme_bw() + 
+      labs(x = "Sample Range", y = "Count StDev", title = "No Transformation or Normalization")
+```
+
+Variability between technical replicates with log2 transformation
+```{r}
+bio1_log2_var %>% filter(total_count != 0) %>% 
+      ggplot() + geom_hex(aes(x = mean_count, y = sd_count)) +
+      geom_smooth(aes(x = mean_count, y = sd_count), color = "darkorange") +
+      #scale_y_log10() + 
+      #scale_x_log10() + 
+      theme_bw() + 
+      labs(x = "Mean Count", y = "Count StDev", title = "No Normalization log2 Transformation")
+```
+
+```{r}
+bio1_log2_var %>% filter(total_count != 0) %>% 
+      ggplot(aes(x = jitter(sample_range), y = sd_count)) + 
+      geom_point(alpha = 0.1) +
+      geom_smooth(color = "darkorange") +
+      theme_bw() + 
+      labs(x = "Sample Range", y = "Count StDev", title = "No Normalization log2 Transformation")
+```
+
+Variability between technical replicates with CSS
+```{r}
+bio1_css_var %>% filter(total_count != 0) %>% 
+      ggplot() + geom_hex(aes(x = mean_count, y = sd_count)) +
+      geom_smooth(aes(x = mean_count, y = sd_count), color = "darkorange") +
+      scale_y_log10() + scale_x_log10() + theme_bw() + 
+      labs(x = "Mean Count", y = "Count StDev", title = "CSS Normalization No Transformation")
+```
+
+```{r}
+bio1_css_var %>% filter(total_count != 0) %>% 
+      ggplot(aes(x = jitter(sample_range), y = sd_count)) + 
+      geom_point(alpha = 0.1) +
+      geom_smooth(color = "darkorange") +
+      theme_bw() + 
+      labs(x = "Sample Range", y = "Count StDev", title = "CSS Normalization No Transformation")
+```
+
+Variability between technical replicates with CSS and log2 transformation
+```{r}
+bio1_csslog2_var %>% filter(total_count != 0) %>% 
+      ggplot() + geom_hex(aes(x = mean_count, y = sd_count)) +
+      geom_smooth(aes(x = mean_count, y = sd_count), color = "darkorange") +
+      theme_bw() + 
+      labs(x = "Mean Count", y = "Count StDev", title = "CSS Normalization Log2 Transformation")
+```
+
+```{r}
+bio1_csslog2_var %>% filter(total_count != 0) %>% 
+      ggplot(aes(x = jitter(sample_range), y = sd_count)) + 
+      geom_point(alpha = 0.1) +
+      geom_smooth(color = "darkorange") +
+      theme_bw() + 
+      labs(x = "Sample Range", y = "Count StDev", title = "CSS Normalization Log2 Transformation")
+```
+
+### Characterization of residuals
+```{r}
+get_resid_df <- function(count_df, min_total = 1){
+      count_df %>% filter(sampleID == "E01JH0004") %>% 
+      group_by(otu, dilution) %>% 
+      mutate(total_count = sum(count),
+            mean_count = mean(count), 
+            resid_count = count - mean_count,
+            abs_resid_count = abs(resid_count)) %>% 
+      filter(total_count >= min_total) %>% 
+      separate(pos,c("plate_row","plate_col"),sep = "_",remove = FALSE)
+}
+```
+
+```{r}
+bio1_resid <- qiime_std_df %>% get_resid_df()
+```
+
+Residuals are not normally distributed due to the correlation between the count value and standard deviation.
+```{r}
+ggplot(bio1_resid) + geom_qq(aes(sample = resid_count)) + theme_bw()
+```
+
+### Visualizing Parameters Accounting for Variance
+```{r}
+p <- ggplot(bio1_resid, aes(x = count, y = abs(resid_count))) + theme_bw()
+```
+
+
+```{r}
+p + geom_point()
+```
+
+
+```{r}
+p + geom_point(aes(color = pcr_16S_plate))
+```
+
+```{r}
+p + geom_point(aes(color = pos))
+```
+
+```{r}
+p + geom_point(aes(color = factor(dilution)))
+```
+
+```{r}
+p + geom_point(aes(color = plate_row))
+```
+
+```{r}
+bio1_resid %>% ungroup() %>% 
+      mutate(bin_count = cut_width(log2(count + 1), width = 3)) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = bin_count, y = abs(resid_count)), 
+                  alpha = 0.25, width = 0.5) + theme_bw()
+```
+
+
+### Normalized Residuals
+
+```{r}
+bio1_log2_resid <- qiime_log2_df %>% get_resid_df()
+bio1_css_resid <- qiime_css_df %>% get_resid_df()
+bio1_csslog2_resid <- qiime_csslog2_df %>% get_resid_df()
+```
+
+```{r}
+bio1_log2_min10_resid <- qiime_log2_df %>% get_resid_df(min_total = 10)
+bio1_css_min10_resid <- qiime_css_df %>% get_resid_df(min_total = 10)
+bio1_csslog2_min10_resid <- qiime_csslog2_df %>% get_resid_df(min_total = 10)
+```
+
+## Residuals Log2 Transformed Counts
+```{r}
+ggplot(bio1_log2_resid) + geom_qq(aes(sample = resid_count)) + geom_abline(aes(slope = 1, intercept = 0)) + theme_bw()
+```
+
+```{r}
+bio1_log2_resid %>% ungroup() %>% 
+      mutate(bin_count = cut_width(count, width = 3)) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = bin_count, y = abs_resid_count), 
+                  alpha = 0.25, width = 0.5) + theme_bw()
+```
+
+## Residuals CSS Normalization Counts
+```{r}
+ggplot(bio1_css_resid) + geom_qq(aes(sample = resid_count)) + geom_abline(aes(slope = 1, intercept = 0)) + theme_bw()
+```
+
+```{r}
+bio1_css_resid %>% ungroup() %>% 
+      mutate(bin_count = cut_width(log2(count+1), width = 3)) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = bin_count, y = abs_resid_count), 
+                  alpha = 0.25, width = 0.5) + theme_bw()
+```
+
+## Residuals CSS Normalization and Log2 Transformed Counts
+Residuals are still not normally distributed.
+```{r}
+ggplot(bio1_csslog2_resid) + geom_qq(aes(sample = resid_count)) + geom_abline(aes(slope = 1, intercept = 0)) + theme_bw()
+```
+
+```{r}
+bio1_csslog2_resid %>% ungroup() %>% 
+      mutate(bin_count = cut_width(log2(count+1), width = 3)) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = bin_count, y = abs_resid_count), 
+                  alpha = 0.25, width = 0.5) + theme_bw()
+```
+## Excluding OTUs with total counts < 10
+```{r}
+ggplot(bio1_csslog2_min10_resid) + geom_qq(aes(sample = resid_count)) + geom_abline(aes(slope = 1, intercept = 0)) + theme_bw()
+```
+
+```{r}
+ggplot(bio1_csslog2_resid) + geom_histogram(aes(x = resid_count)) + theme_bw()
+```
+
+```{r}
+ggplot(bio1_csslog2_min10_resid) + geom_histogram(aes(x = resid_count)) + theme_bw()
+```
+
+```{r}
+qiime_csslog2_df %>% get_resid_df(min_total = 5) %>% 
+      ggplot() + geom_histogram(aes(x = resid_count)) + theme_bw()
+```
+
+```{r}
+qiime_csslog2_df %>% get_resid_df(min_total = 20) %>% 
+      ggplot() + geom_histogram(aes(x = resid_count)) + theme_bw()
+```
+
+
+### Characterizing sources of variance
+Non-transformed counts, the raw count value accounts for most of the observed variance.
+```{r}
+fit <- lm(abs_resid_count ~ 0 + count,bio1_resid)
+```
+
+```{r}
+summary(fit)
+```
+
+```{r}
+aov(fit) %>% summary()
+```
+
+```{r}
+autoplot(fit)
+```
+
+#### Log2 Transformed Values
+```{r}
+fit <- lm(abs_resid_count ~ 0 + count,bio1_log2_resid)
+```
+
+```{r}
+summary(fit)
+```
+
+```{r}
+aov(fit) %>% summary()
+```
+```{r}
+autoplot(fit)
+```
+
+#### CSS normalization
+CSS normalization does not address issue regarding correlation between count and residuals.
+```{r}
+fit <- lm(abs_resid_count ~ 0 + count,bio1_css_resid)
+```
+
+```{r}
+summary(fit)
+```
+
+```{r}
+aov(fit) %>% summary()
+```
+
+```{r}
+autoplot(fit)
+```
+
+#### Log2 Transformed and CSS Normalization 
+```{r}
+fit <- lm(abs_resid_count ~ 0 + count, bio1_csslog2_resid)
+```
+
+```{r}
+summary(fit)
+```
+
+```{r}
+aov(fit) %>% summary()
+```
+
+```{r}
+autoplot(fit)
+```
+
+
+### Plot of raw bias - observed vs. expected based on dilutions
+```{r}
+
+```
