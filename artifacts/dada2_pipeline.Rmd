@@ -1,0 +1,49 @@
+---
+title: "dada2_pipeline"
+author: "Nate Olson"
+date: "November 7, 2016"
+output: html_document
+---
+
+```{r}
+library(dada2)
+library(tidyverse)
+library(readr)
+library(stringr)
+library(forcats)
+```
+
+## Pipeline description
+
+1. Quality filter read pairs, remove reads with ambiguous bases (Ns) or more than 6 expected errors, trim ends of reads with quality score of 2 or to 290 bp and 220 bp for forward and reverse reads respectively, and the first 10 bases are trimmed.  
+      * Number of expected errors calculated based on quality scores, `EE = sum(10^(-Q/10))`.   
+      * Quality score of 2 used by Illumina to indicate end of good sequencing data.   
+
+2. The forward and reverse reads are dereplicated. A consensus (average) quality score is assigned for each position.  
+3. Sequence inference, denoising - error correction step.  
+4. Merging forward and reverse read pairs. 
+5. Chimera removal - filtering sequences with complementary regions matching more abundant sequences.
+
+
+## Pipeline Budget
+### Raw sqeunces
+Starting number of sequences per sample.
+```{r}
+seq_meta <- readRDS("../data/seq_metadata_df.RDS")
+```
+
+```{r}
+raw_count <- seq_meta %>% filter(Read == "R1") %>% select(ill_id,reads) %>% 
+      dplyr::rename(id = ill_id, total = reads) %>% mutate(pipe_step = "raw")
+```
+
+## Quality Filter 
+
+## Dereplicated Sequences 
+
+## Merging 
+Need to rerun pipeline to get sequence information
+```{r}
+
+```
+
