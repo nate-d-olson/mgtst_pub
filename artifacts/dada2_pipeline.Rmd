@@ -21,8 +21,8 @@ library(forcats)
 
 2. The forward and reverse reads are dereplicated. A consensus (average) quality score is assigned for each position.  
 3. Sequence inference, denoising - error correction step.  
-4. Merging forward and reverse read pairs. 
-5. Chimera removal - filtering sequences with complementary regions matching more abundant sequences.
+4. Merging forward and reverse read pairs. Uses global ends-free alignment and requires exact overlap for merging.
+5. Chimera removal filters sequences with complementary regions matching more abundant sequences. Chimeras are identified when  Needleman-Wunsch global alignments between a sequence and all more abundance sequences result in perfect matches for left and right partitions of the sequence to two different parent sequences. 
 
 
 ## Pipeline Budget
