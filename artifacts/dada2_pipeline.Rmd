@@ -2,7 +2,9 @@
 title: "dada2_pipeline"
 author: "Nate Olson"
 date: "November 7, 2016"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r}
@@ -38,12 +40,194 @@ raw_count <- seq_meta %>% filter(Read == "R1") %>% select(ill_id,reads) %>%
 ```
 
 ## Quality Filter 
+The following bash one liner was used to count the number of reads in the filtered datasets.  
+`zgrep -c '^@' *.fastq.gz > filter_readcount.txt`  
+
+```{r}
+filter_countfile <- paste0("~/Projects/16S_etec_mix_study/analysis/pipelines",
+                           "/dada2/processed_data/filter_readcount.txt")
+filter_count <- read_lines(filter_countfile) %>% tibble(id = .) %>% 
+      separate(id, c("id","total"),sep = ":") %>% 
+      mutate(read_dir = if_else(grepl("R1",id),"F","R"), 
+             id = str_replace(id, "_S.*",""), 
+             total = as.numeric(total), 
+             pipe_step = "filter")
+```
+
+__Difference in number of forward and reverse reads passing filter__  
+The difference in the number of forward and reverse reads passing the quality filter is correlated but less than 0.5% of the mean number of reads excluding no template control samples.
+```{r}
+filter_dir_check <- filter_count %>% spread(read_dir, total) %>% mutate(x_dif = abs(`F` - R), x_mean = (`F`+R)/2)
+```
+
+```{r}
+filter_dir_check %>% 
+      ggplot(aes(x = x_mean,y = x_dif)) + geom_point() + geom_vline(xintercept = 30000, linetype = 2)
+```
+
+```{r}
+filter_dir_check %>% mutate(percent_dif = x_dif/x_mean * 100) %>% filter(x_mean > 30000) %>% 
+      .$percent_dif %>% summary()
+```
+
+Samples 1-E4 and 1-F9 are real samples, the rest of the samples with less than 30,000 sequences are no template controls.  
+
+```{r}
+filter_dir_check %>% mutate(percent_dif = x_dif/x_mean * 100) %>% filter(x_mean < 30000) %>% knitr::kable()
+```
+
+
+```{r}
+## count_df from dada2 seqtab
+get_count_df <- function(seqtab, pipe_step){
+      tab_total <- seqtab %>% rowSums()
+      tab_unique <- as.numeric(seqtab > 0) %>%  matrix(nrow = 192) %>% rowSums()
+
+      data_frame(id = names(tab_total), 
+                 total = unname(tab_total),
+                 unique = unname(tab_unique),
+                 pipe_step = pipe_step)
+}
+```
+
 
 ## Dereplicated Sequences 
 
-## Merging 
-Need to rerun pipeline to get sequence information
 ```{r}
+derepF_counts_file <- "derepF_counts.rds"
+if(!(file.exists(derepF_counts_file))){
+    derepFs <- readRDS("~/Projects/16S_etec_mix_study/analysis/pipelines/dada2/processed_data/derepFs-2016-11-07.rds")
+      derepF_counts <- makeSequenceTable(derepFs)
+      saveRDS(derepF_counts, derepF_counts_file)
+      rm(derepFs)  
+}else{
+      derepF_counts <- readRDS(derepF_counts_file)
+}
+
+derepF_count_df <- get_count_df(derepF_counts,"derep") %>% mutate(read_dir = "F")
+rm(derepF_counts)
+```
+
+
+
+```{r}
+derepR_counts_file <- "derepR_counts.rds"
+if(!(file.exists(derepR_counts_file))){
+    derepRs <- readRDS("~/Projects/16S_etec_mix_study/analysis/pipelines/dada2/processed_data/derepRs-2016-11-07.rds")
+      derepR_counts <- makeSequenceTable(derepRs)
+      saveRDS(derepR_counts, derepR_counts_file)
+      rm(derepRs)  
+}else{
+      derepR_counts <- readRDS(derepR_counts_file)
+}
+
+derepR_count_df <- get_count_df(derepR_counts,"derep") %>% mutate(read_dir = "R")
+rm(derepR_counts)
+```
+
+## Denoising
+
+```{r}
+dadaF_counts_file <- "dadaF_counts.rds"
+if(!(file.exists(dadaF_counts_file))){
+    dadaFs <- readRDS("~/Projects/16S_etec_mix_study/analysis/pipelines/dada2/processed_data/dadaFs-single-inference-2016-11-07.rds")
+      dadaF_counts <- makeSequenceTable(dadaFs)
+      saveRDS(dadaF_counts, dadaF_counts_file)
+      rm(dadaFs)  
+}else{
+      dadaF_counts <- readRDS(dadaF_counts_file)
+}
+
+dadaF_count_df <- get_count_df(dadaF_counts,"denoise") %>% mutate(read_dir = "F")
+rm(dadaF_counts)
+```
+
+```{r}
+dadaR_counts_file <- "dadaR_counts.rds"
+if(!(file.exists(dadaR_counts_file))){
+    dadaRs <- readRDS("~/Projects/16S_etec_mix_study/analysis/pipelines/dada2/processed_data/dadaRs-single-inference-2016-11-07.rds")
+      dadaR_counts <- makeSequenceTable(dadaRs)
+      saveRDS(dadaR_counts, dadaR_counts_file)
+      rm(dadaRs)  
+}else{
+      dadaR_counts <- readRDS(dadaR_counts_file)
+}
+
+dadaR_count_df <- get_count_df(dadaR_counts,"denoise") %>% mutate(read_dir = "R")
+rm(dadaR_counts)
+```
+
+
+
+## Merging 
+```{r}
+merger_count_df <- readRDS("~/Projects/16S_etec_mix_study/analysis/pipelines/dada2/processed_data/seqtab-single-inference-2016-11-07.rds") %>% 
+      get_count_df("merger")
 
 ```
 
+## Chimera filter
+```{r}
+nochimera_count_df <- readRDS("~/Projects/16S_etec_mix_study/analysis/pipelines/dada2/processed_data/seqtab_nochim-single-inference-2016-11-07.rds") %>% 
+      get_count_df("nochimera")
+```
+
+## Combining Step Count Data
+
+```{r}
+step_order <- c("raw","filter","derep","denoise","merger","nochimera")
+count_df <- bind_rows(raw_count, filter_count, derepF_count_df, 
+                      derepR_count_df, dadaF_count_df, dadaR_count_df,
+                      merger_count_df, nochimera_count_df) %>% 
+      gather("count_type","value", -id, -pipe_step, -read_dir) %>% 
+      mutate(pipe_step = fct_relevel(pipe_step, step_order),
+             step_num = as.numeric(pipe_step)) %>% 
+      mutate(read_dir = if_else(is.na(read_dir),"M",read_dir))
+```
+
+```{r}
+count_df %>% filter(read_dir != 'R') %>% 
+ ggplot() + geom_path(aes(x = step_num, y = value, group = id), alpha = 0.25) + 
+      facet_grid(count_type~.,scale = "free_y") + 
+      scale_x_continuous(breaks = 1:6,
+                         label = c("Raw", "Filter","Dereplicated",
+                                   "Denoised","Merged","Chimera Filter")) +
+      theme_bw() + labs(x = "Pipeline Step",y = "Count")
+```
+
+
+```{r}
+count_df %>% filter(read_dir != 'R', count_type == "unique") %>% 
+ ggplot() + geom_path(aes(x = step_num, y = value, group = id), alpha = 0.25) + 
+      scale_x_continuous(breaks = 3:6,
+                         label = c("Dereplicated",
+                                   "Denoised","Merged","Chimera Filter")) +
+      scale_y_log10() +
+      theme_bw() + labs(x = "Pipeline Step",y = "Count")
+```
+
+Plots excluding no template controls
+```{r}
+ntc <- paste(rep(c(1,2), each = 6),paste0(rep(c("A","D","H"),each = 2),rep(c(6,12),3)), sep = "-")
+```
+
+```{r}
+count_df %>% filter(read_dir != 'R', !(id %in% ntc)) %>% 
+ ggplot() + geom_path(aes(x = step_num, y = value, group = id), alpha = 0.25) + 
+      facet_grid(count_type~.,scale = "free_y") + 
+      scale_x_continuous(breaks = 1:6,
+                         label = c("Raw", "Filter","Dereplicated",
+                                   "Denoised","Merged","Chimera Filter")) +
+      theme_bw() + labs(x = "Pipeline Step",y = "Count")
+```
+
+
+```{r}
+count_df %>% filter(read_dir != 'R', count_type == "unique", !(id %in% ntc)) %>% 
+ ggplot() + geom_path(aes(x = step_num, y = value, group = id), alpha = 0.25) + 
+      scale_x_continuous(breaks = 3:6,
+                         label = c("Dereplicated",
+                                   "Denoised","Merged","Chimera Filter")) +
+      scale_y_log10() +
+      theme_bw() + labs(x = "Pipeline Step",y = "Count")
+```
