@@ -2,7 +2,9 @@
 title: "Mothur Pipeline"
 author: "Nate Olson"
 date: "October 26, 2016"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r}
