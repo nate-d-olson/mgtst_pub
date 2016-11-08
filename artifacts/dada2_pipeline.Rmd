@@ -15,7 +15,7 @@ library(forcats)
 
 ## Pipeline description
 
-1. Quality filter read pairs, remove reads with ambiguous bases (Ns) or more than 6 expected errors, trim ends of reads with quality score of 2 or to 290 bp and 220 bp for forward and reverse reads respectively, and the first 10 bases are trimmed.  
+1. Quality filter read pairs, remove reads with ambiguous bases (Ns) or more than 4 expected errors, trim ends of reads with quality score of 2 or to 290 bp and 220 bp for forward and reverse reads respectively, and the first 10 bases are trimmed.  
       * Number of expected errors calculated based on quality scores, `EE = sum(10^(-Q/10))`.   
       * Quality score of 2 used by Illumina to indicate end of good sequencing data.   
 
