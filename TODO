@@ -1,0 +1,23 @@
+* Pre-script to load packages and load_project()
+* Move appropriate data to data dir and have loaded into Project
+* clean up pcr_16S_pico remove na's and well row
+* add pdf to repository
+* artifacts
+  * seq characterization
+    * read length, qual, count distributions
+  * data set descriptions e.g. alpha diversity coverage plots
+  * normalization
+  * differential abundance
+  * wet lab QC
+
+## Writing
+1. Draft pipeline methods section
+2. Draft pipeline summary/ characterization section
+4. Normalization analysis
+5. Differential abundance analysis
+6. Introduction
+7. Discussion
+8. Supplemental Material
+      1. Draft wet lab QA methods and results
+      2. Draft seq QA methods and results
+      3. Draft pipeline QA results section
