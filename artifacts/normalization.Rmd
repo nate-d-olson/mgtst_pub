@@ -126,9 +126,10 @@ count_var_df <- count_df %>% group_by(pipe, norm_method, dilution, otuID) %>%
       summarise(mean_count  = mean(count),var_count   = var(count))
 ```
 
-```{r dev='png'}
+```{r fig.height = 10}
 ggplot(count_var_df) +
-      geom_point(aes(x = mean_count, y = var_count), alpha = 0.5) +
+      # geom_point(aes(x = mean_count, y = var_count), alpha = 0.5) +
+      geom_hex(aes(x = mean_count, y = var_count)) +
       facet_wrap(norm_method~pipe, nrow = 6, scales = "free") +
       theme_bw() + labs(x = "Mean Count", y = "Variance")
 ```
@@ -140,10 +141,6 @@ Relationship between the expected count values calculated using the unmixed samp
 Calculating expected values based on pre and post unmixed samples by replicate (defined as half of PCR plate).
 
 ```{r}
-# pre_post_count <- count_df %>% filter(dilution %in% c(-1,0)) %>% 
-#       mutate(unmixed = if_else(dilution == 0, "post", "pre")) %>% 
-#       select(-dilution, -samID) %>% 
-#       spread(unmixed, count)
 pre_count <- count_df %>% filter(dilution == -1) %>% 
       rename(pre = count) %>% select(-dilution, -samID)
 post_count <- count_df %>% filter(dilution == 0) %>% 
@@ -171,17 +168,50 @@ RMSE - pipeline and normalization method
 count_rmse %>% select(-mse, -nrmse) %>% 
       spread(norm_method, rmse) %>% knitr::kable()
 ```
+
 NRMSE - pipeline and normalization mehod 
 ```{r}
 count_rmse %>% select(-mse, -rmse) %>% 
       spread(norm_method, nrmse) %>% knitr::kable()
 ```
 
-```{r dev='png'}
+```{r fig.height = 6}
 count_exp_obs %>% filter(norm_method %in% c("csslog","tsslog")) %>% 
-      ggplot() + geom_point(aes(x = count, y = exp_count, 
-                                color = factor(dilution)), alpha = 0.5) + 
+      ggplot() + 
+      geom_hex(aes(x = count, y = exp_count)) + 
       geom_abline(aes(intercept = 0, slope = 1)) + 
-      facet_wrap(pipe~norm_method, scales = "free") + 
+      facet_wrap(pipe~norm_method, ncol = 2, scales = "free") + 
+      theme_bw() + labs(x = "Observed Counts", y = "Expected Counts")
+```
+
+
+## Metrics for evaluating count values excluding 0
+```{r}
+count_rmse <- count_exp_obs %>% filter(count != 0) %>% 
+      mutate(residual = (exp_count - count)^2) %>% 
+      group_by(pipe, norm_method) %>% 
+      summarise(mse = mean(residual), 
+                rmse = sqrt(mse), 
+                nrmse = rmse/mean(exp_count))
+```
+
+RMSE - pipeline and normalization method
+```{r}
+count_rmse %>% select(-mse, -nrmse) %>% 
+      spread(norm_method, rmse) %>% knitr::kable()
+```
+
+NRMSE - pipeline and normalization mehod 
+```{r}
+count_rmse %>% select(-mse, -rmse) %>% 
+      spread(norm_method, nrmse) %>% knitr::kable()
+```
+
+```{r fig.height = 6}
+count_exp_obs %>% filter(norm_method %in% c("csslog","tsslog"), count != 0) %>% 
+      ggplot() + 
+      geom_hex(aes(x = count, y = exp_count)) + 
+      geom_abline(aes(intercept = 0, slope = 1)) + 
+      facet_wrap(pipe~norm_method, ncol = 2, scales = "free") + 
       theme_bw() + labs(x = "Observed Counts", y = "Expected Counts")
 ```
