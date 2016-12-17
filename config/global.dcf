@@ -1,11 +1,11 @@
-version: 0.6
+version: 0.7
 data_loading: TRUE
 cache_loading: TRUE
 recursive_loading: FALSE
-munging: TRUE
+munging: FALSE
 logging: FALSE
-load_libraries: FALSE
-libraries: tidyr, dplyr, metagenomeSeq, phyloseq, ggplot2, stringr, lubridate
-as_factors: TRUE
-data_tables: FALSE
+load_libraries: TRUE
+libraries: tidyverse, metagenomeSeq, phyloseq, stringr, DESeq, readxl, forcats, modelr
+as_factors: FALSE
+data_tables: TRUE
 attach_internal_libraries: FALSE
