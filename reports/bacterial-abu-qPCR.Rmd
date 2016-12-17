@@ -259,6 +259,48 @@ bac_fit2 %>% ggplot(aes(x = 10^exp_pred, y = 10^pred, color = plate, shape = pla
 ```
 
 
+## Extra after ProjectTemplate
+Still concerned about post samples with Ct values less than 15
+```{r}
+bac.qpcr %>% filter(sam_type != "NTC", Ct < 25) %>% # removing NTC and outliers 
+      ggplot() + geom_point(aes(x = sample_name, y = Ct, color = plate, shape = std)) + 
+      coord_flip() + facet_wrap(~date)
+```
+
+Calculating differences in Ct values for pre and post
+```{r}
+umix <- bac.qpcr %>% filter(sam_type == "unmixed", Ct < 25) %>% 
+      group_by(sample_name) %>% 
+      summarise(mu = mean(Ct), v = var(Ct)) %>% 
+      separate(sample_name,c("bio_rep","treatment"))
+umix_mu <- umix %>% select(-v) %>% spread(treatment, mu) %>% mutate(mu_diff = Pre - Post)
+umix_sd <- umix %>% select(-mu) %>% spread(treatment, v) %>% 
+      mutate(sd_diff = sqrt(Pre + Post)) %>% select(-Pre, -Post) # need to divide by n - df
+left_join(umix_mu, umix_sd)
+```
+
+Using t-tests to test for significance and difference
+```{r}
+t_test_df <- bac.qpcr %>% filter(sam_type == "unmixed", Ct < 25) %>% 
+      group_by(sample_name) %>% select(-stine_quant, -well) %>% 
+      separate(sample_name,c("bio_rep","treatment")) %>% 
+      spread(treatment, Ct) %>% 
+      group_by(bio_rep,date ) %>% nest() %>% 
+      mutate(t_test = map(data, ~t.test(x = .$Pre, y = .$Post, paired = TRUE)))
+t_test_out <- t_test_df$t_test  %>% set_names(t_test_df$bio_rep) %>% 
+      map_df(broom::tidy, .id = "bio_rep") %>% add_column(date = t_test_df$date)
+```
+
+
+No multiple test correction performed. With correction they would be significantly different
+Difference in Ct values equivalent to log2 fold change, or log1.87 fold changing using the qPCR standard curve efficiency. 
+```{r}
+ggplot(t_test_out) + geom_point(aes(x = date, y = estimate)) + 
+      geom_errorbar(aes(x= date, ymin = conf.low, ymax = conf.high), width = 0.25) + 
+      geom_text(aes(y = conf.high + 0.5, x = date, 
+                    label = signif(p.value, digits = 3))) +
+      facet_wrap(~bio_rep, nrow = 1) + theme_bw()
+```
 
 ## Conclusions
 
