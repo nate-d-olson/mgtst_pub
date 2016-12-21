@@ -122,11 +122,20 @@ qpcrBacAbu %>% ggplot() +
       
 ```
 
-__Conclusion:__ 
+#### Conclusion 
 The in-house standard curve with standard concentrations 20 ng/ul, 2ng/ul, and 0.2 ng/ul resulted in the best overall combination of precision ($R^2$) and amplification efficiency. 
 
 ### Predicting Sample Concentration
 Using in-house with standard concentrations 20 ng/ul, 2ng/ul, and 0.2 ng/ul to predict sample concentrations. 
+The unmixed sample concentrations were diluted to 10 ng/ul prior to making the titrations therefore all samples are expected to have concentrations less than 10 ng/ul.  
+
+_Why do the unmixed post-treatment samples consistently have predicted concentrations greater than 10 ng/ul._  
+Potential reasons:  
+
+1. The DNA in the post treatment samples have a higher 16S copy/ genome sequence ratio than _E. coli_, not likely as _E. coli_ has 6 copies per genome.    
+2. Low Ct values resulting in noisy quantification.  
+3. Something else ...
+
 
 ```{r}
 mod <- qpcrBacStd %>% 
@@ -138,10 +147,7 @@ bac_abu <- qpcrBacAbu %>% filter(!is.na(Ct), std == "shan") %>% add_predictions(
       mutate(quant_min = min(quant), quant_max = max(quant))
 ```
 
-The unmixed sample concentrations were normalized to 10 ng/ul prior to making the titrations therefore all samples are expected to have concentrations less than 10 ng/ul.  
-__NEED TO FIGURE OUT WHY THE SAMPLE CONCENTRATIONS ARE GREATER THAN 10 NG/UL__ 
-
-```{r fig.cap = "Predicted mixture study sample concentrations."}
+```{r fig.cap = "Predicted mixture study sample concentrations. Dashed line indicates the expected max concentration of 10 ng/ul."}
 bac_abu %>% filter(sample_name != "NTC") %>% ungroup() %>% 
       mutate(sample_name = gsub(" ","_", sample_name)) %>% 
       separate(sample_name, c("bio_rep","titration"), sep = "_") %>% 
@@ -157,6 +163,10 @@ bac_abu %>% filter(sample_name != "NTC") %>% ungroup() %>%
 ### Estimating Pre and Post Bacterial Proportions
 Need to estimate the proportion of DNA in the unmixed sample that is bacterial to correct for differences in bacterial DNA proportions.
 
+Three approaches to estimating proportion (or relative proportion) of bacterial DNA in the unmixed samples.  
+
+1. Using qPCR bacterial quantification values - concentration values estimated directly from qPCR measurements.  
+2. Using the predicted concentration of the titration samples to infer unmixed sample concentrations.
 
 #### Using qPCR bacterial quantification values
 As the pre and post treatment samples were diluted to 10 ng/ul prior to generating the titration series the unmixed samples should have less than 10 ng/ul and the proportion of bacterial DNA in the samples is obtained by dividing the estimated concentration by 10. 
@@ -167,16 +177,17 @@ bac_abu %>% filter(sam_type == "unmixed") %>% ungroup() %>%
       mutate(sample_name = gsub(" ","_", sample_name), quant = if_else(quant > 10, 10, quant)) %>% 
       separate(sample_name, c("bio_rep","titration"), sep = "_")  %>% 
       group_by(bio_rep, titration) %>% summarise(bac_prop = median(quant)/10) %>% 
-      spread(titration, bac_prop)
+      spread(titration, bac_prop) %>% knitr::kable()
 ```
 
-##### TODO Estimated QUANT SANITY CHECK
+
 
 #### Using titration samples predicted concentrations to infer unmixed sample concentrations.
 
-For titrations $2^{-5}$ the maximum amount of bacterial DNA from the post treatment sample is 0.65 ng/ul. 
-This is assuming an initial sample consentation of 10 ng/ul and all of the DNA is bacterial. 
+For titration $2^{-5}$ the maximum amount of bacterial DNA from the post treatment sample is 0.65 ng/ul. 
+This is assuming an initial sample concentration of 10 ng/ul and all of the DNA is bacterial. 
 Therefore, we can use the estimated concentrations for the $2^{-5}$, $2^{-10}$, and $2^{-15}$ two-sample titrations along with the unmixed pre-treatment sample to estimate the concentration of bacterial DNA in the pre-treatment samples. 
+The justification for this approach is the that contribution of bacterial DNA to these titrations is at or below the limits for qPCR to detect changes in concentration (roughly 1- 0.5 Ct).  
 
 ```{r}
 pre_sams <- c(paste(1:5,"Pre"), paste0(rep(1:5, each =3),"_M",rep(c(5,10,15),5)))
@@ -198,7 +209,7 @@ ggplot(bac_pre) + geom_point(aes(x = bio_rep,y = Ct, color = titration)) +
 ggplot(bac_pre) + 
       geom_jitter(aes(x = bio_rep,y = quant, color = titration), width = 0.15) + 
       geom_text(data = bac_pre_mean, 
-                aes(x = bio_rep, y = quant, label = signif(quant,3))) +
+                aes(x = bio_rep, y = 0, label = signif(quant,3))) +
       theme_bw()+ 
       theme(legend.position = "bottom") +
       labs(x = "Biological Replicate", y = "Bacterial DNA (ng/ul)")
@@ -208,6 +219,7 @@ ggplot(bac_pre) +
 ##### Estimating Post Treatment Bacterial DNA Concentrations
 Overall range of Ct values for different treatments. 
 Two sets of distributions for titrations with titration factors 1-4, and titrations factors 5, 10, and 15. 
+This is similar to the different distributions observed with the ERCC spike-in titration validation qPCR data.
 Due to the higher than expected bacterial DNA concentration estimate for post treatment sample will try to estimate the concentration value using the pre-treatment concentration estimated in the previous section and the estiamted concentrations for the titration factor 1-4 samples. 
 ```{r}
 bac_abu %>% filter(sample_name != "NTC", Ct < 25) %>% ungroup() %>% 
@@ -250,6 +262,42 @@ If the concentations are so low, why are the measured concentations are so much 
 ```{r}
 bac_post_est %>% 
       ggplot() + geom_point(aes(x = bio_rep, y = post_est, color = titration))
+```
+
+##### Estimating Proportions Directly From Ct Values
+
+```{r}
+umix <- qpcrBacAbu %>% filter(sam_type == "unmixed", Ct < 25) %>% 
+      group_by(sample_name) %>% 
+      summarise(mu = mean(Ct), v = var(Ct)) %>% 
+      separate(sample_name,c("bio_rep","treatment"))
+umix_mu <- umix %>% select(-v) %>% spread(treatment, mu) %>% mutate(mu_diff = Pre - Post)
+umix_sd <- umix %>% select(-mu) %>% spread(treatment, v) %>% 
+      mutate(sd_diff = sqrt(Pre + Post)) %>% select(-Pre, -Post) # need to divide by n - df
+left_join(umix_mu, umix_sd)
+```
+
+Using t-tests to test for significance and difference
+```{r}
+t_test_df <- qpcrBacAbu %>% filter(sam_type == "unmixed", Ct < 25) %>% 
+      group_by(sample_name) %>% select(-stine_quant, -well) %>% 
+      separate(sample_name,c("bio_rep","treatment")) %>% 
+      spread(treatment, Ct) %>% 
+      group_by(bio_rep,date ) %>% nest() %>% 
+      mutate(t_test = map(data, ~t.test(x = .$Pre, y = .$Post, paired = TRUE)))
+t_test_out <- t_test_df$t_test  %>% set_names(t_test_df$bio_rep) %>% 
+      map_df(broom::tidy, .id = "bio_rep") %>% add_column(date = t_test_df$date)
+```
+
+
+No multiple test correction performed. With correction they would be significantly different
+Difference in Ct values equivalent to log2 fold change, or log1.87 fold changing using the qPCR standard curve efficiency. 
+```{r}
+ggplot(t_test_out) + geom_point(aes(x = date, y = estimate)) + 
+      geom_errorbar(aes(x= date, ymin = conf.low, ymax = conf.high), width = 0.25) + 
+      geom_text(aes(y = conf.high + 0.5, x = date, 
+                    label = signif(p.value, digits = 3))) +
+      facet_wrap(~bio_rep, nrow = 1) + theme_bw()
 ```
 
 ## Conclusions
