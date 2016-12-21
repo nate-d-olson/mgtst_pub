@@ -17,7 +17,8 @@ get_ercc <- function(xcl_file){
             gather("key","value",-ercc_plate,-ercc,-ercc_std, -sampleID) %>% 
             mutate(sampleID = if_else(grepl("std",key), ercc_std, sampleID)) %>% 
             select(-ercc_std) %>% separate(key, c("sample_type","rep","key"), sep = "_") %>% 
-            spread(key,value)
+            spread(key,value) %>% 
+            mutate(Ct = as.numeric(Ct), quant = as.numeric(quant))
 }
 
 
