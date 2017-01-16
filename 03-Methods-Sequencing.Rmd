@@ -1,6 +1,6 @@
 
 
-## Sequencing 
+## Library Preparation and Sequencing 
 The 16S PCR targeted the V34 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation]. The V34 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp \@ref(fig:rra_diag) [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at). The primer sequences included additional overhang adapter seuqences to facilitate library preparation (5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3') and reverse primers (GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC). 
 
 The reaction was performed according to the Illumina protocol using the KAPA HiFI HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA). 

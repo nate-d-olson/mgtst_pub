@@ -1,5 +1,9 @@
-## Normalization and Differential Abundance
+## Data Analysis
+All data analysis was performed using the statistical programming language R (REF) and the Rstudio IDE (REF). 
+Initial quality assessment of the sequence files (fastq) was performed using the Bioconductor package Rqc (REF). 
 
+
+## Normalization and Differential Abundance
 * Normalization Methods
       * None
       * TSS - total sum scaling

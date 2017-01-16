@@ -10,16 +10,24 @@ For the two-sample titration post-treatment samples (stool samples collected aft
 knitr::include_graphics("img/two_sample_titration_diagram.png")
 ```
 
-### Titration Validation
-* ERCCs were spiked into mixtures for use in QC.  
-      * ERCC plasmid prep   
-      * ERCC qPCR assay information  
-* Bacterial DNA concentration
+### Titration Validation 
+__TODO__ Supplemental Table with ERCC plasmids, qPCR assay, and experimental design.
+To ensure that the two-sample titrations were correctly mixed independent ERCC plasmids were spiked into the unmixed pre and post treatment samples (Supplemental Table ERCC). 
+The ERCC plasmids were first resuspendended in __TODO__ XYZ & mu;L and __TODO__ XYZ & mu;L was spiked into each sample. 
+Plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) for each of the 10 ERCC plasmids with the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA). 
+
+Inorder to account for differences in the proportion of bacterial DNA in the pre and post-treatment samples used to generate the two-sample titrations, the amount of bacterial DNA was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA). 
+All two-sample titrations and unmixed samples were run in tripplicate along with a standard curve. 
+An in-house standard curve consisting of log10 dilutions of _E. coli_ DNA was used as the standard curve. (__TODO__ Supplemental Material justification for using in-house instead of manufacturer provided standard curve).
+
+All qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher). 
+The amplification data and Ct values were exported from the QuantStudio™ Design and Analysis Software v1.4.1 as tsv files for statistical analysis.
 
 ## Sample Processing Workflow
-The resulting 45 two sample titrations were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (REF). 
-The protocol consisted of an initial 16S rRNA PCR followed by a seperate sample indexing PCR. The concentration of the resulting indexed 16S PCR products were normalized using the SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA) then pooled and sequenced on a single Illumina MiSeq (Illumina Inc., San Diego, CA) run. A total of 192 samples were sequenced including four PCR replicates of each of the 45 mixtures and 12 no template controls \@ref(fig:experimental_design). 
-The samples were distributed across two 96 well plates with the two plates serving as technical replicates. 
-* Multiple laboratory information
+The resulting 45 two-sample titrations were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (REF). 
+The protocol consisted of an initial 16S rRNA PCR followed by a seperate sample indexing PCR. 
+A total of 192 PCRs were run including four PCR replicates of each of the 45 mixtures and 12 no template controls \@ref(fig:experimental_design). 
+After the initial PCR and clean-up the 192 PCRs were split into technical replicates and sent to two laboratories for the remainder of the library prepartion and sequencing. 
+The concentration of the resulting indexed 16S PCR products were normalized using the SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA) then pooled and sequenced on a single Illumina MiSeq (Illumina Inc., San Diego, CA) run. 
 
 

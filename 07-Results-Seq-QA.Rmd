@@ -27,6 +27,8 @@ The concentration of the PCR product was also assessed using pico green, samples
     * results 
 
 ### Seq Data QA  
+__For most of these only need summary statistics__ 
+
 #### Read Counts   
 
 

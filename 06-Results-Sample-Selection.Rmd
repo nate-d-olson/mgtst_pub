@@ -1,3 +1,6 @@
 # Results  
 ## Sample Selection
+Five biological replicates from the ETEC vaccine trial were selected based on the absence of detectable _E. coli_ in the pre-treatment sample and the post-treatment sample with the highest abundance of _E. coli_ measured using qPCR and 16S rRNA metagenomics (REF) (REF - FIG). 
+Due to limited material availabliliy for biological replicate __XYZ__, post-treatment time point __XYZ__ was used instead of __XYZ__.  
+
 
