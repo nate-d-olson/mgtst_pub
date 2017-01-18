@@ -7,5 +7,5 @@ logging: FALSE
 load_libraries: TRUE
 libraries: tidyverse, metagenomeSeq, phyloseq, stringr, DESeq, readxl, forcats, modelr
 as_factors: FALSE
-data_tables: TRUE
+data_tables: FALSE
 attach_internal_libraries: FALSE
