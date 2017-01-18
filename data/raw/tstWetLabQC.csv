@@ -1,0 +1,10 @@
+Titration,ERCC_ul,Prep_DNA,Prep_vol,Final_vol
+(-1)_Pre unmixed,2,100ul_12.5ng/ul,102,21
+(1)_Post unmixed,2,100ul_12.5ng/ul,102,92
+M1-Mixed,NA,(-1)*10ul+(1)*10ul,20,10
+M2-Mixed,NA,(-1)*10ul+M1*10ul,20,10
+M3-Mixed,NA,(-1)*10ul+M2*10ul,20,10
+M4-Mixed,NA,(-1)*10ul+M3*10ul,20,10
+M5-Mixed,NA,(-1)*10ul+M4*10ul,20,19.5
+M10-Mixed,NA,(-1)*15.5ul+M5*0.5ul,16,15.5
+M15-Mixed,NA,(-1)*15.5ul+M10*0.5ul,16,16

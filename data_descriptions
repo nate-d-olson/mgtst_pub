@@ -1,0 +1,100 @@
+Data descriptions
+
+#' ERCC Spike-in Information
+#'
+#' Information about ERCCs used to QC mixtures
+#'
+#' @format A data frame with 7 variables:
+#' \describe{
+#' \item{\code{ercc_id}}{ERCC spike-in ID}
+#' \item{\code{biosample_id}}{Unique subject ID for five biological replicates}
+#' \item{\code{treatment}}{Pre or Post for when the sample was collected prior to or after subject was exposure to ETEC \emph{E. coli}}
+#' \item{\code{length}}{size in base pairs (bp) of ERCC control sequence.}
+#' \item{\code{GC}}{ERCC control sequence percent GC}
+#' \item{\code{assay_id}}{ID of qPCR assay used to qPCR mixture (Thermo Fisher).}
+#' \item{\code{amplicon_length}}{size of qPCR assay amplicon in base pairs.}
+#' }
+"ercc_spike_ins"
+
+
+#' Sample ETEC Counts
+#'
+#' NGS and qPCR E. coli ETEC count data for samples used in study.
+#'
+#' @format A data frame with 4 variables:
+#' \describe{
+#' \item{\code{ID}}{Subject ID}
+#' \item{\code{time}}{Timepoint sample was collected relative to treatment}
+#' \item{\code{NGS}}{Log2 transformed counts for E. coli OTUs from 454 NGS sequencing data}
+#' \item{\code{qPCR}}{Log2 transformed qPCR counts for E. coli ETEC specific marker}
+#' }
+"sample_etec_counts"
+
+#' Sample Sheet
+#'
+#' Tidy study sample sheet.
+#'
+#' @format A data frame with 10 variables:
+#' \describe{
+#' \item{\code{ID}}{two sample titration study ID}
+#' \item{\code{sampleID}}{Biological replicate sample ID}
+#' \item{\code{dilution}}{Post treatment dilution factor}
+#' \item{\code{pcr_16S_plate}}{16S plate replicate ID}
+#' \item{\code{pos}}{position in 96 well plate}
+#' \item{\code{barcode_lab}}{Lab that performed the barcoding}
+#' \item{\code{kit_version}}{Illumina index (barcode) kit version}
+#' \item{\code{For_Index_ID}}{forward Illumina index id}
+#' \item{\code{Rev_Index_ID}}{reverse Illumina index id}
+#' \item{\code{seq_lab}}{Lab that perfomed the sequencing}
+#' }
+"sample_sheet"
+
+
+#' 16S PCR DNA concentration QC
+#'
+#' Measurement data from sample processing quality control measurements.
+#'
+#' @format A data frame with 5 variables:
+#' #' \describe{
+#' \item{\code{pcr_16S_plate}}{PCR plate technical replicate number}
+#' \item{\code{pos}}{sample position in 96 well PCR plate}
+#' \item{\code{excite_emiss}}{Excitation/Emission Value for Picogreen measurements 485/20,528/20}
+#' \item{\code{conc_ngml}}{Picogreen DNA concentration (ng/ul)}
+#' \item{\code{conc_ngul}}{Picogreen DNA concentration (ng/ul)}
+#' \item{\code{qubit}}{Qubit DNA concentration (ng/ul) for low sample concentrations}
+#' }
+"pcr_16S_pico"
+
+#    Plate	Samples	E/E	Conc (ng/ml)	Conc (ng/ul)	Qubit check
+
+
+#' Biosample Information
+#'
+#' Information about biological replicates
+#'
+#' @format A data frame with 6 variables:
+#' \describe{
+#' \item{\code{biosample_id}}{Unique subject ID for five biological replicates}
+#' \item{\code{lab_id}}{Unique ID for individual samples collected in ETEC study}
+#' \item{\code{treatment}}{Pre or Post for when the sample was collected prior to or after subject was exposure to ETEC \emph{E. coli}}
+#' \item{\code{timepoint}}{sample collection timepoint relative to subject was exposure to ETEC \emph{E. coli}}
+#' \item{\code{stool_weight}}{Mass of stool collected (g)}
+#' \item{\code{processing_date}}{Date the stool sample was processed.}
+#' \item{\code{amplicon_length}}{size of qPCR assay amplicon in base pairs.}
+#' }
+"biosample_info"
+
+
+#' Two Sample Titration
+#'
+#' Volumes used to generate two sample titation mixtures
+#'
+#' @format A data frame with 4 variables:
+#' \describe{
+#' \item{\code{titration}}{titration name}
+#' \item{\code{ERCC_ul}}{Volume of ERCC added}
+#' \item{\code{Prep_DNA}}{Volumes and samples used to generate titration}
+#' \item{\code{Prep_vol}}{Volume (ul) of titration prepared}
+#' \item{\code{Final_vol}}{Volume (ul) of titration remaining after all titrations were prepared}
+#' }
+"tst_prep"
