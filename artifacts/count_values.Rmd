@@ -1,5 +1,5 @@
 ---
-title: "Normalization Analysis"
+title: "Count Table Value Analysis"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 output:
@@ -169,7 +169,7 @@ count_var_df <- count_var_df %>% filter(mean_count != 0 & n_unique != 1) %>%
          lmean = log2(mean_count + 1))
 ```
 
-## Start of Count Table Value (Normalization Analysis) 
+# Start of Count Table Value (Normalization) Analysis 
 
 ### Count Mean-Variance Relationship 
 Relationship between the mean count and variance for the four PCR replicates. 
