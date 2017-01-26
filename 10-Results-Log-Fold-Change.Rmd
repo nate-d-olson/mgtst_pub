@@ -1,0 +1,4 @@
+# Log Fold Change Analysis
+
+- Bias variance, pre and post only 
+- Correlate with factors

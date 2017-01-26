@@ -1,0 +1,333 @@
+---
+title: "Mixing Titrations and Titration Validation"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r echo=FALSE, message=FALSE}
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+```
+
+
+## Mixing Titrations
+
+### Table with volumes used to dilute samples
+```{r}
+biosampleInfo %>% kable()
+```
+
+
+
+### Table with volumes used to make titrations
+```{r}
+tstPrep %>% kable()
+```
+
+### Tube Rack Image 
+```{r plate_map, echo=FALSE, fig.cap="Image of tubes layout prior to 16S PCR."}
+knitr::include_graphics("img/1st_PCR_PlateMap_20160224.jpg")
+```
+
+### ERCC table - plasmid and spike-ins
+```{r}
+erccMeta %>% kable()
+```
+
+
+## Titration Validation
+### qPCR Assay Evaluation 
+Fitting the standard curve to a linear model, `Ct ~ log10(concentration)`.  
+The expected slope for the standard curve is -3.33 indicating a perfect doubling every PCR cycle, for a amplification factor (AF) of 2 and efficiency (E) of 1.  
+
+$$AF = 10^{-1/slope}$$  
+
+$$E = 10^{-1/slope} - 1$$ 
+
+### qPCR Bacterial Abundance
+
+#### Standard Curves
+__TODO__ Amplification Curves for standards
+
+#### Linear Model 
+The model was fit using the full standard curve and only points in the standard curve with concentrations greater than 0.02 ng/ul. 
+Fitting the regression to all concentrations in the standard curve resulted in a lower amplification efficiency and $R^2$ for all three standard curves.
+
+```{r}
+fit_mod <- qpcrBacStd %>% 
+      filter(!is.na(Ct)) %>% 
+      mutate(log_conc = log10(conc), date != "2016-09-19", conc > 0.002) %>% 
+      ## excluding standard curve outlier
+      filter(std != "zymo" | date != "2016-12-09" | conc != 0.00002 | plate != "plate3") %>%
+      group_by(date, std) %>% nest() %>%
+      mutate(fit = map(data, .f=~lm(Ct~log_conc ,data = .)))
+
+fit_list <- fit_mod$fit %>% set_names(paste(fit_mod$date, fit_mod$std))
+
+fit_coefs <-fit_list %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("std","stat",-coefs) %>% spread(coefs, stat)
+
+std_fit <- fit_list %>% map_df(broom::glance, .id = "std") %>% 
+      select(std, adj.r.squared) %>% left_join(fit_coefs) %>% 
+      separate(std, c("date","std","mod"), sep = " ") %>% 
+      mutate(amplification_factor = 10^(-1/slope), 
+             efficiency = (amplification_factor - 1) * 100)
+```
+
+The efficiency and precision ($R^2$) were higher for the in-house standard curve. 
+Fitting the regression model for the experiment run on 12/09 without the low concentration plate 3 outlier resulted in a lower efficiency (76% versus 80%) but higher $R^2$ (0.997 versus 0.986).  
+Fitting the regression to only the standard with concentrations within the observed range of the samples (20 ng/ul, 2 ng/ul, and 0.2 ng/ul) compared to all standard curve samples resulted in a higher amplification efficiency but slightly lower $R^2$ values for all three standard curves. 
+The higher efficiency 
+
+```{r}
+std_fit %>% select(std, date, mod, efficiency, adj.r.squared) %>% 
+      arrange(date, std) %>% knitr::kable()
+```
+
+```{r fig.cap = "qPCR bacterial abundance standard curves. Using two different standards and performed on two different days. Two models were fit to the standard curves, one with all data point and a second with only the 20 ng/ul, 2 ng/ul, and 0.2 ng/ul standards. Grey vertical line indicates concentration cutoff for subset model."}
+qpcrBacStd %>% mutate(log_conc = log10(conc)) %>% ggplot(aes(y = Ct, x = log_conc)) +
+      geom_vline(aes(xintercept = log10(0.2)), color = "grey60") + 
+      geom_abline(data = std_fit, aes(intercept = intercept, slope = slope)) +
+      geom_point(aes(color = plate, shape = plate)) + 
+      facet_grid(std~date) + theme_bw() +
+      theme(legend.position = "bottom")
+```
+
+#### Sample Concentrations
+Using in-house with standard concentrations 20 ng/ul, 2ng/ul, and 0.2 ng/ul to predict sample concentrations. 
+The unmixed sample concentrations were diluted to 10 ng/ul prior to making the titrations therefore all samples are expected to have concentrations less than 10 ng/ul.  
+
+_Why do the unmixed post-treatment samples consistently have predicted concentrations greater than 10 ng/ul._  
+Potential reasons:  
+
+1. The DNA in the post treatment samples have a higher 16S copy/ genome sequence ratio than _E. coli_, not likely as _E. coli_ has 6 copies per genome.    
+2. Low Ct values resulting in noisy quantification. Clean amplification curves makes this unlikely.
+3. Something else ...
+
+
+```{r}
+mod <- qpcrBacStd %>% 
+      filter(std == "shan", conc >= 0.2) %>% mutate(log_conc = log10(conc)) %>% 
+      {lm(log_conc~Ct, data = .)}
+
+bac_abu <- qpcrBacAbu %>% filter(!is.na(Ct), std == "shan") %>% add_predictions(mod) %>% 
+      mutate(quant = 10^pred) %>% group_by(sample_name) %>% 
+      mutate(quant_min = min(quant), quant_max = max(quant))
+```
+
+```{r fig.cap = "Predicted mixture study sample concentrations. Dashed line indicates the expected max concentration of 10 ng/ul."}
+bac_abu %>% filter(sample_name != "NTC") %>% ungroup() %>% 
+      mutate(sample_name = gsub(" ","_", sample_name)) %>% 
+      separate(sample_name, c("bio_rep","titration"), sep = "_") %>% 
+      mutate(titration = fct_relevel(titration, c("Post",paste0("M",c(1,2,3,4,5,10,15)),"Pre"))) %>% 
+      ggplot() + 
+            geom_hline(aes(yintercept = 10), linetype = 2) +
+            geom_linerange(aes(x = titration,ymin = quant_min, ymax = quant_max), color = "grey60") +
+            geom_point(aes(y = quant, x = titration, color = plate, shape = plate)) +
+            facet_wrap(~bio_rep) +
+            theme_bw() + labs(x = "Sample Names", y = "DNA concentration (ng/ul)") 
+```
+
+#### Bacterial DNA proportions
+Need to estimate the proportion of DNA in the unmixed sample that is bacterial to correct for differences in bacterial DNA proportions. 
+As the pre and post treatment samples were diluted to 10 ng/ul prior to generating the titration series the unmixed samples should have less than 10 ng/ul and the proportion of bacterial DNA in the samples is obtained by dividing the estimated concentration by 10. 
+Due to the estimated post treatment sample concentrations greater than 10, we will set these samples at 10 ng/ul.
+ 
+```{r}
+bac_abu %>% filter(sam_type == "unmixed") %>% ungroup() %>% 
+      mutate(sample_name = gsub(" ","_", sample_name), quant = if_else(quant > 10, 10, quant)) %>% 
+      separate(sample_name, c("bio_rep","titration"), sep = "_")  %>% 
+      group_by(bio_rep, titration) %>% summarise(bac_prop = median(quant)/10) %>% 
+      spread(titration, bac_prop) %>% knitr::kable()
+```
+
+
+### qPCR ERCC 
+#### Standard Curves
+##### Amplification Curves 
+__TODO__ Show differences in baseline for amplification curves. 
+
+Limitation of efficiency assessment is that the standard curve is only plasmid DNA, no stool DNA as background. 
+Stool DNA may contain PCR inhibitors or DNA that may interfere with the qPCR assay.  
+
+```{r}
+ercc_std <- qpcrERCC %>% filter(sample_type == "std", !grepl("NTC",sampleID)) %>% 
+      mutate(sampleID = gsub("\\(.*","",sampleID), 
+             Ct = as.numeric(Ct), 
+             quat = as.numeric(quant),
+             log_quant = log10(quant))
+```
+
+Fitting standard curve data to a linear model to assess assay precision ($R^2$) and efficiency. 
+Efficiency, is a measure of the assay amplification efficiency, whether the amount of template DNA doubles every PCR cycle.  
+
+```{r}
+fit_mod <- ercc_std %>% mutate(ercc = as.numeric(ercc)) %>% 
+      group_by(ercc) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~log_quant, data = . )))
+```
+
+```{r}
+fit_list <- fit_mod$fit %>% set_names(fit_mod$ercc)
+
+fit_coefs <-fit_list %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+```
+
+```{r}
+std_fit <- fit_list %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(fit_coefs) %>% 
+      mutate(amplification_factor = 10^(-1/slope), 
+             efficiency = (amplification_factor - 1) * 100)
+```
+
+The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 for all standard curves. 
+The amplification efficiency was outside of the ideal range (0.9 - 1.1), with still within the acceptable range. 
+Ideal and acceptable ranges based on rule of thumb community accepted guidelines.   
+
+```{r}
+ggplot(std_fit) + 
+      geom_abline(aes(intercept = intercept, slope = slope)) +
+      geom_text(aes(x = 3, y = 30, label = paste("R^2:", signif(adj.r.squared,3)))) +
+      geom_text(aes(x = 4, y = 26, label = paste("E:", signif(efficiency,3)))) +
+      geom_point(data = ercc_std, aes(x = log_quant, y = Ct, color = ercc_plate, shape = ercc_plate)) + 
+      facet_wrap(~ercc, ncol = 5) + 
+      theme_bw() + 
+      labs(x = "log10(quant) Plasmid", y = "Ct")
+```
+
+#### Sample Cts 
+```{r}
+post_assays <- c(108,12, 157, 2, 35)
+ercc_sam <- qpcrERCC %>% filter(sample_type == "sam") %>% 
+      mutate(Ct = as.numeric(Ct), 
+             quant = as.numeric(quant), 
+             ercc = as.numeric(ercc), 
+             titration = gsub("._M","",sampleID),
+             titration = gsub(".*\\(Pre\\)","20", titration),
+             titration = gsub(".*\\(Post\\)","0", titration),
+             titration = as.numeric(titration),
+             pre_prop = (1 - (2^-titration)),
+             assay_type = if_else(ercc %in% post_assays, "Post","Pre"))
+```
+
+##### Pre-treatment 
+```{r}
+post_fit_mod <- ercc_sam %>% filter(assay_type == "Post") %>% 
+      group_by(ercc,assay_type) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+post_fit_list <- post_fit_mod$fit %>% set_names(post_fit_mod$ercc)
+
+# Extract fit parameters and calculate efficiency
+post_fit_coefs <- post_fit_list %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+post_fit <- post_fit_list %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(post_fit_coefs) %>% 
+      mutate(amplification_factor = 10^(-1/slope), 
+             efficiency = (amplification_factor - 1) * 100)
+```
+
+The post treatment qPCR assays (12, 157, 108, 2, and 35) had good $R^2$ and slope values. 
+The expected slope is 1, for a doubling every cycle. 
+The 1-4 titration factor samples had Ct values consistently above the regression line.  
+
+```{r}
+post_fit %>% ggplot() + 
+      geom_abline(aes(intercept = intercept, slope = slope)) +
+      geom_text(aes(x = 5, y = 28, label = paste("R^2:", signif(adj.r.squared,3)))) +
+      geom_text(aes(x = 5, y = 24, label = paste("Slope:", signif(slope,3)))) +
+      geom_point(data = ercc_sam %>% filter(assay_type == "Post"), 
+                 aes(x = titration, y = Ct, color = ercc_plate, shape = ercc_plate)) + 
+      facet_wrap(~ercc) +
+      theme_bw() + labs(x = "Titration Factor", y = "Ct")
+``` 
+
+
+Different slopes for titations 1-4 and titrations 0, 5, 10, and 15.  
+```{r}
+post_fit_mod14 <- ercc_sam %>% filter(assay_type == "Post", titration %in% 1:4) %>% 
+      group_by(ercc,assay_type) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+post_fit_list14 <- post_fit_mod14$fit %>% set_names(post_fit_mod14$ercc)
+
+# Extract fit parameters and calculate efficiency
+post_fit_coefs14 <- post_fit_list14 %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+post_fit14 <- post_fit_list14 %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(post_fit_coefs14) %>% mutate(fit = "1:4")
+
+post_fit_mod05 <- ercc_sam %>% filter(assay_type == "Post", titration %!in% 1:4) %>% 
+      group_by(ercc,assay_type) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+post_fit_list05 <- post_fit_mod05$fit %>% set_names(post_fit_mod05$ercc)
+
+# Extract fit parameters and calculate efficiency
+post_fit_coefs05 <- post_fit_list05 %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+post_fit05 <- post_fit_list05 %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(post_fit_coefs05) %>% 
+      mutate(fit = "0,5,10,15")
+```
+
+```{r}
+bind_rows(post_fit14,post_fit05) %>% select(-intercept) %>% arrange(ercc) %>% knitr::kable()
+```
+
+##### Post-treatment
+Still need to figure out the expected slope for pre-treatment ERCC spike-ins. 
+Should be 1 Ct difference between the unmixed post and titration factor 1 and 0.5 Ct between titration factor 1 and 2. 
+For the other titration factors the expected difference is to small to detect using qPCR (< 0.5 Ct).
+
+```{r}
+pre_fit_mod <- ercc_sam %>% filter(assay_type == "Pre") %>%
+      group_by(ercc,assay_type) %>% nest() %>%
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+pre_fit_list <- pre_fit_mod$fit %>% set_names(pre_fit_mod$ercc)
+
+# Extract fit parameters and calculate efficiency
+pre_fit_coefs <- pre_fit_list %>% map_df(coefficients) %>%
+      add_column(coefs = c("intercept","slope")) %>%
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+pre_fit <- pre_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
+      select(ercc, adj.r.squared) %>%
+      left_join(pre_fit_coefs) %>%
+      mutate(amplification_factor = 10^(-1/slope),
+             efficiency = (amplification_factor - 1) * 100)
+```
+
+
+```{r}
+pre_fit %>% ggplot() +
+      geom_abline(aes(intercept = intercept, slope = slope)) +
+     geom_text(aes(x = 10, y = 16, 
+                   label = paste("R^2:", signif(adj.r.squared,3)))) +
+      geom_text(aes(x = 10, y = 14,
+                    label = paste("Slope:", signif(slope,3)))) +
+      geom_point(data = ercc_sam %>% filter(assay_type == "Pre"),
+                 aes(x = titration, y = Ct, color = ercc_plate, shape = ercc_plate)) +
+      facet_wrap(~ercc) +
+      theme_bw() + labs(x = "Titration Factor", y = "Ct")
+```
