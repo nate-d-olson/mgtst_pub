@@ -1,44 +1,15 @@
 ## Sequence QA
 
-### Titration Validation 
-* sample concentration results summary  
-    + bacterial quant (http://www.zymoresearch.com/dna/dna-analysis/femto-bacterial-dna-quantification-kit)  
-    
-
-* Mixture QC  
-    + ERCC qPCR  
-* 16S PCR QC
-   + Gel  
-        - Need gel info - gel concentration, run info - V and time, ladder info - manufacturer and band sizes. 
-
-The initial 16S PCR product was first verified for amplification and amplicon size using gel electrophoresis \@ref(fig:gel_16S).  
-The concentration of the PCR product was also assessed using pico green, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (postion F9, plate 1).  All but one of the no template control concentration measurements was less than 1 $ng/\mul$, when the one sample was checked with Qubit the concentration was too low to measure.   
-
-#### Index PCR  
-* Post clean-up DNA concentrations
+### 16S PCR validation
+The initial 16S PCR product was first verified for amplification and amplicon size using gel electrophoresis.  
+The concentration of the PCR product was also assessed using pico green, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (postion F9, plate 1).  All but one of the no template control concentration measurements was less than 1 __ng per ul__, when the one sample was checked with Qubit the concentration was too low to measure (Supplemental Material).   
 
 #### Normalization
-* Picogreen concentration
+
 
 #### Library Pooling
-* Assay methods   
-* QC  
-    * methods  
-    * results 
+
 
 ### Seq Data QA  
-__For most of these only need summary statistics__ 
-
-#### Read Counts   
-
-
-#### Read Length Distribution 
-
-#### PhiX Error Rate 
-
-
-#### Base Quality Score 
-##### Read BQ
-
-
-#### Cycle BQ
+* Variability in library size
+* seq error rate - especially for reverse reads and for overlap region
