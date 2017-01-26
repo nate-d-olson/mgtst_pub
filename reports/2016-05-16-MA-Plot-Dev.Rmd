@@ -1,0 +1,578 @@
+---
+title: "MA Plot Dev"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    theme: yeti
+    toc: yes
+    toc_float: yes
+---
+## TODO
+* mgtst import %>
+* add notes
+* function for pre/post otu analysis
+* look at non-pre/post specific otus
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(mgtst)
+library(readr)
+library(tidyr)
+library(stringr)
+library(magrittr)
+library(knitr)
+library(devtools)
+library(sapkotaUtils)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(purrr)
+library(phyloseq)
+library(biomformat)
+library(vegan)
+library(plotly)
+library(metagenomeSeq)
+opts_chunk$set(cache=TRUE)
+opts_chunk$set(fig.align="center")
+```
+
+## MA Plots
+
+```{r prj_paths, warning=FALSE, message=FALSE, echo = FALSE}
+proj_dir <- "~/Projects/16S_etec_mix_study"
+pipe_dir <- paste0(proj_dir, "/analysis/pipelines")
+qiime_dir <- paste0(pipe_dir, "/qiime")
+dada2_dir <- paste0(pipe_dir, "/dada2")
+mothur_dir <- paste0(pipe_dir, "/mothur")
+```
+
+### Importing qiime output and adding metadata.
+```{r load_qiime}
+## importing qiime output at phyloseq object
+ps_qiime <- import_biom(
+    paste0(qiime_dir,"/otus_uc_fast/otu_table_mc2_w_tax_no_pynast_failures.biom"))
+
+## generating metadata df
+data(sample_sheet)
+sample_sheet_ns <- sample_sheet %>%
+    mutate(pos_ns = str_replace(pos, "_",""))
+sample_id <- data_frame(seq_ids = sample_names(ps_qiime)) %>%
+    separate(col = seq_ids,
+             into = c("pcr_16S_plate","pos_ns"), sep = "-") %>%
+    mutate(pcr_16S_plate = as.numeric(pcr_16S_plate))
+
+sample_df <- left_join(sample_id, sample_sheet_ns) %>%
+    filter(seq_lab == "JHU", barcode_lab == "JHU") %>%
+    mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% as.data.frame()
+
+## defining metadata slot
+samdat <- sample_data(sample_df)
+sample_names(samdat) <- sample_names(ps_qiime)
+sample_data(ps_qiime) <- samdat
+saveRDS(ps_qiime, paste0(qiime_dir,"/otus_uc_fast/phyloseq_obj.rds"))
+```
+
+Convert to MRexperiment
+```{r}
+mrexp_qiime <- phyloseq_to_metagenomeSeq(ps_qiime)
+# saveRDS(mrexp_qiime, paste0(qiime_dir,"/otus_uc_fast/mrexp_obj.rds"))
+```
+
+## Calculating Fold change
+```{r}
+sample_ids <- pData(mrexp_qiime)$sampleID %>% unique()
+sample_ids <- sample_ids[sample_ids != "NTC"]
+```
+
+### logFC for individual samples
+```{r}
+get_ma_df <- function(mrexp, i){
+    mrexp_pre_post <- mrexp[, which(pData(mrexp)$sampleID == i & 
+                        pData(mrexp)$dilution %in% c(-1,0))]
+    mrexp_pre_post_filt <- filterData(mrexp_pre_post, present = 4, depth = 1)
+    mrexp_pre_post_filt <- cumNorm(mrexp_pre_post_filt, p = 0.75)
+    normFactor <- normFactors(mrexp_pre_post_filt) %>% {log2(./median(.) + 1)}
+    
+    dilution <- pData(mrexp_pre_post_filt)$dilution
+    mod <- model.matrix(~dilution)
+    settings <- zigControl(maxit = 10, verbose = TRUE)
+    fit <- fitZig(obj = mrexp_pre_post_filt, mod = mod, 
+             useCSSoffset = FALSE, control = settings,
+             normFactor = normFactor)
+    data_frame(sampleID = i,
+               otu = fit$taxa,
+               abu = rowMeans(fit$counts), 
+               logFC = fit$fit$coefficients[,2])
+}
+
+ma_df <- sample_ids %>% map_df(get_ma_df, mrexp = mrexp_qiime)
+```
+
+Note x axis is log10 of log2 transformed mean ...
+https://en.wikipedia.org/wiki/MA_plot
+```{r}
+ggplot(ma_df) + geom_point(aes(x = abu, y = logFC, color = sampleID), 
+                           alpha = 0.25) + scale_x_log10()
+```
+
+### LogFC calculated using normalized observed counts
+```{r}
+get_ma_df <- function(mrexp_qiime, i){
+    mrexp_pre_post <- mrexp_qiime[, which(pData(mrexp_qiime)$sampleID == i & 
+                        pData(mrexp_qiime)$dilution %in% c(-1,0))]
+    mrexp_pre_post_filt <- mrexp_pre_post
+    count_tbl <- MRcounts(mrexp_pre_post_filt,norm = TRUE)
+    pre_sams <- rownames(pData(mrexp_pre_post_filt))[pData(mrexp_pre_post_filt)$dilution == 0]
+    post_sams <- rownames(pData(mrexp_pre_post_filt))[pData(mrexp_pre_post_filt)$dilution == -1]
+    rowMeans_pre <- rowMeans(count_tbl[,colnames(count_tbl) %in% pre_sams])
+    rowMeans_post <- rowMeans(count_tbl[,colnames(count_tbl) %in% post_sams])
+    # excluding OTUs with average counts < 1
+    count_tbl <- count_tbl[rowMeans_pre > 1 & rowMeans_post > 1,]
+    
+    A <- rowMeans(count_tbl)
+    logFC <- log10(rowMeans(count_tbl[,colnames(count_tbl) %in% pre_sams])/
+             rowMeans(count_tbl[,colnames(count_tbl) %in% post_sams]))
+    data_frame(sampleID = i, A, logFC)
+}
+
+ma_df <- data_frame()
+for(i in sample_ids){
+    ma_df <- get_ma_df(mrexp_qiime, i) %>% bind_rows(ma_df, .)
+}
+
+ggplot(ma_df) + geom_point(aes(x = A, y = logFC, color = sampleID)) + 
+    geom_vline(aes(xintercept = 500), linetype = 2) +
+    geom_hline(aes(yintercept = -1), linetype = 2) + 
+    geom_hline(aes(yintercept = 1), linetype = 2) + 
+    theme_bw() +
+    scale_x_log10()
+```
+
+Four quadrants:  
+
+1. y > 1  and x < 500   
+2. y > 1  and x > 500  
+3. y < -1 and x < 500  
+4. y < -1 and x > 500
+
+### Comparing All pre and post samples
+Did not exclude counts with average less than 1
+```{r}
+get_ma_df <- function(mrexp_qiime){
+    mrexp_pre_post <- mrexp_qiime[, pData(mrexp_qiime)$dilution %in% c(-1,0)]
+    mrexp_pre_post_filt <- mrexp_pre_post #filterData(mrexp_pre_post, present = 4, depth = 2)
+    count_tbl <- MRcounts(mrexp_pre_post_filt,norm = TRUE)
+    pre_sams <- rownames(pData(mrexp_pre_post_filt))[pData(mrexp_pre_post_filt)$dilution == 0]
+    post_sams <- rownames(pData(mrexp_pre_post_filt))[pData(mrexp_pre_post_filt)$dilution == -1]
+    A <- rowMeans(count_tbl)
+    rowMeans_pre <- rowMeans(count_tbl[,colnames(count_tbl) %in% pre_sams])
+    rowMeans_post <- rowMeans(count_tbl[,colnames(count_tbl) %in% post_sams])
+    count_tbl <- count_tbl[rowMeans_pre > 0 & rowMeans_post > 0,]
+    
+    A <- rowMeans(count_tbl)
+    logFC <- log10(rowMeans(count_tbl[,colnames(count_tbl) %in% pre_sams])/
+             rowMeans(count_tbl[,colnames(count_tbl) %in% post_sams]))
+    data_frame(sampleID = i, A, logFC)
+}
+
+
+ma_df <- get_ma_df(mrexp_qiime)
+
+ggplot(ma_df) + geom_point(aes(x = A, y = logFC)) + 
+    geom_vline(aes(xintercept = 50), linetype = 2) + 
+    geom_hline(aes(yintercept = -1), linetype = 2) + 
+    geom_hline(aes(yintercept = 1), linetype = 2) + 
+    theme_bw() +
+    scale_x_log10()
+
+```
+
+Four quadrants:  
+
+1. y > 1  and x < 50   
+2. y > 1  and x > 50  
+3. y < -1 and x < 50  
+4. y < -1 and x > 50  
+
+### LogFC calculated using normalized observed counts
+Individual samples median for MA
+```{r}
+get_ma_df <- function(mrexp_qiime, i){
+    mrexp_pre_post <- mrexp_qiime[, which(pData(mrexp_qiime)$sampleID == i & 
+                        pData(mrexp_qiime)$dilution %in% c(-1,0))]
+    mrexp_pre_post_filt <- mrexp_pre_post
+    count_tbl <- MRcounts(mrexp_pre_post_filt,norm = TRUE)
+    pre_sams <- rownames(pData(mrexp_pre_post_filt))[pData(mrexp_pre_post_filt)$dilution == 0]
+    post_sams <- rownames(pData(mrexp_pre_post_filt))[pData(mrexp_pre_post_filt)$dilution == -1]
+    rowMedians_pre <- rowMedians(count_tbl[,colnames(count_tbl) %in% pre_sams])
+    rowMedians_post <- rowMedians(count_tbl[,colnames(count_tbl) %in% post_sams])
+    # excluding OTUs with average counts < 1
+    count_tbl <- count_tbl[rowMedians_pre > 0 & rowMedians_post > 0,]
+    
+    A <- rowMedians(count_tbl)
+    logFC <- log10(rowMedians(count_tbl[,colnames(count_tbl) %in% pre_sams])/
+             rowMedians(count_tbl[,colnames(count_tbl) %in% post_sams]))
+    data_frame(sampleID = i, A, logFC)
+}
+
+ma_df <- data_frame()
+for(i in sample_ids){
+    ma_df <- get_ma_df(mrexp_qiime, i) %>% bind_rows(ma_df, .)
+}
+
+ggplot(ma_df) + geom_point(aes(x = A, y = logFC, color = sampleID)) + 
+    geom_vline(aes(xintercept = 500), linetype = 2) +
+    geom_hline(aes(yintercept = -1), linetype = 2) + 
+    geom_hline(aes(yintercept = 1), linetype = 2) + 
+    theme_bw() +
+    scale_x_log10()
+```
+
+Four quadrants:  
+
+1. y > 1  and x < 500   
+2. y > 1  and x > 500  
+3. y < -1 and x < 500  
+4. y < -1 and x > 500
+
+### Subset samples based on Pre-Post Presence Absence
+List of Pre and Post Specific OTUs by sampleID
+
+0 in pre or post columns indicates per or post specific OTU
+```{r}
+get_pre_post_specific_otus <- function(otu_mat, pre_sams, post_sams){
+    rowMedians_pre <- rowMedians(otu_mat[,colnames(otu_mat) %in% pre_sams])
+    rowMedians_post <- rowMedians(otu_mat[,colnames(otu_mat) %in% post_sams])
+    
+    data_frame(otus = rownames(otu_mat),
+               pre = rowMedians_pre,
+               post = rowMedians_post)
+}
+
+get_sample_otu_table <- function(mrexp, i){
+    mrexp_pre_post <- mrexp[, which(pData(mrexp)$sampleID == i & 
+                                    pData(mrexp)$dilution %in% c(-1,0))]
+    count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE)
+    pre_sams <- rownames(pData(mrexp_pre_post))[
+        pData(mrexp_pre_post)$dilution == 0]
+    post_sams <- rownames(pData(mrexp_pre_post))[
+        pData(mrexp_pre_post)$dilution == -1]
+   get_pre_post_specific_otus(count_tbl, pre_sams, post_sams)
+}
+```
+
+```{r}
+pre_post_specific_otus <- sample_ids %>% set_names(sample_ids)%>% 
+    map_df(get_sample_otu_table, mrexp = mrexp_qiime, .id = "sampleID")
+```
+
+## E01JH0038
+### Pre Specific OTUs
+```{r}
+i <- "E01JH0038"; mrexp <- mrexp_qiime # variables for function
+pre_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre > 0 & post == 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% pre_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+!!! Need to check - potentially have pre and post dilution assignments switched.
+```{r}
+count_tbl %>% filter(otu %in% pre_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+## Post
+```{r}
+i <- "E01JH0038"; mrexp <- mrexp_qiime # variables for function
+post_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre == 0 & post > 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% post_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+Better linearity for pre than post
+```{r}
+count_tbl %>% filter(otu %in% post_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+
+## E01JH0017
+### Pre
+```{r}
+i <- "E01JH0017"; mrexp <- mrexp_qiime # variables for function
+pre_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre > 0 & post == 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% pre_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+!!! Need to check - potentially have pre and post dilution assignments switched.
+```{r}
+count_tbl %>% filter(otu %in% pre_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+### Post
+```{r}
+post_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre == 0 & post > 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% post_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+Post OTUs drop out really quickly....
+```{r}
+count_tbl %>% filter(otu %in% post_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+
+## E01JH0004
+### Pre
+```{r}
+i <- "E01JH0004"; mrexp <- mrexp_qiime # variables for function
+pre_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre > 0 & post == 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% pre_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+!!! Need to check - potentially have pre and post dilution assignments switched.
+```{r}
+count_tbl %>% filter(otu %in% pre_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+### Post
+```{r}
+post_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre == 0 & post > 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% post_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+Post OTUs drop out really quickly....
+```{r}
+count_tbl %>% filter(otu %in% post_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+## E01JH0016
+### Pre
+```{r}
+i <- "E01JH0016"; mrexp <- mrexp_qiime # variables for function
+pre_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre > 0 & post == 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% pre_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+!!! Need to check - potentially have pre and post dilution assignments switched.
+```{r}
+count_tbl %>% filter(otu %in% pre_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+### Post
+```{r}
+post_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre == 0 & post > 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% post_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+Post OTUs drop out really quickly....
+```{r}
+count_tbl %>% filter(otu %in% post_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+## E01JH0011
+### Pre
+```{r}
+i <- "E01JH0011"; mrexp <- mrexp_qiime # variables for function
+pre_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre > 0 & post == 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% pre_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+!!! Need to check - potentially have pre and post dilution assignments switched.
+```{r}
+count_tbl %>% filter(otu %in% pre_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+### Post
+```{r}
+post_otus <- pre_post_specific_otus %>% filter(sampleID == i,
+                                              pre == 0 & post > 0) %>% 
+    arrange(desc(post)) %>% top_n(20) %>% 
+    .$otus
+
+mrexp_pre_post <- mrexp[rownames(mrexp) %in% post_otus,
+                        which(pData(mrexp)$sampleID == i)]
+sam_dat <- pData(mrexp_pre_post) %>% add_rownames(var = "samID")
+
+count_tbl <- MRcounts(mrexp_pre_post,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+```
+
+Post OTUs drop out really quickly....
+```{r}
+count_tbl %>% filter(otu %in% post_otus[1:20]) %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution)) %>% 
+    ggplot() + geom_point(aes(x = 2^-dilution, y = count)) + 
+        geom_smooth(aes(x = 2^-dilution, y = count)) +
+        facet_wrap(~otu, scale = "free_y")
+```
+
+Looking at all OTUs - revisit spliting by quadrants
+```{r}
+sam_dat <- pData(mrexp_qiime) %>% add_rownames(var = "samID")
+count_tbl <- MRcounts(mrexp_qiime,norm = TRUE) %>% as.data.frame() %>% 
+    add_rownames(var = "otu") %>% 
+    gather("samID","count", -otu) %>% 
+    left_join(sam_dat)
+count_tbl <- count_tbl %>% group_by(sampleID, otu, dilution) %>% 
+    summarize(count = median(count)) %>% 
+    group_by(sampleID, otu) %>% 
+    mutate(count_total = sum(count),count_mean = mean(count)) %>% ## removing OTUs with less than 100 observations by sample
+    filter(count_total > 100)
+```
+
+```{r}
+count_tbl %>% 
+    ungroup() %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution),
+           total_count_bins = cut_number(count_mean,10)) %>% 
+    ggplot() + geom_line(aes(x = dilution, y = count, group = otu)) +
+        facet_grid(total_count_bins~sampleID, scale = "free_y")
+```
+

@@ -1,0 +1,272 @@
+---
+title: "Count Residual Analysis"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    code_folding: hide
+    theme: yeti
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(mgtst)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(purrr)
+library(phyloseq)
+library(metagenomeSeq)
+library(knitr)
+opts_chunk$set(cache=TRUE)
+opts_chunk$set(fig.align="center")
+```
+
+## Comparison of Expected vs. Observed Counts
+
+* Observed count were fit to a linear model
+* Expected counts calculated from unmixed samples observed counts.
+* Residuals (observed - expected) were modeled to identify experimental factors responsible for residual components.
+
+
+## Functions
+Functions for generating plots and input dataframes.
+
+__Q__: Should I use medians or means to calculate expected values?
+```{r}
+get_ma_df <- function(i, mrexp, present, depth, row_stat = "median"){
+    ## subset pre and post samples
+    mrexp_pre_post <- mrexp[, which(pData(mrexp)$sampleID == i & 
+                        pData(mrexp)$dilution %in% c(-1,0))]
+    
+    mrexp_pre_post_filt <- filterData(mrexp_pre_post, present = present, depth = depth)
+    
+    ## Normalized count table
+    count_tbl <- cumNormMat(mrexp_pre_post_filt, p = 0.75)
+    
+    ## Pre and Post sample ids
+    pre_sams <- mrexp_pre_post_filt %>% pData() %>% 
+        {.[.$dilution == 0, ]} %>% rownames()
+    post_sams <- mrexp_pre_post_filt %>% pData() %>%  
+        {.[.$dilution == -1, ]} %>% rownames()
+    
+    ## Mean normalized counts by OTU
+    if(row_stat == "median"){
+        row_stat_pre <- count_tbl %>% {.[,colnames(.) %in% pre_sams]} %>%  rowMedians()
+        row_stat_post <- count_tbl %>% {.[,colnames(.) %in% post_sams]} %>%  rowMedians()
+    } else if(row_stat == "mean"){
+        row_stat_pre <- count_tbl %>% {.[,colnames(.) %in% pre_sams]} %>%  rowMeans()
+        row_stat_post <- count_tbl %>% {.[,colnames(.) %in% post_sams]} %>%  rowMeans()
+    } 
+    
+    ## dataframe with MA values
+    ## A - mean counts across all samples
+    ## logFC (M) - log2 fold change pre/post
+    data_frame(sampleID = i, 
+               otu = rownames(count_tbl), 
+               A = rowMeans(count_tbl),
+               pre_count = row_stat_pre,
+               post_count = row_stat_post) %>% 
+        mutate(logFC = log2(pre_count/post_count)) # not sure how to best deal with 0 post count values
+}
+
+get_ma_df_by_sample <- function(mrexp, sample_ids, present=4, depth=1){
+    sample_ids %>% map_df(get_ma_df, mrexp,present, depth)
+}
+
+plot_by_sample_ma <- function(ma_df){
+    ggplot(ma_df) + geom_point(aes(x = A, y = logFC, group = otu), alpha = 0.5) + 
+        geom_hline(aes(yintercept = -1), linetype = 2) + 
+        geom_hline(aes(yintercept = 1), linetype = 2) + 
+        theme_bw() +
+        scale_x_log10() +
+        facet_wrap(~sampleID)
+}
+
+get_quad_df <- function(ma_df, n = 3, keep_all = FALSE){
+    quad_df <- ma_df %>% 
+        filter(!is.infinite(logFC)) %>% 
+        mutate(quad = "NO QUAD",
+               quad = ifelse(A > 1000 & logFC >  1, "A >1K,M>1", quad),
+               quad = ifelse(A > 1000 & logFC < -1, "A >1k,M<-1", quad),
+               quad = ifelse(A > 100 & A < 1001  & logFC >  1, "A 100-1k,M>1", quad),
+               quad = ifelse(A > 100 & A < 1001  & logFC < -1, "A 100-1k,M<-1", quad),
+               quad = ifelse(A > 10 & A < 101  & logFC >  1, "A 10-100,M>1", quad),
+               quad = ifelse(A > 10 & A < 101 & logFC < -1, "A 10-100,M<-1", quad),
+               quad = ifelse(A < 10 & logFC >  1, "A <10,M>1", quad),
+               quad = ifelse(A < 10 & logFC < -1, "A <10,M<-1", quad))
+    if(keep_all){
+        return(quad_df) 
+    }
+    quad_df %>% 
+        filter(quad != "NO QUAD") %>% 
+        group_by(quad, sampleID) %>%
+        top_n(n, wt = A) %>% 
+        mutate(rep_otu = factor(1:n()))
+}
+
+get_quad_otu_tbl <- function(quad_df, mrexp){
+    sam_dat <- pData(mrexp) %>% rownames_to_column(var = "samID")
+    cumNormMat(mrexp, p = 0.75) %>% as.data.frame() %>% 
+        rownames_to_column(var = "otu") %>% 
+        gather("samID","count", -otu) %>% 
+        left_join(sam_dat) %>% right_join(quad_df)
+}
+
+plot_quad_otus <- function(quad_tbl){
+    quad_tbl <- quad_tbl %>% 
+    mutate(dilution = ifelse(dilution == 0, 18, dilution),
+           dilution = ifelse(dilution == -1, 0, dilution))
+    quads <- quad_tbl$quad %>% unique()
+    for(i in quads){
+        pl <- quad_tbl %>% filter(quad == i) %>% 
+              ggplot(aes(x = dilution, y = count,
+                         group = otu)) + 
+                geom_point() + geom_smooth() + scale_x_continuous(trans = "log2") +
+                facet_grid(sampleID~rep_otu, scale = "free_y") + 
+                theme_bw() + theme(legend.position = "bottom") + 
+                labs(x = "Proportion Post", y = "Count") +
+                ggtitle(paste("MA Plot Quad",i)) +
+                theme(axis.text.x = element_text(angle = 90))
+        print(pl)
+    }
+}
+```
+
+## Loading Data
+QIIME Standard Pipeline
+```{r}
+proj_dir <- "~/Projects/16S_etec_mix_study"
+pipe_dir <- file.path(proj_dir, "analysis", "pipelines")
+qiime_dir <- file.path(pipe_dir, "qiime")
+qiime_std <- file.path(qiime_dir, "otus_uc_fast","mrexp_obj.rds") %>% 
+    readRDS()
+```
+
+ 
+Excluding no template controls and low quality samples.
+```{r}
+qiime_std <- qiime_std[,which(pData(qiime_std)$sampleID != "NTC" & 
+                            !(pData(qiime_std)$id %in% c("B3_M7_P2_L1_S1",
+                                                         "B4_M6_P1_L1_S1")))]
+# ma_df <- get_ma_df_by_sample(qiime_std, sample_ids) 
+```
+
+```{r}
+sample_ids <- pData(qiime_std)$sampleID %>% unique()
+quad_otu <- qiime_std %>%
+    get_ma_df_by_sample(sample_ids, present = 1, depth = 1) %>%
+    get_quad_df(n = 100000, keep_all = TRUE) %>%
+    get_quad_otu_tbl(qiime_std)
+
+otu_obs_vs_exp <- quad_otu %>%
+    # dilution 18 selected for post as it is a real number but small enough to
+    # have minimal impact on the unmixed pre samples
+    mutate(dilution = ifelse(dilution == 0, 18, dilution), 
+           dilution = ifelse(dilution == -1, 0, dilution),
+           post_prop = 2^-dilution,
+           pre_prop = 1-post_prop,
+           post_exp = post_prop * post_count,
+           pre_exp = pre_prop * pre_count,
+           count_exp = as.integer(post_exp + pre_exp)) %>% 
+    filter(!(dilution %in% c(18,0))) # removing unmixed samples- biases results
+```
+
+```{r}
+## need to check out case_when with dplyr for vectorized if else, ect. 
+otu_resid <- otu_obs_vs_exp %>%
+    mutate(fc_bin = if_else(logFC < -1 , "logFC < -1","logFC >-1 & <1"),
+           fc_bin = if_else(logFC > 1, "logFC > 1",fc_bin)) %>% 
+    mutate(resid = count - count_exp, exact_fit = 0)
+```
+
+### Expected vs Observed Counts
+```{r, fig.cap="2D histogram of observed vs. expected counts. Orange line indicates the assumed 1:1 linear realaitonship."}
+ggplot(otu_obs_vs_exp) +
+    geom_hex(aes(x = count_exp, y = count)) +
+    geom_abline(aes(slope = 1, intercept = 0), size = 1, color = "darkorange") +
+    facet_wrap(~sampleID) +
+    scale_y_continuous(trans = "log2") + scale_x_continuous(trans = "log2") +
+    coord_equal() + 
+    theme_bw() +
+    labs(x = "expected counts", y = "observed counts") +
+    theme(legend.position = c(0.85,0.25), legend.direction = "horizontal")
+```
+
+### Expected vs Observed Counts by logFC
+OTUs with positive logFC are more abundant in pre-treatment samples and OTUs with negative logFC are more abundance in post-treatment samples.
+
+```{r  fig.cap="2D histogram of observed vs. expected counts. Orange line smooth regression line.", fig.width=8}
+otu_resid %>% 
+    ggplot() +
+        geom_hex(aes(x = count_exp, y = count)) +
+        geom_abline(aes(slope = 1, intercept = 0), color = "darkorange") +
+        facet_grid(sampleID~fc_bin) +
+        scale_y_continuous(trans = "log2") + scale_x_continuous(trans = "log2") +
+        coord_equal() +
+        theme_bw() +
+        labs(x = "expected counts", y = "observed counts")
+```
+
+### Residuals as a function of the observed counts
+
+```{r fig.cap = "Grey lines connect PCR replicates. Orange line is a smoothed regression line, blue line is a 1:1 linear relationship.", fig.height = 8}
+otu_resid %>% 
+    mutate(sampleOTU = paste(otu, dilution, sampleID, sep = "_")) %>% 
+    ggplot() + 
+    geom_line(aes(x = count, y = resid, group = sampleOTU), color = "grey70") +
+    geom_point(aes(x = count, y = resid),size = 0.25, alpha = 0.5) + 
+    geom_smooth(aes(x = count, y = resid), color = "darkorange") +
+    facet_wrap(~sampleID, ncol = 1) + theme_bw()
+```
+
+
+## Distribution of Residuals
+```{r}
+ggplot(otu_resid) + geom_histogram(aes(x = resid)) + 
+    facet_wrap(~sampleID, ncol = 1) + theme_bw() + scale_y_log10()
+```
+Most residuals are close of 0. Not due to OTUs with observed or expected counts close to 0.
+
+Low counts not responsible for outliers
+```{r}
+qq_resid <- otu_resid %>%
+    mutate(std_resid = (resid - mean(resid))/sd(resid)) %>% 
+    arrange(std_resid) %>% 
+    mutate(count_bin = cut_interval(log10(count + 1), n = 5),
+           resid_prob = ppoints(std_resid),
+           theoretical = qnorm(resid_prob),
+           sample = std_resid)
+```
+
+```{r}
+ggplot(qq_resid) + 
+    geom_point(aes(x = theoretical, y = sample, color = count_bin)) + 
+    geom_abline(aes(slope = 1, intercept = 0)) + theme_bw()
+```
+
+```{r}
+ggplot(qq_resid) + 
+    geom_point(aes(x = theoretical, y = sample, color = count_bin)) + 
+    geom_abline(aes(slope = 1, intercept = 0)) +
+    facet_wrap(~count_bin) + theme_bw()
+```
+
+
+### Normalizing Residuals
+Residuals are proportional to the expected and observed count value
+```{r fig.height = 8}
+otu_resid %>% 
+    mutate(sampleOTU = paste(otu, sampleID,dilution, sep = "_")) %>% 
+    ggplot() + 
+    geom_point(aes(x = count_exp, y = resid/(count_exp + 1)),size = 0.5, alpha = 0.25) + 
+    geom_smooth(aes(x = count_exp, y = resid/(count_exp + 1))) +
+    scale_x_continuous(trans = "log2") + 
+    geom_abline(aes(slope = 0, intercept = 0), color = "darkorange") +
+    facet_wrap(~sampleID, ncol = 1, scale = "free_y") + theme_bw()
+```
+

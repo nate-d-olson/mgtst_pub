@@ -7,21 +7,13 @@ output:
   pdf_document: default
   html_document: default
 ---
-<!-- TODO 
-Need to clean-up - moving appropriate data objects to data, i.e. incorporating ProjectTemplate structure
--->
+
 ```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
-library(savR)
-library(mgtst)
-library(readr)
-library(tidyr)
-library(stringr)
-library(knitr)
-library(ggplot2)
-library(dplyr)
-library(tibble)
-library(purrr)
-library(Rqc)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
@@ -136,7 +128,8 @@ qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>%
 To generate summaries of QA metrics for the 384 datasets in the study (192 samples with forward and reverse reads) used the bioconductor `Rqc` package (REF) to calculate the quality metrics used in the following analysis. 
 
 #### Read Counts   
-Two barcoded experimental sample has less than 50,000 reads. The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). Sample E01JH0016 titration 5 position F9 of plate 1 initial 16S PCR failed. __TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normaization data. 
+Two barcoded experimental sample has less than 50,000 reads. The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). Sample E01JH0016 titration 5 position F9 of plate 1 initial 16S PCR failed. 
+__TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normaization data. 
 
 ```{r table_count}
 meta_df %>% mutate(exp_ntc = ifelse(sampleID == "NTC", "NTC","EXP")) %>% 

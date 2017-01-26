@@ -7,68 +7,64 @@ output:
   pdf_document: default
   html_document: default
 ---
-```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
-library(savR)
-library(mgtst)
-library(readr)
-library(tidyr)
-library(stringr)
-library(magrittr)
-library(knitr)
-library(devtools)
-library(sapkotaUtils)
-library(ggplot2)
-library(dplyr)
-library(tibble)
-library(purrr)
-library(DT)
-library(Rqc)
-library(ShortRead)
-library(dada2)
+```{r echo=FALSE, message=FALSE}
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
 ```
 
 
 ### Wetlab QC  
-* sample concentration results summary  
-    + bacterial quant (http://www.zymoresearch.com/dna/dna-analysis/femto-bacterial-dna-quantification-kit)  
-    
 
-* Mixture QC  
-    + ERCC qPCR  
-* 16S PCR QC
-   + Gel  
-        - Need gel info - gel concentration, run info - V and time, ladder info - manufacturer and band sizes. 
-
+### 16S PCR Concentration Post-Cleanup
+```{r echo = FALSE}
+#tstWetLabQC %>% left_join(tstPcrSampleMetaData) %>% .$conc_ngml %>% summary()
+## Joining, by = c("pcr_16S_plate", "pos")
+##   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  -1.117  12.960  20.670  19.280  25.750  49.600 
+```
 The initial 16S PCR product was first verified for amplification and amplicon size using gel electrophoresis \@ref(fig:gel_16S).  
-The concentration of the PCR product was also assessed using pico green, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (postion F9, plate 1).  All but one of the no template control concentration measurements was less than 1 $ng/ \mu l$, when the one sample was checked with Qubit the concentration was too low to measure.   
+The concentration of the PCR product was also assessed using picogreen, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. 
+The DNA concentration of the 16S PCR product after clean up  samples after ranged from below the limit of detection to 49.6 ng/ml \@ref(fig:16S_pcr_quant). 
+The DNA concentration of samples with low DNA concentration measured using picrogreen ( < 1 $ng/\mu L$.) was also measured using Qubit (Table __QUBIT__). 
+Only one sample had an undetectable DNA concentration using the Qubit. 
+Gel electrophoresis of the 16S PCR products indicated that the sample failed to amplify during the initial PCR \@ref(fig:16S_pcr_gel). 
+__TODO__ Need gel info - gel concentration, run info - V and time, ladder info - manufacturer and band sizes.
+Despite failure to amplify the sample was processed through the sequence pipeline with the rest of the samples.
 
-
-```{r gel_16S, echo=FALSE, out.width = 600, fig.cap="Agarose gel electrophoresis of 16S PCR products."}
-#knitr::include_graphics('../img/1st_16S_PCR_P1_P2_Gel_20160224.tif')
+```{r gel_16S, echo=FALSE, fig.cap="Agarose gel electrophoresis of 16S PCR products."}
+knitr::include_graphics("../img/1st_16S_PCR_P1_P2_Gel_20160224.tif")
 ```
 
-```{r 16S_pico, fig.cap= "Concentration measured using picrogreen of 16S PCR products post-cleanup. Low concentration samples were remeasured using QUBIT, and concentration values (ng/ul) are indicated as text near pico green data point."}
-pcr_16S_pico %<>% filter(pos != "Well", !is.na(pos)) 
-pcr_16S_qc <- sample_sheet %>% filter(barcode_lab == "JHU", seq_lab == "JHU") %>% 
-      rename(pcr_16S_plate = "plate") %>% 
-      select(sampleID, dilution, plate, pos) %>% 
-      mutate(pos = str_replace(pos, "_","")) %>% right_join(pcr_16S_pico)
-
-pcr_16S_qc %>% ggplot() + 
-      geom_point(aes(x = factor(dilution), y = conc_ngul)) + theme_bw() + 
-      facet_wrap(~sampleID, scales = "free_x", nrow = 1) +
-      geom_text(aes(x = factor(dilution), y = conc_ngul, label = qubit),nudge_y = -0.25, nudge_x = 1)
+```{r 16S_pcr_quant, fig.cap = "Picogreen DNA concentration measurements of 16S PCR product after clean-up."}
+tstWetLabQC %>% left_join(tstPcrSampleMetaData) %>% 
+      mutate(titration = as.factor(titration)) %>% 
+      ggplot(aes(x = biosample_id, y = conc_ngml, color = titration)) + 
+      geom_point() +
+      theme_bw() + 
+      labs(x = "Biological Replicate", 
+           y = "DNA Concentration (ng/mL)",
+           color = "Titration Factor")
 ```
 
-
-
+```{r}
+tstWetLabQC %>% left_join(tstPcrSampleMetaData) %>% 
+      filter(!is.na(qubit), biosample_id != "NTC") %>% 
+      select(biosample_id, titration, pcr_16S_plate, pos, conc_ngml, qubit) %>% 
+      kable()
+```
 
 
 #### Index PCR  
 * Post clean-up DNA concentrations
+__TODO__ Script to extract concentration information
 
 #### Normalization
 * Picogreen concentration
+__TODO__ Script to extract concentration information
+excel file 16032_NIST_norm_15uL.xlsx
 
 #### Library Pooling
 * Assay methods   
@@ -76,14 +72,3 @@ pcr_16S_qc %>% ggplot() +
     * methods  
     * results 
 
-```{r post_clean_16S}
-# Concentraiton results after PCR clean-up
-pcr_16S_pico %>% DT::datatable()
-```
-
-__NOTES__
-Modify names for consistency and merging with sample sheet
-summary plot showing outliers
-plot of standard curve
-
-__END of NOTES__
