@@ -4,3 +4,19 @@
 .Ruserdata
 .DS_Store
 _book
+reports/*html
+reports/*rds
+reports/*pdf
+reports/*cache
+
+## Excluding latex build intermediate files
+*aux
+*fdb_latexmk
+*fls
+*log
+*tex
+*toc
+*out
+
+## ProjectTemplate Directories
+cache
