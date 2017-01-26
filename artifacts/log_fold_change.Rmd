@@ -14,3 +14,69 @@ setwd("../")
 load.project()
 setwd(cwd)
 ```
+
+## Overview
+
+## Code for Analysis
+### Loading Pipeline Data
+```{r}
+mrexp_files <- list(
+      dada2  = "../data/mrexp_dada2.RDS",
+      mothur = "../data/mrexp_mothur.RDS",
+      qiime  = "../data/mrexp_qiime_refclus_nochimera.RDS"
+)
+mrexp <- mrexp_files %>% map(readRDS) 
+
+#Extracting metadata
+
+meta_dat <- mrexp$mothur %>% pData()
+
+##labeling PCR replicates
+half1 <- paste(rep(c("A","B","C","D","E","F","G","H"), each = 6), 1:6, sep = "_")
+sam_dat <- meta_dat %>% 
+      mutate(pcr_half = if_else(pos %in% half1, "1","2"),
+             pcr_rep = paste0(pcr_16S_plate,":",pcr_half)) %>% 
+      select(sampleID, dilution,sam_names, pcr_rep) %>% 
+      dplyr::rename(samID = sam_names)
+```
+
+
+
+#### Subsetting data to focus on one biological replicate
+Only looking at biological replicate E01JH0004, to avoid overfitting the data.
+
+```{r}
+E01JH004_sams <- meta_dat %>% 
+      filter(sampleID == "E01JH0004") %>% .$sam_names
+mrexp_004 <- mrexp %>% 
+      map(~.[,which(colnames(.) %in% E01JH004_sams)]) %>% 
+      map(~.[which(rowSums(MRcounts(.)) > 0), ])
+```
+
+# Start of Log-Fold Change (Differential Abundance) Analysis  
+
+## Log-Fold Change Variance
+* Calculate variance from the observed log-fold change differences for pairwise combinations of PCR replicates
+      * Does it make sense to look at the distribution of the logFC values - to estiamte 95% CI
+      * Can also get quantiles (95% CI) from pairwise log-fold change values
+* Compare variance values to values estimated by differential abundance methods, metagenomeSeq, DESeq2, EdgeR, others?
+
+## Log Fold-Change Bias 
+
+### Treatment-Specific Features  
+
+* Expected logFC is the difference between titration factors for the titrations being compared   
+* Compare expected values to those made by differential abundance methods, maybe permutation based method as well  
+
+### Non-Treatment Specific Features  
+
+
+## Log Fold-Change Bias-Variance Relationship
+
+* Use EDA - scatter plot?
+
+
+## Log Fold-Change Feature Exploration
+
+* Correlating factors such as well position, primer matching, and GC content with observed variance and bias.
+* Identify outliers for more detailed exploration
