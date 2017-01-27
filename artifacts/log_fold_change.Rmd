@@ -56,16 +56,148 @@ mrexp_004 <- mrexp %>%
 # Start of Log-Fold Change (Differential Abundance) Analysis  
 
 ## Log-Fold Change Variance
-* Calculate variance from the observed log-fold change differences for pairwise combinations of PCR replicates
-      * Does it make sense to look at the distribution of the logFC values - to estiamte 95% CI
-      * Can also get quantiles (95% CI) from pairwise log-fold change values
+Looking at pre and post samples first
+
+* Calculate variance for the observed log-fold change differences for pairwise combinations of PCR replicates  
+      * Does it make sense to look at the distribution of the logFC values - to estiamte 95% CI  
+      * Can also get quantiles (95% CI) from pairwise log-fold change values  
+
+```{r}
+E01JH004_pre_post_sams <- meta_dat %>% 
+      filter(sampleID == "E01JH0004", dilution %in% c(0,-1)) %>% .$sam_names
+mrexp_004_pre_post <- mrexp %>% 
+      map(~.[,which(colnames(.) %in% E01JH004_pre_post_sams)]) %>% 
+      map(~.[which(rowSums(MRcounts(.)) > 0), ])
+```
+
+```{r}
+pre_post_meta <- meta_dat %>% filter(sampleID == "E01JH0004", dilution %in% c(0,-1))
+pre_sams <- pre_post_meta %>% filter(dilution == 0) %>% .$sam_names
+post_sams <- pre_post_meta %>% filter(dilution == -1) %>% .$sam_names
+```
+
+
+```{r}
+pre_post_mat <- mrexp_004_pre_post$dada2 %>% metagenomeSeq::cumNormMat()
+
+get_logFC <- function(pre, post){
+      pre_post_mat[,pre]/pre_post_mat[,post] 
+}
+
+perm_logFC <- map2(rep(pre_sams,4), rep(post_sams, each = 4), get_logFC) %>% 
+      set_names(paste0("X", 1:16)) %>% as_data_frame() %>% 
+      add_column(feature_id = rownames(pre_post_mat)) %>% 
+      gather("perm","FC", -feature_id)
+```
+
+```{r}
+perm_logFC_summary <- perm_logFC %>% mutate(logFC = log2(FC+1)) %>% 
+      group_by(feature_id) %>%
+      summarise(logFC_mean = mean(logFC), logFC_median = median(logFC), 
+                logFC_lq = quantile(logFC, 0.025, na.rm = TRUE), 
+                logFC_uq = quantile(logFC, 0.975, na.rm = TRUE),
+                logFC_var = var(logFC))
+```
+
+## Exploring FC Values
+FC 0 - Post specific feature
+FC NaN - Pre and Post 0
+FC Inf - Pre specific feature
+
+### Example Features for Exploration 
+#### Mean 0
+
+#### Mean Inf
+```{r}
+perm_logFC_summary %>% filter(feature_id == "Seq10")
+```
+
+
+```{r}
+pre_post_mat[rownames(pre_post_mat) %in% c("Seq10"),]
+```
+
+```{r}
+perm_logFC %>% filter(feature_id == "Seq10")
+```
+
+#### Mean NaN
+```{r}
+perm_logFC_summary %>% filter(feature_id == "Seq1135")
+```
+
+
+```{r}
+pre_post_mat[rownames(pre_post_mat) %in% c("Seq1135"),]
+```
+
+```{r}
+perm_logFC %>% filter(feature_id == "Seq1135")
+```
+
+#### Mean 0 
+
+```{r}
+perm_logFC_summary %>% filter(feature_id == "Seq108")
+```
+
+
+```{r}
+pre_post_mat[rownames(pre_post_mat) %in% c("Seq108"),]
+```
+
+```{r}
+perm_logFC %>% filter(feature_id == "Seq108")
+```
+
+Filtering out features with mean premutation logFC values of 0, NaN, and Inf.
+```{r}
+perm_logFC_summary <- perm_logFC_summary %>% 
+      filter(!is.nan(logFC_mean) | logFC_mean !=0 | !is.infinite(logFC_mean)) %>% 
+      arrange(-logFC_mean)
+```
+
+```{r}
+ggplot(perm_logFC_summary) + geom_point(aes(x = logFC_mean, y = logFC_var))
+```
+
+
+Features with outlier variance values.
+```{r}
+perm_logFC_summary %>% filter(logFC_var > 0.8)
+```
+
+```{r}
+pre_post_mat[rownames(pre_post_mat) %in% c("Seq44"),]
+```
+
+```{r}
+pre_post_mat[rownames(pre_post_mat) %in% c("Seq39"),]
+```
+
+```{r}
+pre_post_mat[rownames(pre_post_mat) %in% c("Seq462"),]
+```
+
+__NOTE__ Need to think about next steps
+* apply permutation to calculate logFC between all dilutions
+* compare permuted logFC to diff abu methods
+
+## Comparison of Permuted logFC value and variance with Diff Abu Method 
+
 * Compare variance values to values estimated by differential abundance methods, metagenomeSeq, DESeq2, EdgeR, others?
 
 ## Log Fold-Change Bias 
 
 ### Treatment-Specific Features  
+Use the following function to get treatment specific features
+```{r}
+metagenomeSeq::uniqueFeatures()
+```
 
 * Expected logFC is the difference between titration factors for the titrations being compared   
+
+
 * Compare expected values to those made by differential abundance methods, maybe permutation based method as well  
 
 ### Non-Treatment Specific Features  
