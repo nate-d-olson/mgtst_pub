@@ -2,6 +2,13 @@
   * normalization
   * differential abundance
 
+
+## Analysis
+* Move mrexp to ProjectTemplate
+* Move permutation code to ProjectTemplate
+* Dilution permutations
+* Calculate differential abundance - metagenomeSeq, DESeq2, EdgeR, ...
+
 ## Writing
 1. Review current draft
 2. Revise methods sections

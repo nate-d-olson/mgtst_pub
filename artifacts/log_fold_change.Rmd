@@ -99,63 +99,22 @@ perm_logFC_summary <- perm_logFC %>% mutate(logFC = log2(FC+1)) %>%
                 logFC_var = var(logFC))
 ```
 
-## Exploring FC Values
 FC 0 - Post specific feature
 FC NaN - Pre and Post 0
 FC Inf - Pre specific feature
 
-### Example Features for Exploration 
-#### Mean 0
 
-#### Mean Inf
-```{r}
-perm_logFC_summary %>% filter(feature_id == "Seq10")
-```
+Filtering out features with mean premutation logFC values of 0, NaN, and Inf. 
+Fold-change values of; 0 are post specific features, NaN are pre and post-specific features, and Inf are pre-specific features. 
+See  `2017-01-29-logFC-permutation-feature-explore.Rmd` in reports for example features with 0, Inf, and NaN fold-change values.  
 
-
-```{r}
-pre_post_mat[rownames(pre_post_mat) %in% c("Seq10"),]
-```
-
-```{r}
-perm_logFC %>% filter(feature_id == "Seq10")
-```
-
-#### Mean NaN
-```{r}
-perm_logFC_summary %>% filter(feature_id == "Seq1135")
-```
-
-
-```{r}
-pre_post_mat[rownames(pre_post_mat) %in% c("Seq1135"),]
-```
-
-```{r}
-perm_logFC %>% filter(feature_id == "Seq1135")
-```
-
-#### Mean 0 
-
-```{r}
-perm_logFC_summary %>% filter(feature_id == "Seq108")
-```
-
-
-```{r}
-pre_post_mat[rownames(pre_post_mat) %in% c("Seq108"),]
-```
-
-```{r}
-perm_logFC %>% filter(feature_id == "Seq108")
-```
-
-Filtering out features with mean premutation logFC values of 0, NaN, and Inf.
 ```{r}
 perm_logFC_summary <- perm_logFC_summary %>% 
       filter(!is.nan(logFC_mean) | logFC_mean !=0 | !is.infinite(logFC_mean)) %>% 
       arrange(-logFC_mean)
 ```
+
+## Feature logFC mean and variance
 
 ```{r}
 ggplot(perm_logFC_summary) + geom_point(aes(x = logFC_mean, y = logFC_var))
@@ -167,22 +126,6 @@ Features with outlier variance values.
 perm_logFC_summary %>% filter(logFC_var > 0.8)
 ```
 
-```{r}
-pre_post_mat[rownames(pre_post_mat) %in% c("Seq44"),]
-```
-
-```{r}
-pre_post_mat[rownames(pre_post_mat) %in% c("Seq39"),]
-```
-
-```{r}
-pre_post_mat[rownames(pre_post_mat) %in% c("Seq462"),]
-```
-
-__NOTE__ Need to think about next steps
-* apply permutation to calculate logFC between all dilutions
-* compare permuted logFC to diff abu methods
-
 ## Comparison of Permuted logFC value and variance with Diff Abu Method 
 
 * Compare variance values to values estimated by differential abundance methods, metagenomeSeq, DESeq2, EdgeR, others?
@@ -192,7 +135,7 @@ __NOTE__ Need to think about next steps
 ### Treatment-Specific Features  
 Use the following function to get treatment specific features
 ```{r}
-metagenomeSeq::uniqueFeatures()
+#metagenomeSeq::uniqueFeatures()
 ```
 
 * Expected logFC is the difference between titration factors for the titrations being compared   

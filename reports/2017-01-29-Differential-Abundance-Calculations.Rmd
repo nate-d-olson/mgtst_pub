@@ -1,0 +1,89 @@
+---
+title: "Differential Abundance Calculations"
+author: "Nate Olson"
+date: "January 29, 2017"
+output: html_document
+---
+
+```{r message = FALSE}
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+```
+
+## Overview
+Calculating logFC differential abundance between pre and post-treatment samples.
+
+
+### Loading Pipeline Data
+```{r}
+mrexp_files <- list(
+      dada2  = "../data/mrexp_dada2.RDS",
+      mothur = "../data/mrexp_mothur.RDS",
+      qiime  = "../data/mrexp_qiime_refclus_nochimera.RDS"
+)
+mrexp <- mrexp_files %>% map(readRDS) 
+
+#Extracting metadata
+
+meta_dat <- mrexp$mothur %>% pData()
+
+##labeling PCR replicates
+half1 <- paste(rep(c("A","B","C","D","E","F","G","H"), each = 6), 1:6, sep = "_")
+sam_dat <- meta_dat %>% 
+      mutate(pcr_half = if_else(pos %in% half1, "1","2"),
+             pcr_rep = paste0(pcr_16S_plate,":",pcr_half)) %>% 
+      select(sampleID, dilution,sam_names, pcr_rep) %>% 
+      dplyr::rename(samID = sam_names)
+```
+
+
+```{r}
+E01JH004_pre_post_sams <- meta_dat %>% 
+      filter(sampleID == "E01JH0004", dilution %in% c(0,-1)) %>% .$sam_names
+mrexp_004_pre_post <- mrexp %>% 
+      map(~.[,which(colnames(.) %in% E01JH004_pre_post_sams)]) %>% 
+      map(~.[which(rowSums(MRcounts(.)) > 0), ])
+mrexp_obj <- mrexp_004_pre_post$dada2
+```
+
+```{r}
+pre_post_meta <- meta_dat %>% filter(sampleID == "E01JH0004", dilution %in% c(0,-1))
+pre_sams <- pre_post_meta %>% filter(dilution == 0) %>% .$sam_names
+post_sams <- pre_post_meta %>% filter(dilution == -1) %>% .$sam_names
+```
+
+
+## metagenomeSeq fitZig
+```{r}
+mrexp_p <- cumNormStat(mrexp_obj, pFlag = TRUE, main = "004 Pre Post Samples DADA2")
+```
+
+```{r}
+mrexp_obj <- cumNorm(mrexp_obj, p = mrexp_p)
+```
+
+```{r}
+dil_factor <- pData(mrexp_obj)$dilution %>% as.factor()
+normFactor <- normFactors(mrexp_obj)
+normFactor <- log2(normFactor/median(normFactor) + 1)
+mod <- model.matrix(~dil_factor + normFactor)
+settings <- zigControl(maxit = 10, verbose = TRUE)
+fit <- fitZig(obj = mrexp_obj, mod = mod, useCSSoffset = FALSE, control = settings)
+```
+
+Results interpretation  
+* dil_factor0 is the logFC
+* not sure about norm factors
+* need to get variance from the output
+
+```{r}
+eBayes(fit$fit) %>% topTable()
+```
+
+## Next Steps
+* Work out methods for 
+      - multiple pipelines
+      - different combinations of dilutions
