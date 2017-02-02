@@ -54,36 +54,50 @@ pre_post_meta <- meta_dat %>% filter(sampleID == "E01JH0004", dilution %in% c(0,
 pre_sams <- pre_post_meta %>% filter(dilution == 0) %>% .$sam_names
 post_sams <- pre_post_meta %>% filter(dilution == -1) %>% .$sam_names
 ```
-
-
-## metagenomeSeq fitZig
 ```{r}
-mrexp_p <- cumNormStat(mrexp_obj, pFlag = TRUE, main = "004 Pre Post Samples DADA2")
+nrow(mrexp_004_pre_post$dada2)
+```
+
+
+## metagenomeSeq fitFeature Model
+```{r}
+mrexp_obj <- mrexp_004_pre_post$dada2
+## excluding features not present in half the samples
+mrexp_obj <- filterData(mrexp_obj, present = 8, depth = 1)
+
+## Upper quartile normalization
+mrexp_obj <- cumNorm(mrexp_obj, p = 0.75)
+pd <- pData(mrexp_obj)
+pd$dilution <- factor(pd$dilution, levels = c(0,-1))
+mod <- model.matrix(~1 + dilution, data = pd)
+mod
+pre_post_reg <- fitFeatureModel(mrexp_obj, mod)
+```
+
+Looking at features present in all unmixed pre and post replicates. 
+Only `r nrow(mrexp_obj)` out of `r nrow(mrexp_004_pre_post$dada2)` features were present in all replicates. 
+
+```{r}
+reg_coefs <- MRcoefs(pre_post_reg,number = nrow(mrexp_obj))
 ```
 
 ```{r}
-mrexp_obj <- cumNorm(mrexp_obj, p = mrexp_p)
+reg_coefs %>% head() %>% knitr::kable()
 ```
 
-```{r}
-dil_factor <- pData(mrexp_obj)$dilution %>% as.factor()
-normFactor <- normFactors(mrexp_obj)
-normFactor <- log2(normFactor/median(normFactor) + 1)
-mod <- model.matrix(~dil_factor + normFactor)
-settings <- zigControl(maxit = 10, verbose = TRUE)
-fit <- fitZig(obj = mrexp_obj, mod = mod, useCSSoffset = FALSE, control = settings)
-```
 
 Results interpretation  
-* dil_factor0 is the logFC
-* not sure about norm factors
-* need to get variance from the output
+* logFC - is this pre/post or the opposit?
+* how to get se
 
-```{r}
-eBayes(fit$fit) %>% topTable()
-```
+
 
 ## Next Steps
+* Compare pre and post metagenomeSeq to permutation method, a kind of sanity check
+* Use permutations for unmixed vs titration exected values
+* Calculate fitFeatureModel unmixed vs. titration differences
+* Look at pre and post specific features
+
 * Work out methods for 
       - multiple pipelines
       - different combinations of dilutions

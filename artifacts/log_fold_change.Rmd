@@ -78,7 +78,7 @@ post_sams <- pre_post_meta %>% filter(dilution == -1) %>% .$sam_names
 
 
 ```{r}
-pre_post_mat <- mrexp_004_pre_post$dada2 %>% metagenomeSeq::cumNormMat()
+pre_post_mat <- mrexp_004_pre_post$mothur %>% metagenomeSeq::cumNormMat()
 
 get_logFC <- function(pre, post){
       pre_post_mat[,pre]/pre_post_mat[,post] 
@@ -133,12 +133,186 @@ perm_logFC_summary %>% filter(logFC_var > 0.8)
 ## Log Fold-Change Bias 
 
 ### Treatment-Specific Features  
-Use the following function to get treatment specific features
+
 ```{r}
-#metagenomeSeq::uniqueFeatures()
+dilution_samples <- meta_dat %>% filter(sampleID == "E01JH0004") %>% 
+     .$dilution %>%  as.factor()
+
+uniq_features <- metagenomeSeq::uniqueFeatures(mrexp_004$mothur,
+                              cl = dilution_samples,
+                              nsamples = 4, nreads = 1)
+pre_specific_df <- uniq_features %>% as.data.frame() %>% 
+      rownames_to_column(var = "featureNames") %>% 
+      filter(`Samp. in -1` == 4, `Samp. in 0` == 0)
+
+post_specific_df <- uniq_features %>% as.data.frame() %>% 
+      rownames_to_column(var = "featureNames") %>% 
+      filter(`Samp. in -1` == 0, `Samp. in 0` == 4)
+
+## filter mrobj to get pre and post specific features
+specific_features <- c(pre_specific_df$featureNames, post_specific_df$featureNames)
+# want to normalize before subsetting features
+#mrexp_specific <-mrexp$dada2 %>% {.[which(rownames(.) %in%  specific_features),]}
 ```
 
-* Expected logFC is the difference between titration factors for the titrations being compared   
+
+
+
+For the E01JH0004 sample DADA2 dataset there are `r nrow(pre_specific_df)` pre-treatment specific features, 
+and `r nrow(post_specific_df)` pre-treatment specific features.
+
+* Expected logFC is the difference between titration factors for the titrations being compared  
+
+### Calculating logFC for differences between titrations
+```{r}
+meta_dat_004 <- meta_dat %>% filter(sampleID == "E01JH0004") %>% mutate(dilution = as.factor(dilution))
+
+get_sams <- function(T1, T2){
+      meta_dat_004 %>% filter(dilution %in% c(T1, T2)) %>% 
+            .$sam_names
+}
+
+#### ASK HECTOR
+## mrexp object defined globally
+filter_mrexp <- function(sams, features){
+      mrexp_004$mothur %>% {.[,which(colnames(.) %in% sams)]} %>% 
+            # ?? Question-  better to filter normalize or filter features first
+            ## Thinking is that you would want to normalize for all features so 
+            ## that the normalization factor takes into account the total library
+            ## size not just the features of interest
+            filterData(present = 4, depth = 1) %>%
+            ## not sure the best number to filter as present inclined to keep all
+            ## features present in at least one sample - want to see where the model fails
+            cumNorm(p = 0.75) %>%
+            ## Filtering pre/ post specific features
+            {.[which(rownames(.) %in%  features),]}
+      
+}
+
+#### Ask Joe about numerator and denominator in logFC estimate
+## Might be able to tell from model matrix
+fit_model <- function(mrexp_obj, T1, T2){
+      print(paste("Titrations:", T1, T2))
+      pd <- pData(mrexp_obj)
+      # defining levels to control the numerator and denominator in logFC estimate
+      pd$dilution <- factor(pd$dilution, levels = c(T1, T2)) 
+      mod <- model.matrix(~1 + dilution, data = pd) 
+      print("fit model")
+      fitFeatureModel(mrexp_obj, mod)
+}
+fit_safely <- safely(fit_model)
+mrcoefs_safely <- safely(MRcoefs)
+
+titrations <- dilution_samples %>% levels()
+```
+
+
+
+
+
+
+### Pre Specific Features
+```{r}
+## T1 and T2 represent the possible pairs of titrations
+pre_fit_df <- data_frame(T1 = rep(titrations, each = length(titrations)) %>% as.numeric(), 
+                         T2 = rep(titrations, length(titrations)) %>% as.numeric()) %>% 
+      # excluding pre and post unmixed samples
+      filter(!(T1 %in% c(-1,0)), !(T2 %in% c(-1,0)), T1 != T2) %>% 
+      # Getting sample names for titrations
+      mutate(sam_names = map2(T1, T2, get_sams)) %>% 
+      mutate(features = rep(list(pre_specific_df$featureNames),42)) %>% 
+      ## calculate expected logFC for pre specific features
+      mutate(exp_logFC_post = - T1 + T2) %>% 
+      mutate(exp_logFC_pre = log2((1-2^(-T1))/(1-2^(-T2)))) %>% 
+      ## calculate logFC using fitFeature model for pre and post specific features
+      mutate(mrexp_obj = map2(sam_names, features, filter_mrexp), # subset obj and normalize
+             fit = pmap(list(mrexp_obj, T1, T2), fit_safely),
+             fit_coefs = map(fit, ~mrcoefs_safely(.$result, number = Inf))) # get coefficient table
+```
+
+```{r}
+mrexp_004$mothur %>% {.[,which(colnames(.) %in% pre_fit_df$sam_names[[2]])]} %>% 
+            filterData(present = 4, depth = 1) %>% 
+            ## not sure the best number to filter as present inclined to keep all
+            ## features present in at least one sample - want to see where the model fails
+            cumNorm(p = 0.75) %>% 
+      {.[which(rownames(.) %in%  pre_fit_df$features[[2]]),]}
+
+```
+
+```{r}
+pre_fit_df$fit
+```
+
+```{r}
+pre_fit_df2 <- pre_fit_df %>% select(T1, T2, exp_logFC_pre, exp_logFC_post, fit_coefs) %>% 
+      mutate(fit_coefs = map(fit_coefs, ~.$result),
+             fit_coefs_class = map_chr(fit_coefs, class)) %>% 
+      filter(fit_coefs_class == "data.frame") %>% 
+      select(-fit_coefs_class) %>% 
+      mutate(fit_coefs = map(fit_coefs, rownames_to_column, var = "featureNames")) %>% 
+      unnest()
+```
+
+```{r}
+pre_df <- pre_specific_df %>% select(featureNames, `Reads in -1`) %>% 
+      filter(featureNames %in% paste0("Seq",c(11,129,156,229,269,325,351,500))) %>% 
+      rename(`Reads in -1` = "reads") %>% 
+      select(featureNames, reads)
+
+pre_fit_df2 %>% ggplot(aes(x = exp_logFC_pre, y = logFC)) + 
+      geom_text(aes(color = factor(T1), label = T2)) + facet_wrap(~featureNames) +
+      geom_abline(aes(intercept = 0, slope = 1)) + 
+      geom_text(data = pre_df, aes(x = -0.75, y = 1.1, label = reads))
+```
+
+### Post Specific Features
+```{r}
+## T1 and T2 represent the possible pairs of titrations
+post_fit_df <- data_frame(T1 = rep(titrations, each = length(titrations)) %>% as.numeric(), 
+                         T2 = rep(titrations, length(titrations)) %>% as.numeric()) %>% 
+      # excluding pre and post unmixed samples
+      filter(!(T1 %in% c(-1,0)), !(T2 %in% c(-1,0)), T1 != T2) %>% 
+      # Getting sample names for titrations
+      mutate(sam_names = map2(T1, T2, get_sams)) %>% 
+      mutate(features = rep(list(post_specific_df$featureNames),42)) %>% 
+      ## calculate expected logFC for pre specific features
+      mutate(exp_logFC_pre = log2((2^(-T1)/(2^(-T2))))) %>% 
+      mutate(exp_logFC_post = log2((1-2^(-T2))/(1-2^(-T1)))) %>% 
+      ## calculate logFC using fitFeature model for pre and post specific features
+      mutate(mrexp_obj = map2(sam_names, features, filter_mrexp), # subset obj and normalize
+             fit = pmap(list(mrexp_obj, T1, T2), fit_safely),
+             fit_coefs = map(fit, ~mrcoefs_safely(.$result, number = Inf))) # get coefficient table
+
+post_fit_coefs <- post_fit_df %>% select(T1, T2, exp_logFC_pre, exp_logFC_post, fit_coefs) %>% 
+      mutate(fit_coefs = map(fit_coefs, ~.$result),
+             fit_coefs_class = map_chr(fit_coefs, class)) %>% 
+      filter(fit_coefs_class == "data.frame") %>% 
+      select(-fit_coefs_class) %>% 
+      mutate(fit_coefs = map(fit_coefs, rownames_to_column, var = "featureNames")) %>% 
+      unnest()
+```
+
+```{r}
+post_df <- post_specific_df %>% select(featureNames, `Reads in 0`) %>% 
+      filter(featureNames %in% (post_fit_coefs$featureNames %>% unique())) %>% 
+      rename(`Reads in 0` = "reads") %>% 
+      select(featureNames, reads)
+
+post_fit_coefs %>% left_join(post_df) %>% #filter(reads %in% 500:1000) %>% #, T1 %in% 2:4, T2 %in% 2:4) %>% 
+      ggplot(aes(x = exp_logFC_post, y = logFC)) + 
+      geom_text(aes(color = factor(T1), label = T2)) + facet_wrap(~featureNames) +
+      geom_abline(aes(intercept = 0, slope = 1)) + 
+      geom_text(aes(x = -0.75, y = 1.1, label = reads))
+```
+
+```{r}
+post_fit_coefs %>% left_join(post_df) %>% 
+      mutate(residuals = exp_logFC_post - logFC,
+             read_bins = cut_width(reads, width = 50)) %>% 
+      ggplot() + geom_density(aes(x = residuals, fill = read_bins)) +
+      facet_wrap(~read_bins)
+```
 
 
 * Compare expected values to those made by differential abundance methods, maybe permutation based method as well  
