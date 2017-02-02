@@ -1,13 +1,19 @@
-* artifacts
-  * normalization
-  * differential abundance
+## Artifacts
+* sample selection/ experimental design
+* wetlab qa and titration validation
+* seq data qa
+* pipeline results characterization
+* count table value analysis - bias-variance and feature exploration
+* log fold-change analysis - bias-variance and feature exploration
 
 
 ## Analysis
+* Standardize pData for MRexperiments (see 2017-02-01-log-fold-change-df.Rmd for code)
 * Move mrexp to ProjectTemplate
 * Move permutation code to ProjectTemplate
 * Dilution permutations
-* Calculate differential abundance - metagenomeSeq, DESeq2, EdgeR, ...
+* Move differential abundance calcs to ProjectTemplate - code to src, and tidy tables to data cache
+* Look into titration comparisons where MgSeq failed (see 2017-02-01-log-fold-change-df.Rmd)
 
 ## Writing
 1. Review current draft
@@ -21,9 +27,9 @@
       1. Draft wet lab QA methods and results
       2. Draft seq QA methods and results
       3. Draft pipeline QA results section
-      
+
 ## Other
-- Cleaning up metadata and veriable name consistency
+- Cleaning up metadata and variable name consistency
       - Incorporate meta_dat from normalization artifact into projectTemplate
       - Add mrexp to projectTemplate
       - standardize sample metadata for mrexperiments
