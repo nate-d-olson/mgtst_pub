@@ -1,14 +1,20 @@
 # Background
 * General Introduction
-      * Microbiome and 16S metagenomics 
+      * Microbiome and 16S metagenomics
       * Differential abundance and normalization  
-      * Connection between 16S and RNAseq
-* Use of mixtures for RNAseq validation  
+           - Role of normalization in addressing biases, e.g. differences in sequencing depth and sample coverage  
+
+      * Connection between 16S and RNAseq  
+
+* Use of mixtures for RNAseq validation   
       * Complexity of real samples  
       * Provides a level of truth  
+
+* Assessing normalization and differential abundance  
+      * Current approaches, and limitations  
+      * Bias-variance trade off  
+
 * Study objectives  
       * Demonstrate how mixtures can be used for 16S  
       * Generate a dataset for use in evaluating 16S  
       * Develop methods for assessing normalization and differential abundance  
-
-

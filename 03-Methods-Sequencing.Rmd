@@ -1,15 +1,15 @@
 
 
-## Library Preparation and Sequencing 
-The 16S PCR targeted the V34 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation]. 
-The V34 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at). 
-The primer sequences included additional overhang adapter seuqences to facilitate library preparation (5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3') and reverse primers (GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC). 
+## Library Preparation and Sequencing
+The 16S PCR targeted the V34 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
+The V34 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at).
+The primer sequences include additional overhang adapter seuqences to facilitate library preparation (5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3') and reverse primers (GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC).
 
-The reaction was performed according to the Illumina protocol using the KAPA HiFI HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA). 
-The resulting PCR product was then verified using gel electrophoresis. 
+The 16S targeted PCR was performed according to the Illumina protocol using the KAPA HiFI HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
+The resulting PCR product was verified using agarose gel electrophoresis.
 Next the PCR product was purified and concentration was assessed using picogreen ( __Reagent Info, plate reader info__). 
-After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D (Illumina Inc., San Diego CA). 
-The indexed PCR products were again purified and concentration was assessed using picogreen ( __Reagent Info__). 
-The purified sample concentration was normalized using SequalPrep (ThermoFisher, Waltham MA), according to the manufactuers protocol and pooled prior to sequencing. 
-Due to low concentration of the pooled amplicon library the follow method was used __TODO__. 
+After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D (Illumina Inc., San Diego CA).
+The indexed PCR products were again purified and concentration was assessed using picogreen ( __Reagent Info__).
+The purified sample concentration was normalized using SequalPrep (ThermoFisher, Waltham MA), according to the manufactuers protocol and pooled prior to sequencing.
+Due to low concentration of the pooled amplicon library the follow method was used __TODO__.
 The library was run on a Illumina MiSeq and base calls were made using ___TODO__.

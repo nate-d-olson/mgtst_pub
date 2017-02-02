@@ -1,5 +1,5 @@
---- 
-title: "Using A Two Sample Titration Mixture Design to Evaluate Normalization and Differential Abundance Methods."
+---
+title: "A Sample Mixture Experiment to Assess 16S rRNA Metagenomic Normalization and Differential Abundance Methods."
 author: "Nate Olson"
 date: "`r Sys.Date()`"
 knit: "bookdown::render_book"
@@ -16,5 +16,27 @@ github-repo: nate-d-olson/mgtst_pub
 library(ProjectTemplate)
 load.project()
 ```
+# Authors
+
+Nathan D. Olson  
+* National Institute of Standards and Technology  
+* University of Maryland   
+
+Stephanie Hao  
+* Johns Hopkins University  
+
+Winston Timp  
+* Johns Hopkins University  
+
+Marc Salit  
+* National Institute of Standards and Technology  
+* Stanford University  
+
+O. Colin Stine  
+* School of Medicine, University of Maryland  
+
+Hector Corrada Bravo  
+* University of Maryland  
+
 
 # Abstract

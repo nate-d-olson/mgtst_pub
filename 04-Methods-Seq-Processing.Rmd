@@ -1,13 +1,14 @@
 ## Sequence Processing
-Sequence data was processed using a number of commonly used pipelines, Mothuur [@schloss2009introducing], QIIME [@caporaso2010qiime], DADA2 [@callahan2016dada2], and an in-house pipeline with de-novo clustering phylogenetic placement.
-The Mothur (version 1.37, http://www.mothur.org/) pipeline used was based on the MiSeq SOP [@schloss2009introducing,@kozich2013development]. 
-Modifications to the SOP as a different 16S rRNA region was sequenced than the region the SOP was developed for, see the Makefile in the project github repository ( __TODO__ add website). 
-The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merge using the Needleman-Wunsch algorithm. 
-Low quality reads, presence of ambiguous bases, reads that failed alignment to the SILVA reference database (https://www.arb-silva.de/), and chimeras were filtered from the dataset. 
-Chimera filtering was performed using UChime without a reference database (REF). 
-Average neighbor clustering for OTU clustering using pairwise sequences distances calculated from the reference based multiple sequence alignment. 
-The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set. 
-The QIIME pipeline for paired-end Illumina data was performed according to the online tutorial (http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb). The methods included open reference and _de novo_ clustering with and without chimera removal [@caporaso2010qiime]. 
-DADA2 an R native pipeline was also used to process the sequencing data [@callahan2016dada2]. 
-The pipeline included a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naieve bayesian classifier. 
+Sequence data was processed using a number of bioinformatic pipelines, Mothuur [@schloss2009introducing], QIIME [@caporaso2010qiime], DADA2 [@callahan2016dada2], and an in-house pipeline with _de-novo_ clustering phylogenetic placement.
+The Mothur (version 1.37, http://www.mothur.org/) pipeline used was based on the MiSeq SOP [@schloss2009introducing,@kozich2013development].
+As a different 16S rRNA region was sequenced than the region the SOP was developed for the SOP was modified to account for the differences in overlap between the forward and reverse reads compared to the targeted region the SOP was developed for, see the Makefile in the project github repository ( __TODO__ add website).
+The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merge using the Needleman-Wunsch algorithm.
+Low quality reads, presence of ambiguous bases, reads that failed alignment to the SILVA reference database (https://www.arb-silva.de/), and chimeras were filtered from the dataset.
+Chimera filtering was performed using UChime without a reference database (REF).
+Average neighbor clustering for OTU clustering using pairwise sequences distances calculated from the reference based multiple sequence alignment.
+The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set.
+The QIIME pipeline for paired-end Illumina data was performed according to the online tutorial (http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb).
+The methods included open reference and _de novo_ clustering with and without chimera removal [@caporaso2010qiime].
+DADA2 a R native pipeline was also used to process the sequencing data [@callahan2016dada2].
+The pipeline included a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier.
 The in-house pipeline used Sickle for read trimming [@sickle], Pandaseq (REF) for merging paired-end reads, DNAclust for OTU assignment using a 0.99 similarity threshold [@ghodsi2011dnaclust], and a phylogenetic placement based method TIPP was used for taxonomic assignment (REF).  

@@ -2,7 +2,7 @@
 
 ### 16S PCR validation
 The initial 16S PCR product was first verified for amplification and amplicon size using gel electrophoresis.  
-The concentration of the PCR product was also assessed using pico green, samples with negative measured concentation values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (postion F9, plate 1).  All but one of the no template control concentration measurements was less than 1 __ng per ul__, when the one sample was checked with Qubit the concentration was too low to measure (Supplemental Material).   
+The concentration of the PCR product was assessed using pico green, samples with negative measured concentration values (excluding no template controls (NTC)) were also check using Qubit. Only one of the 180 samples did not successfully amplify E01JH0016 dilution 5 (position F9, plate 1).  All but one of the no template control concentration measurements was less than 1 __ng per ul__, when the one sample was checked with Qubit the concentration was too low to measure (Supplemental Material).   
 
 #### Normalization
 
