@@ -15,24 +15,18 @@ setwd(cwd)
 
 ## Objective
 Workout code for generating data frame with estimated logFC and variance between titrations for the different pipelines and differential abundance methods. 
+Currently using the default normalization for each differential abundance detection method.
 
 Pipelines: 
 1. DADA2  
 2. Mothur   
 3. QIIME  
 
-Normalization Methods: 
-1. TSS  
-2. CSS  
-3. UQ  
-4. DESeq2 method 
-5. EdgeR method
-
 Differential Abundance Methods:  
 1. metagenomeSeq - fitFeatureModel  
 2. DESeq2  
 3. EdgeR  
-4. Permutation  
+4. Permutation (__TODO__)
 
 ## Approach 
 Use a data_frame object and list columns to apply differential abundance methods to different datasets  
@@ -41,6 +35,7 @@ Use a data_frame object and list columns to apply differential abundance methods
 1. Load pipeline data
 2. Define parameter fields for titration comparisons 
 3. Develop function for each differential abundance method 
+4. Save data frames with log fold-change calculations for each differential abundance detection method. 
 
 ## Loading pipeline data
 ```{r}
@@ -159,7 +154,7 @@ mrcoefs_safely <- safely(MRcoefs)
 ```
 
 #### DADA2
-```{r message = FALSE}
+```{r message = FALSE, warning = FALSE}
 logFC_MgSeq_dada2_df <- titration_comp_dada2_df %>% 
       mutate(fit = pmap(list(mrexp_sub, T1, T2), fit_safely)) 
 
@@ -176,7 +171,7 @@ logFC_MgSeq_dada2_coefs_tidy <- logFC_MgSeq_dada2_coefs_df %>%
 ```
 
 #### Mothur
-```{r message = FALSE}
+```{r message = FALSE, warning = FALSE}
 logFC_MgSeq_mothur_df <- titration_comp_mothur_df %>% 
       mutate(fit = pmap(list(mrexp_sub, T1, T2), fit_safely)) 
 
@@ -194,7 +189,7 @@ logFC_MgSeq_mothur_coefs_tidy <- logFC_MgSeq_mothur_coefs_df %>%
 ```
 
 #### QIIME
-```{r message = FALSE}
+```{r message = FALSE, warning = FALSE}
 logFC_MgSeq_qiime_df <- titration_comp_qiime_df %>% 
       mutate(fit = pmap(list(mrexp_sub, T1, T2), fit_safely)) 
 
@@ -375,7 +370,7 @@ logFC_edgeR_dada2_coefs_tidy <- logFC_edgeR_dada2_coefs_df %>%
 
 #### Mothur
 ```{r message = FALSE}
-logFC_edgeR_mothur_df <- titration_comp_qiime_df %>% 
+logFC_edgeR_mothur_df <- titration_comp_mothur_df %>% 
       mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "dilution"),
              fit = map(fit, exactTest)) 
 
