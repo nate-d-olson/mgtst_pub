@@ -5,7 +5,7 @@ recursive_loading: FALSE
 munging: FALSE
 logging: FALSE
 load_libraries: TRUE
-libraries: tidyverse, metagenomeSeq, phyloseq, stringr, DESeq, DESeq2, readxl, forcats, modelr, knitr, Rqc, savR, vegan, sads
+libraries: tidyverse, metagenomeSeq, phyloseq, stringr, DESeq, DESeq2, edgeR, readxl, forcats, modelr, knitr, Rqc, savR, vegan, sads
 as_factors: FALSE
 data_tables: FALSE
 attach_internal_libraries: FALSE
