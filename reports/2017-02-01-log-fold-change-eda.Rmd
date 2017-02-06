@@ -44,7 +44,7 @@ logFC estimate distributions:
 
 For all five of the biological replicates most of the logFC estimates were between -2 and 2 log2. 
 ```{r}
-logFC_DESeq2_sub %>% ggplot() + geom_boxplot(aes(x = pipe, y = logFC, color = sampleID)) +
+logFC_MgSeq_sub %>% ggplot() + geom_boxplot(aes(x = pipe, y = logFC, color = sampleID)) +
       theme_bw()
 ```
 
