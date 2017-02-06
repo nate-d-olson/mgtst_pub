@@ -222,7 +222,8 @@ Function for converting MRexperiment to DESeqDataSeq
 ## Function based on phyloseq phyloseq_to_deseq2
 mrexp_to_deseq2 <- function(mrexp_obj, design, ...){
       ## Extracting count data - no scaling or transformation 
-      count_data <- mrexp_obj %>% MRcounts(sl = 1) %>% 
+      count_data <- mrexp_obj %>% 
+            metagenomeSeq::MRcounts(norm = FALSE, log = FALSE, sl = 1) %>% 
             as.matrix() %>% round(digits = 0)   
       
       ## Sample metadata

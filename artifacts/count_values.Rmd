@@ -267,9 +267,14 @@ count_exp_obs <- count_df %>%
       mutate(p = 2^(-dilution), exp_count = post * (1-p) + pre * p)
 ```
 
-## Metrics for evaluating count values
+## Metrics for evaluating count values 
+__TODO__ Update metric
+$$\frac{\sqrt{1/n \sum_i^n(obs-exp)^2}}{\sqrt{exp^2}}$$
+__TODO__ Separate analysis for expected 0 value
+- 0 expected values: detection, __QUESTION:__ what about observed zero values  
+- >0 expected values: accuracy
 
-The overall pipeline and normalization method performance was evaluated using root mean squared error (RMSE) and the normalized RMSE (NRMSE). 
+The overall pipeline and normalization method performance was evaluated using root mean squared error (RMSE) and the normalized RMSE (NRMSE) or coefficient of variation of the RMSE. 
 Normalizing RMSE allow for the comparison of metric value across pipeline and normalization methods. 
 Overall the count table generated using the DADA2 sequence inference based method  with CSS normalization and log2 transformation had the lowest NRMSE. 
 The NRMSE for the QIIME pipeline, open reference clustering, was comparable for CSS and TSS normalization method.  

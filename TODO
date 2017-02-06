@@ -14,6 +14,14 @@
 * Dilution permutations
 * Move differential abundance calcs to ProjectTemplate - code to src, and tidy tables to data cache
 * Look into titration comparisons where MgSeq failed (see 2017-02-01-log-fold-change-df.Rmd)
+* Plot coefficient of variation to explore measurement assessment variation 
+* Check if `round(0)` is needed for `mgseq_to_deseq2`
+* Check if edgeR `x <- x +1` is needed 
+* MA plots   
+      - Subject   
+      - consistency for unique OTUs - check for expected values - plot all in light grey then color unique features, using means for log-fold change
+      - looking at both OTUs and taxonomy
+
 
 ## Writing
 1. Review current draft

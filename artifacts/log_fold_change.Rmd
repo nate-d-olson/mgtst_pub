@@ -17,6 +17,11 @@ setwd(cwd)
 
 ## Overview
 
+__NOTES__  
+* Only use means for initial analysis  
+* Evaluate the accuracy of fold change using replicates - defining confidence intervals can also use mixed effect with variance partition analysis   
+* Looking for accuracy across biological replicates MA plots, use MA plots to make statements about methods
+
 ## Code for Analysis
 ### Loading Pipeline Data
 ```{r}

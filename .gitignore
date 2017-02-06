@@ -4,7 +4,7 @@
 .Ruserdata
 .DS_Store
 _book
-reports/*html
+#reports/*html
 reports/*rds
 reports/*pdf
 reports/*cache
