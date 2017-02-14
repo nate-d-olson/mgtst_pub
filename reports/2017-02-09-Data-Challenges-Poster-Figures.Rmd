@@ -1,0 +1,445 @@
+---
+title: "Microbiome Data Analysis Poster Figures"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, message = FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+```
+
+
+## Read Count Summary
+```{r fq_data_files}
+project_dir <- "~/Projects/16S_etec_mix_study/"
+fastq_dir <- paste0(project_dir, "data/fastq/jhu_run2/")
+dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
+                           recursive = TRUE, full.names = TRUE)
+seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
+    grep(pattern = "fastq.gz", .,value = TRUE) %>%
+    str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
+    str_replace("-",".")
+names(dat_files) <- seq_ds_id
+```
+
+
+```{r loadQA}
+# from script but not saved
+read_groups <- rep(NA,length(dat_files))
+read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
+read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
+read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
+read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
+
+qa_list <- readRDS("../data/rqcQA_list.rds")
+```
+
+```{r metadat}
+# Tidy data
+
+## Run 
+grp_df <- data_frame(read_group = read_groups, 
+                     seq_ds_id, 
+                     filename = basename(dat_files)) %>%
+    separate(read_group,c("plate","Read")) %>% 
+    mutate(ill_id = str_replace(filename, "_.*",""))
+
+## read count data 
+qa_file_info <- perFileInformation(qa_list) %>% 
+    select(-format,-path)
+
+## study metadata
+meta_df <- sampleSheet %>% 
+    mutate(pos_ns = str_replace(pos, "_",""),
+           ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
+    filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
+    mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
+    left_join(grp_df) %>% left_join(qa_file_info)
+```
+
+#### Read Counts   
+Two barcoded experimental sample has less than 50,000 reads. The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). Sample E01JH0016 titration 5 position F9 of plate 1 initial 16S PCR failed. 
+__TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normaization data. 
+
+
+
+```{r fig_count, fig.cap="Number of reads per barcoded sample (Library Size), by read direction (X-facet) and replicate 16S PCR plate (Y-facet). Vertical line indicates 50,000 reads per barcoded sample."}
+meta_df %>% # filter(Read == "R1") %>%
+    ggplot() + 
+        geom_histogram(aes(x = reads), position = "dodge") + 
+        # facet_grid(plate~.) + 
+        scale_x_log10() + 
+        geom_rug(aes(x = reads, color = biosample_id)) +
+        geom_vline(aes(xintercept = 50000), color = "grey80") +
+        theme_bw() + labs(x = "Library Size (log10)", 
+                          y = "Count", color = "Sample ID") +
+        theme(legend.position = "bottom")
+```
+
+```{r}
+ggsave("~/Desktop/library_size.png", width = 4, height = 3.5, dpi = 450)
+```
+
+
+
+
+## Pipeline Rarefaction Curves
+
+```{r echo = FALSE}
+mrexp_files <- list(
+      dada2 = "../data/mrexp_dada2.RDS",
+      mothur = "../data/mrexp_mothur.RDS",
+      qiime = "../data/mrexp_qiime_refclus_nochimera.RDS"
+)
+mrexp <- mrexp_files %>% map(readRDS)
+```
+
+```{r}
+curve_df <- mrexp %>% map_df(get_curve_df, .id = "pipe")
+```
+
+```{r}
+curve_df %>% filter(sampleID == "E01JH0038") %>% 
+  mutate(Treatment = fct_recode(factor(dilution), Post = "0", Pre = "-1")) %>%
+  ggplot() + 
+    geom_path(aes(x = sample, y = OTUs, color = Treatment, group = samID)) +
+    facet_grid(.~pipe, scales = "free") + 
+    theme_bw() + theme(legend.position = "bottom") + 
+  labs(x = "Sample")
+```
+
+```{r}
+ggsave("~/Desktop/rarefaction_curves.png", width = 6, height = 5,dpi = 450)
+```
+
+## Loading data from `2017-02-07-Pre-Post-Specific.Rmd`
+```{r}
+feature_specificity_df <- readRDS("../data/feature_specificity_df.rds") 
+feature_specificity_counts_df <- readRDS("../data/feature_specificity_counts_df.rds")
+```
+
+
+## OTU specificity - focusing on DADA2 only
+```{r}
+feature_specificity_df <- feature_specificity_df %>% 
+      filter(pipe == "dada2") 
+feature_specificity_counts_df <- feature_specificity_counts_df %>% 
+      filter(pipe == "dada2")
+```
+
+
+```{r}
+feature_specificity_df %>% filter(specific_anno != "biorep_neg") %>% 
+      ggplot() + geom_bar(aes(x = specific_anno)) +
+      theme_bw() + labs(y = "Count", x = "OTU Specificity")
+```
+
+```{r}
+ggsave("~/Desktop/feature_specificity.png",width = 6, height = 2, dpi = 450)
+```
+
+```{r}
+feature_specificity_counts_df %>%
+      ggplot() + geom_jitter(aes(x = specific_anno, y = Reads), alpha = 0.5) + 
+      theme_bw() + scale_y_log10() +
+      theme_bw() + labs(x = "OTU Specificity")
+```
+
+
+```{r}
+ggsave("~/Desktop/feature_specificity_counts.png",width = 3.67, height = 4, dpi = 450)
+```
+
+## Measurement Assessment - Variance
+
+```{r}
+count_var_df <- readRDS("../data/normalize_count_variance_df.rds") %>% 
+  filter(pipe == "dada2", sampleID == "E01JH0004", !is.nan(cv_count),
+         norm_method %!in% c("dsq","dsqlog"))
+```
+
+OTU-level coefficient of variation  
+
+Figure Caption:
+Comparison of OTU-level coefficient of variation by normalization method. The coefficient of variation varied more by clutsering method than normalization method. The sequence inference based clustering method (DADA2) has lower overall OTU-level variance compared to the other clustering mehtods. For the normalization methods the log2  tansforming the raw count values resulted in the lowest mean coefficient of variantion for all three bioinformatic pipelines. 
+```{r}
+count_var_rank <- count_var_df %>% group_by(norm_method) %>% 
+  summarise(mean_cv = mean(cv_count)) %>%
+  arrange(mean_cv) %>% mutate(cv_rank = 1:n())
+
+
+count_var_df %>% left_join(count_var_rank) %>% ungroup() %>% 
+  mutate(norm_method = fct_reorder(norm_method,cv_count, mean)) %>% 
+      ggplot() + 
+      geom_violin(aes(x =  norm_method, y= cv_count)) + 
+      geom_point(aes(x = norm_method, y = mean_cv)) +
+      labs(x = "Normalization Method", y = "OTU-level Coefficient of Variation ") +
+      theme_bw()
+```
+
+```{r}
+ggsave("~/Desktop/measurement_assessment_variance.png",width = 3.67, height = 4,dpi = 450)
+```
+
+### Measurement Assessment - Bias
+
+```{r}
+count_df <- readRDS("../data/expected_counts_df.rds") %>% 
+  filter(pipe == "dada2", sampleID == "E01JH0004", !is.na(exp_count),
+         norm_method %!in% c("dsq","dsqlog"))
+```
+
+```{r}
+count_filt <- count_df %>% mutate(featureIndices = as.numeric(featureIndices)) %>% 
+  left_join(feature_specificity_df) # %>% 
+      #filter(specific_anno %in% c("pre_full","post_full", "non-specific"))
+```
+
+```{r}
+count_filt$exp_count %>% summary() 
+```
+
+
+```{r}
+count_filt %>% filter(norm_method %in% c("raw","uqslog")) %>%
+  mutate(norm_method = if_else(norm_method == "uqslog", "csslog", norm_method),
+         norm_method = fct_relevel(norm_method, c("raw","csslog"))) %>% 
+ggplot() + 
+  geom_hex(aes(x = count, y = exp_count)) + 
+  geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") +
+  facet_wrap(~norm_method, scales = "free", ncol = 2) + theme_bw() +
+  labs(x = "Observed Counts", y = "Expected Counts") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggsave("~/Desktop/measurement_assessment_bias.png",width = 6, height = 3,dpi = 450)
+```
+
+
+## Measurement Assessment Bias-Variance
+
+```{r}
+count_hscore_filt <- readRDS("../data/expected_count_bias_metric_df.rds") %>% 
+  filter(pipe == "dada2", sampleID == "E01JH0004", !is.na(exp_count),
+         norm_method %!in% c("dsq","dsqlog"))
+```
+
+```{r}
+count_var_bias <- count_hscore_filt %>% left_join(count_var_df) %>% 
+  ungroup() %>% mutate(featureIndices = as.numeric(featureIndices)) %>% 
+  left_join(feature_specificity_df)
+```
+
+```{r}
+count_var_bias_summary <- count_var_bias %>% 
+      filter(!is.na(cv_count), !is.na(hscore), specific_anno == "post_full") %>% 
+      group_by(norm_method) %>% 
+      summarise(cv_count_median = median(cv_count, na.rm = TRUE),
+                cv_count_l95 = quantile(cv_count,0.25, na.rm = TRUE), 
+                cv_count_u95 = quantile(cv_count, 0.75, na.rm = TRUE),
+                hscore_median = median(hscore, na.rm = TRUE),
+                hscore_l95 = quantile(hscore, 0.25, na.rm = TRUE),
+                hscore_u95 = quantile(hscore, 0.75, na.rm = TRUE))
+```
+```{r}
+count_var_bias_summary
+```
+
+
+```{r}
+count_var_bias_summary %>% filter(norm_method %in% c("raw","rawlog", "tsslog", "uqslog")) %>% 
+      ggplot(aes(x = cv_count_median, y = hscore_median, 
+                 color = norm_method)) + 
+      geom_point() + 
+      geom_errorbar(aes(ymin = hscore_l95, ymax = hscore_u95)) +
+      geom_errorbarh(aes(xmin = cv_count_l95, xmax = cv_count_u95)) + theme_bw() +
+      labs(x = "OTU-level Coefficient of Variation", y = "Error", color = "Normalization") +
+      theme(legend.position = "bottom")
+```
+
+```{r}
+ggsave("~/Desktop/measurement_var_bias.png", width = 3.67, height = 4,dpi = 450)
+```
+
+
+## Log Fold-Change MA Plots
+```{r}
+logFC_est <- readRDS("../data/logFC_DESeq2_df.rds")
+feature_specificity_df <- readRDS("../data/feature_specificity_df.rds")
+```
+
+```{r}
+feature_specificity_counts_df <- readRDS("../data/feature_specificity_counts_df.rds")
+```
+
+
+```{r}
+glimpse(logFC_est)
+```
+
+Loading full feature specificity df
+```{r}
+logFC_specificity <- feature_specificity_df %>%
+  select(pipe, otuID, sampleID, specific_anno) %>% unique() %>%
+  dplyr::rename(featureNames = otuID) %>% right_join(logFC_est)
+```
+
+```{r}
+glimpse(logFC_specificity)
+```
+
+The same set of features are missing `specific_anno` for all biological replicates for the individual pipelines. 
+
+Not sure what fill values are being plotted.
+```{r}
+logFC_specificity %>% filter(is.na(specific_anno)) %>% select(pipe, featureNames, sampleID,baseMean) %>% unique() %>% 
+  filter(pipe == "dada2") %>% 
+  ggplot() +geom_raster(aes(x = sampleID, y = featureNames, fill = baseMean))
+```
+
+```{r}
+logFC_specificity %>% filter(is.na(specific_anno)) %>% select(pipe, featureNames, sampleID, baseMean) %>% unique() %>% 
+  filter(pipe == "mothur") %>% 
+  ggplot() +geom_raster(aes(x = sampleID, y = featureNames, fill = baseMean))
+```
+
+
+```{r}
+logFC_specificity %>% filter(is.na(specific_anno)) %>% select(pipe, featureNames, sampleID) %>% unique() %>% 
+  filter(pipe == "qiime") %>% 
+  ggplot() +geom_raster(aes(x = sampleID, y = featureNames))
+```
+
+
+```{r}
+logFC_background <- logFC_specificity %>% 
+  filter(T1 == 1, T2 %in% c(2:5)) %>% 
+  filter(sampleID == "E01JH0038") %>% 
+  group_by(pipe) %>% select(-specific_anno)
+  
+logFC_specificity %>% 
+  filter(specific_anno %in% c("pre_full"), 
+         T1 == 1, T2 %in% c(2:5)) %>% 
+    filter(sampleID == "E01JH0038") %>% 
+  mutate(exp_logFC = T1 - T2) %>% 
+  ggplot() + 
+  geom_point(data = logFC_background, aes(y = log2FoldChange, x = baseMean), 
+             color = "grey80",alpha = 0.25) + 
+  geom_point(aes(y = log2FoldChange, x = baseMean), color = "darkblue", alpha = 0.75) + 
+  geom_hline(aes(yintercept = exp_logFC), linetype = 2) + 
+  facet_grid(pipe~T2, scales = "free_y") +
+  scale_x_log10() +
+  theme_bw() +
+  labs(x = "A", y = "M", color = "Expected logFC") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggsave("~/Desktop/ma_plots.png", width = 6.7, height = 6,dpi = 450)
+```
+
+
+Most abundant post_full features
+```{r}
+top_post_full <- feature_specificity_counts_df %>% filter(specific_anno == "pre_full") %>% group_by(pipe, sampleID) %>% top_n(5, Reads) %>% 
+  dplyr::rename(featureNames = otuID)
+```
+
+```{r}
+top_post_full
+```
+
+
+```{r}
+top_features_logFC <- logFC_specificity %>% right_join(top_post_full)
+```
+
+```{r}
+top_features_logFC
+```
+
+Relative logFC for $2^{-1}$ titration to $2^{-2}-2^{-5}$ titrations for well behaved features.
+```{r}
+top_features_logFC %>% filter(T1 == 1,T2 %in% 2:5) %>% 
+  filter(featureNames %in% c("Seq11","Seq194","Otu00316","New.ReferenceOTU102","New.CleanUp.ReferenceOTU10219")) %>%
+  ggplot() + 
+  geom_point(aes(x = T2, y = log2FoldChange, color = featureNames)) + 
+  geom_path(aes(x = T2, y = log2FoldChange, color = featureNames)) +
+  geom_abline(aes(intercept = 1, slope = -1), linetype = 2, color = "grey40") + 
+    facet_grid(.~pipe) +
+  theme_bw() + labs(x = "Titration", y = "logFC") +
+  theme(legend.position = "none")
+```
+
+```{r}
+ggsave("~/Desktop/wellbehaved_logFC_features.png", width = 6, height = 3)
+```
+
+```{r}
+top_features_logFC %>% filter(T1 == 1,T2 %in% 2:5) %>% 
+  #filter(featureNames %in% c("Seq11","Seq194","Otu00316","New.ReferenceOTU102","New.CleanUp.ReferenceOTU10219")) %>%
+  ggplot() + 
+  geom_point(aes(x = T2, y = log2FoldChange, color = featureNames, shape = sampleID)) + 
+  geom_path(aes(x = T2, y = log2FoldChange, color = featureNames)) +
+  geom_abline(aes(intercept = 1, slope = -1), linetype = 2, color = "grey40") + 
+    facet_wrap(~featureNames) +
+  theme_bw() + labs(x = "Titration", y = "logFC") + theme(legend.position = "none")
+```
+
+```{r}
+ggsave("top_5_features.pdf", height = 18, width = 18)
+```
+
+
+### MA plots for naive logFC calcs
+```{r}
+logFC_est <- readRDS("../data/logFC_calc_df.rds")
+feature_specificity_df <- readRDS("../data/feature_specificity_df.rds")
+```
+
+```{r}
+logFC_specificity <- feature_specificity_df %>%
+  select(pipe, otuID, sampleID, specific_anno) %>% unique() %>% 
+  right_join(logFC_est)
+```
+
+```{r}
+logFC_specificity
+```
+
+```{r}
+logFC_background <- logFC_specificity %>% 
+  filter(T1 == 1, T2 %in% c(2:5)) %>% 
+ # filter(sampleID == "E01JH0038") %>% 
+  group_by(pipe) %>% select(-specific_anno)
+  
+logFC_specificity %>% 
+  filter(specific_anno %in% c("pre_full"), 
+         T1 == 1, T2 %in% c(2:5)) %>% 
+  #  filter(sampleID == "E01JH0038") %>% 
+  mutate(exp_logFC = T1 - T2) %>% 
+  ggplot() + 
+  geom_point(data = logFC_background, aes(y = logFC, x = A), 
+             color = "grey80",alpha = 0.25) + 
+  geom_point(aes(y = logFC, x = A), color = "darkblue", alpha = 0.75) + 
+  geom_hline(aes(yintercept = exp_logFC), linetype = 2) + 
+  facet_grid(pipe~T2, scales = "free_y") +
+  scale_x_log10() +
+  theme_bw() +
+  labs(x = "A", y = "M", color = "Expected logFC") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggsave("~/Desktop/ma_plots_css_calc.png")
+```
+

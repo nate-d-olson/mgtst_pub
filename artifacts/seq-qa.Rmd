@@ -92,8 +92,7 @@ qa_file_info <- perFileInformation(qa_list) %>%
     select(-format,-path)
 
 ## study metadata
-data(sample_sheet)
-meta_df <- sample_sheet %>% 
+meta_df <- sampleSheet %>% 
     mutate(pos_ns = str_replace(pos, "_",""),
            ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
     filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
@@ -132,7 +131,7 @@ Two barcoded experimental sample has less than 50,000 reads. The rest of the sam
 __TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normaization data. 
 
 ```{r table_count}
-meta_df %>% mutate(exp_ntc = ifelse(sampleID == "NTC", "NTC","EXP")) %>% 
+meta_df %>% mutate(exp_ntc = ifelse(biosample_id == "NTC", "NTC","EXP")) %>% 
     group_by(exp_ntc, Read, plate) %>% 
     summarise(mean_lib_size = mean(reads),
               min_lib_size = min(reads),
@@ -143,15 +142,19 @@ meta_df %>% mutate(exp_ntc = ifelse(sampleID == "NTC", "NTC","EXP")) %>%
 
 
 ```{r fig_count, fig.cap="Number of reads per barcoded sample (Library Size), by read direction (X-facet) and replicate 16S PCR plate (Y-facet). Vertical line indicates 50,000 reads per barcoded sample."}
-meta_df %>%
+meta_df %>% # filter(Read == "R1") %>%
     ggplot() + 
         geom_histogram(aes(x = reads), position = "dodge") + 
-        facet_grid(plate~Read) + scale_x_log10() + 
-        geom_rug(aes(x = reads, color = sampleID)) +
+        facet_grid(plate~.) + scale_x_log10() + 
+        geom_rug(aes(x = reads, color = biosample_id)) +
         geom_vline(aes(xintercept = 50000), color = "grey80") +
         theme_bw() + labs(x = "Library Size (log10)", 
                           y = "Count", color = "Sample ID") +
         theme(legend.position = "bottom")
+```
+
+```{r}
+# ggsave("~/Desktop/library_size.png", width = 5.46, height = 7.48, dpi = 450)
 ```
 
 ```{r count_tbl}
@@ -195,14 +198,19 @@ Cycle base quality score is more homogeneous from PCR plate 2 samples than plate
 __NOTE__ Figure out which sample is the low reverse read for plate 1 sample id 17.  
 
 ```{r fig_lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads. This is not a read level analysis but average quality score for individual barcoded datasets."}
-qa_cycle_q_df %>% filter(sampleID != "NTC") %>% ggplot(aes(x = amp_pos, y = score)) + 
+qa_cycle_q_df %>% filter(biosample_id != "NTC") %>% ggplot(aes(x = amp_pos, y = score)) + 
     geom_vline(aes(xintercept = 300), color = "grey60") +
     geom_vline(aes(xintercept = 160), color = "grey60") +
-    geom_smooth(aes(weight = count, color = sampleID, group = filename)) + 
+    geom_smooth(aes(weight = count, color = biosample_id, group = filename)) + 
     geom_vline(aes(xintercept = 280), color = "grey40", linetype = 2) +
     facet_grid(plate~.) + theme_bw() + 
     scale_x_continuous(breaks = c(0,150,300, 450)) +
     labs(x = "Amplicon Position", 
-         y = "Base Quality Score", color = "Sample ID")
+         y = "Base Quality Score", color = "Sample ID") + 
+    theme(legend.position = "bottom")
+```
+
+```{r}
+ggsave("~/Desktop/read_base_quality.png", width = 5.46, height = 7.48, dpi = 450)
 ```
 

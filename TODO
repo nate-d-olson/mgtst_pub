@@ -21,6 +21,7 @@
       - Subject   
       - consistency for unique OTUs - check for expected values - plot all in light grey then color unique features, using means for log-fold change
       - looking at both OTUs and taxonomy
+* Look into low dsq and dsqlog count cv.
 
 
 ## Writing

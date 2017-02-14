@@ -1,0 +1,163 @@
+---
+title: "Pre Post Titration Mystery"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, message = FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+```
+## Objective
+Determine what the proportion of pre and post in mixed samples based on titration. 
+
+
+## ERCC Spike-in results
+Based on qPCR results from `titration_validation.pdf` the ERCC spiked in to the unmixed post-treatment samples had the highest concentration (lowest Ct values) for titration factor 0. 
+Therefore, titration factor 0 is the unmixed post-treatment sample.  
+
+
+
+
+
+## Expected Count Values 
+
+Based on qPCR and ERCC spike-ins the expectd count values should be calculated as follows
+$$
+C_{exp} = [C_{post}\times p] + [C_{pre} \times (1-p)]
+$$
+```{r}
+count_df <- readRDS("../data/normalize_count_df.rds")
+```
+
+
+```{r}
+pre_count <- count_df %>% filter(dilution == -1) %>% 
+      dplyr::rename(pre = count) %>% select(-dilution, -samID)
+post_count <- count_df %>% filter(dilution == 0) %>% 
+      dplyr::rename(post = count) %>% select(-dilution, -samID)
+pre_post_count <- left_join(pre_count, post_count)
+rm(pre_count, post_count)
+
+count_exp_obs <- count_df %>% 
+      filter(!(dilution %in% c(0,-1))) %>%
+      left_join(pre_post_count) %>% 
+      mutate(p = 2^(-dilution),
+             exp_count_pre_p = post * (1-p) + pre * p,
+             exp_count_post_p = pre * (1-p) + post * p)
+```
+
+
+## Metrics for evaluating count values 
+
+The overall pipeline and normalization method performance was evaluated using root mean squared error (RMSE) and the normalized RMSE (NRMSE) or coefficient of variation of the RMSE. 
+
+```{r} 
+count_rmse <- count_exp_obs %>% filter(sampleID != "NTC") %>% 
+  filter(pre != 0, post != 0, count != 0) %>% 
+  mutate(residual_pre_p = (exp_count_pre_p - count)^2,
+         residual_post_p = (exp_count_post_p - count)^2) %>% 
+      group_by(pipe, norm_method) %>% 
+      summarise(mse_pre_p = mean(residual_pre_p), 
+                rmse_pre_p = sqrt(mse_pre_p), 
+                nrmse_pre_p = rmse_pre_p/mean(exp_count_pre_p),
+                mse_post_p = mean(residual_post_p), 
+                rmse_post_p = sqrt(mse_post_p), 
+                nrmse_post_p = rmse_post_p/mean(exp_count_post_p))
+```
+
+Lower normalized RMSE for all normalization methods when $2^-T$ is the proportion of pre-treatment sample in the mix. 
+
+```{r}
+count_rmse %>% filter(norm_method != "dsq", norm_method != "raw") %>% 
+  ggplot() + 
+    geom_point(aes(x = norm_method, y = nrmse_post_p, shape = pipe), color = "darkorange") + 
+    geom_point(aes(x = norm_method, y = nrmse_pre_p, shape = pipe), color = "darkblue") + 
+  theme_bw()
+```
+
+```{r fig.cap = "Normalized RMSE for pipelines and normalization methods providing an overall summary of the count bias. Lower values are better."}
+count_rmse %>% 
+  ggplot() + geom_raster(aes(x = pipe, y = norm_method, fill = nrmse)) +
+  geom_text(aes(x = pipe, y = norm_method, label = round(nrmse, 2)), color = "grey") +
+    theme_bw() + labs(x = "Pipeline",y = "Normalization Methods", fill = "NRMSE")
+```
+
+Black line indicates expected 1 to 1 relationship between the expected and observed values.
+```{r fig.height = 6}
+count_exp_obs %>% filter(norm_method %in% c("csslog","tsslog", "rawlog")) %>% 
+      ggplot() + 
+      geom_hex(aes(x = count, y = exp_count)) + 
+      geom_abline(aes(intercept = 0, slope = 1)) + 
+      facet_wrap(pipe~norm_method, ncol = 3, scales = "free") + 
+      theme_bw() + labs(x = "Observed Counts", y = "Expected Counts")
+```
+
+
+
+## Looking at pre and post specific features
+
+```{r}
+feature_specificity_df <- readRDS("../data/feature_specificity_df.rds")
+count_df <- readRDS("../data/expected_counts_df.rds")
+```
+
+```{r}
+feature_anno <- feature_specificity_df %>% 
+  select(pipe, featureIndices, sampleID, specific_anno) %>% 
+  mutate(otuID = featureIndices) %>% unique()
+```
+
+```{r}
+feature_explore <- count_df %>% filter(sampleID != "NTC") %>% 
+  mutate(featureIndices = as.numeric(featureIndices)) %>% 
+  left_join(feature_anno)
+```
+
+```{r}
+top_pre <- feature_explore %>% filter(specific_anno == "pre_full", norm_method == "rawlog") %>% 
+  group_by(pipe, norm_method, specific_anno, sampleID, otuID) %>% 
+  summarise(total_count = sum(count)) %>% 
+  arrange(desc(total_count)) %>% group_by(pipe, specific_anno, norm_method) %>% top_n(5, total_count)
+```
+
+```{r}
+top_pre_features <- top_pre %>% left_join(feature_explore)
+```
+
+Pre-treatment specific features should increase in abundance with titration factor not decrease!
+```{r}
+top_pre_features %>% 
+  ggplot(aes(x = dilution, y = count, color = pcr_rep)) + geom_point() + 
+  facet_wrap(~otuID*sampleID, nrow = 2) + theme_bw()
+```
+
+
+```{r}
+top_post <- feature_explore %>% filter(specific_anno == "post_full", norm_method == "rawlog") %>% 
+  group_by(pipe, norm_method, specific_anno, sampleID, otuID) %>% 
+  summarise(total_count = sum(count)) %>% 
+  arrange(desc(total_count)) %>% group_by(pipe, specific_anno, norm_method) %>% top_n(5, total_count)
+```
+
+```{r}
+top_post_features <- top_post %>% left_join(feature_explore)
+```
+
+Post-treatment specific features tend to increase in abundance or remain high, excluding feature 595 for E01JH0004 and 3119 E01JH0016. 
+```{r}
+top_post_features %>% 
+  ggplot(aes(x = dilution, y = count, color = pcr_rep)) + geom_point() + 
+  facet_wrap(~otuID*sampleID, nrow = 2) + theme_bw()
+```
+
+## Conclusion
+The results indicate that the pre and post treatment unmixed samples were most likely switched in the PCR plate. 
+The ERCC spike-in results indicate that this error did not impact how the titrations were made, therefore expectations regarding the count values holds. 

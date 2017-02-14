@@ -144,9 +144,8 @@ fit_model <- function(mrexp_obj, T1, T2, css_p = 0.75){
       pd <- pData(mrexp_obj)
       # defining levels to control the numerator and denominator in logFC estimate
       pd$dilution <- factor(pd$dilution, levels = c(T1, T2)) 
-      mod <- model.matrix(~1 + dilution, data = pd) 
-      # print("fit model")
-      fitFeatureModel(mrexp_obj, mod)
+ 
+      
 }
 
 fit_safely <- safely(fit_model)
@@ -399,6 +398,60 @@ logFC_edgeR_qiime_coefs_tidy <- logFC_edgeR_qiime_coefs_df %>%
       unnest()
 ```
 
+###Naive logFC estimates
+
+Functions for calculating logFC from observed values
+```{r}
+calc_logFC <- function(mrexp_obj, T1, T2, css_p = 0.75){
+      ## Normalize count data
+      mrexp_counts <- mrexp_obj %>% cumNorm(p = css_p) %>% 
+        metagenomeSeq::MRcounts(norm = TRUE, log = TRUE, sl = 1)
+      
+      ## Treatment subsets
+      pd <- pData(mrexp_obj)
+      pd$dilution <- factor(pd$dilution, levels = c(T1, T2)) 
+      
+      T1_sams <- pd[pd$dilution == T1,] %>% rownames()
+      T2_sams <- pd[pd$dilution == T2,] %>% rownames()
+      
+      ## Calculating logFC
+      T1_counts <- mrexp_counts[,which(colnames(mrexp_counts) %in% T1_sams)]
+      T1_A <- t(T1_counts) %>% colMeans()
+      
+      T2_counts <- mrexp_counts[,which(colnames(mrexp_counts) %in% T2_sams)]
+      T2_A <- t(T2_counts) %>% colMeans()
+      
+      A <- t(mrexp_counts) %>% colMeans()
+      M <- log2(T2_A/T1_A)
+      
+      data_frame(otuID = names(A), A = A, logFC = M)
+}
+```
+
+#### DADA2
+```{r message = FALSE, warning = FALSE}
+logFC_calc_dada2_df <- titration_comp_dada2_df %>% 
+      mutate(fit = pmap(list(mrexp_sub, T1, T2), calc_logFC)) 
+
+logFC_calc_dada2_tidy <- logFC_calc_dada2_df %>% select(sampleID, T1, T2, fit) %>% unnest()
+```
+
+#### Mothur
+```{r message = FALSE, warning = FALSE}
+logFC_calc_mothur_df <- titration_comp_mothur_df %>% 
+      mutate(fit = pmap(list(mrexp_sub, T1, T2), calc_logFC)) 
+
+logFC_calc_mothur_tidy <- logFC_calc_mothur_df %>% select(sampleID, T1, T2, fit) %>% unnest()
+```
+
+#### QIIME
+```{r message = FALSE, warning = FALSE}
+logFC_calc_qiime_df <- titration_comp_qiime_df %>% 
+      mutate(fit = pmap(list(mrexp_sub, T1, T2), calc_logFC)) 
+
+logFC_calc_qiime_tidy <- logFC_calc_qiime_df %>% select(sampleID, T1, T2, fit) %>% unnest()
+```
+
 
 ## Save logFC tables 
 Combine tables for the different pipelines into individual data frames for each differential abundance methods and save as RDS files.  
@@ -417,7 +470,21 @@ list(dada2 = logFC_edgeR_dada2_coefs_tidy,
      mothur = logFC_edgeR_mothur_coefs_tidy,
      qiime = logFC_edgeR_qiime_coefs_tidy) %>% 
       bind_rows(.id = "pipe") %>% saveRDS("../data/logFC_edgeR_df.rds")
+
+list(dada2 = logFC_calc_dada2_tidy,
+     mothur = logFC_calc_mothur_tidy,
+     qiime = logFC_calc_qiime_tidy) %>% 
+      bind_rows(.id = "pipe") %>% saveRDS("../data/logFC_calc_df.rds")
 ```
+
+
+
+
+####
+```{r}
+
+```
+
 
 
 ## Next Steps 

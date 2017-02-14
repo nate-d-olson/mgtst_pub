@@ -242,12 +242,38 @@ var_cv %>%
   theme_bw() + labs(x = "Pipeline",y = "Normalization Methods", fill = "Mean CV")
 ```
 
+Plot to explore feature variance   
+```{r}
+count_var_rank <- count_var_df %>% group_by(norm_method, pipe) %>% summarise(mean_cv = mean(cv_count)) %>% group_by(pipe) %>% arrange(mean_cv) %>% mutate(cv_rank = 1:n())
+
+count_var_df %>% group_by(norm_method, pipe) %>% #sample_frac(0.25) %>%
+      # ungroup() %>%
+      # mutate(mu_bin = cut_number(lmean, 3)) %>%
+      ggplot() + 
+      geom_boxplot(aes(x =  norm_method, y= cv_count),varwidth = TRUE) + 
+      # geom_boxplot(aes(x =  mu_bin, y= cv_count, color = mu_bin),varwidth = TRUE) + 
+      # facet_grid(pipe~norm_method) +
+      geom_text(data = count_var_rank, aes(x = norm_method, y = 2.15, label = cv_rank)) +
+      facet_grid(pipe~.) +
+      # theme(axis.text.x = element_text(angle = 90)) 
+      labs(x = "Normalization Method", y = "OTU-level Coefficient of Variation ") +
+      theme_bw()
+ggsave("~/Desktop/measurement_assessment_variance.png",width = 5.48, height = 6,dpi = 450)
+```
+
+```{r}
+# fit <- lm(cv_count~pipe*norm_method, count_var_df)
+```
+
+```{r}
+# plot(fit)
+```
 
 ## Count Value Bias 
 Relationship between the observed and expected count values. Expected count ($C_{exp}$)values calculated using the unmixed sample count values (unmixed pre - $C_{pre}$ and unmixed post - $C_{post}$) and proportion of unmixed pre in the titration $p$. Proportion is defined as $p = 2^{-t}$, and $t$ is the titration factor. 
 
 $$
-C_{exp} = [C_{pre}\times p] + [C_{post} \times (1-p)]
+C_{exp} = [C_{post}\times p] + [C_{post} \times (1-p)]
 $$
 
 The expected values are calculated based on pre and post unmixed samples by replicate (defined as half of PCR plate).
@@ -264,12 +290,93 @@ rm(pre_count, post_count)
 count_exp_obs <- count_df %>% 
       filter(!(dilution %in% c(0,-1))) %>%
       left_join(pre_post_count) %>% 
-      mutate(p = 2^(-dilution), exp_count = post * (1-p) + pre * p)
+      mutate(p = 2^(-dilution), exp_count = pre * (1-p) + post * p)
 ```
 
+```{r}
+# count_abs <- count_exp_obs %>% group_by(norm_method, pipe, otuID,dilution, sampleID) %>% 
+#       summarise(absent_otu = if_else(0 %in% exp_count,0,1))
+```
+
+```{r}
+# count_exp_obs_non_0 <- count_abs %>% filter(absent_otu == 1) %>% 
+#       left_join(count_exp_obs)
+```
+
+
 ## Metrics for evaluating count values 
-__TODO__ Update metric
-$$\frac{\sqrt{1/n \sum_i^n(obs-exp)^2}}{\sqrt{exp^2}}$$
+__TODO__ Update metric - Hector's metric (until I get the real name)
+$$H_{score} = \frac{\sqrt{1/n \sum_i^n(obs-exp)^2}}{\sqrt{exp^2}}$$
+
+
+```{r}
+count_hscore <- count_exp_obs %>% 
+      group_by(pipe, norm_method, otuID,sampleID, dilution) %>% 
+      mutate(resid = count - exp_count,
+             sq_resid = resid^2) %>% 
+      mutate(hscore = sqrt((mean((count - exp_count)^2)) / (mean((exp_count)^2))))
+```
+
+```{r}
+count_hscore %>% glimpse()
+```
+
+
+```{r}
+count_hscore$resid %>% summary()
+```
+
+```{r}
+count_hscore$sq_resid %>% summary()
+```
+
+```{r}
+count_hscore$exp_count %>% summary()
+```
+
+```{r}
+count_hscore$hscore %>% summary()
+```
+
+```{r}
+# count_bins <- count_df %>% filter(norm_method == "raw") %>%   
+#       # mutate(count_val = count)  %>% 
+#       group_by(pipe) %>%
+#       mutate(count_bin = cut_interval(count, 3)) %>% 
+#       select(-norm_method)
+```
+
+__NOTE__ Values should be between 0 and 1 ... Need to figure out what are the criteria for filtering. 
+High values are due to the observed counts being much larger than the expected counts. 
+
+
+Filtering features based on specificity annotations `2017-02-07-Pre-Post-Specific.Rmd`.
+```{r}
+feature_specificity_df <-readRDS("../data/feature_specificity_df.rds") %>% 
+      select(-otuID) %>% dplyr::rename(otuID = featureIndices) %>% 
+      mutate(otuID = as.character(otuID))
+```
+
+
+
+```{r}
+count_hscore_filt <- left_join(count_hscore, feature_specificity_df) # %>% 
+      #filter(specific_anno %in% c("pre_full","post_full", "non-specific"))
+```
+
+```{r}
+count_hscore_filt %>% filter(is.na(specific_anno))
+```
+
+```{r}
+count_hscore_filt %>% 
+ggplot() + geom_boxplot(aes(x = norm_method, y = hscore, color = specific_anno)) + 
+      #geom_jitter(aes(x = norm_method, y = hscore, color = specific_anno), alpha = 0.25) + 
+      facet_wrap(~pipe, ncol = 1) + theme_bw() +
+      labs(x = "Normalization Method", y = "H-Score") + scale_y_log10()
+ggsave("~/Desktop/measurement_assessment_bias.png",width = 5.48, height = 6,dpi = 450)
+```
+
 __TODO__ Separate analysis for expected 0 value
 - 0 expected values: detection, __QUESTION:__ what about observed zero values  
 - >0 expected values: accuracy
@@ -335,6 +442,33 @@ __TODO__ Update with use of new metrics
 # ggplot(nrmse) + geom_point(aes(x = var_nrmse, y = count_nrmse, color = norm_method, shape = pipe)) + theme_bw()
 ```
 
+```{r}
+count_var_bias <- count_hscore_filt %>% left_join(count_var_df) 
+```
+```{r}
+count_var_bias_summary <- count_var_bias %>% group_by(norm_method, pipe) %>% 
+      summarise(cv_count_median = median(cv_count, na.rm = TRUE),
+                cv_count_l95 = quantile(cv_count,0.25, na.rm = TRUE), 
+                cv_count_u95 = quantile(cv_count, 0.75, na.rm = TRUE),
+                hscore_median = median(hscore, na.rm = TRUE),
+                hscore_l95 = quantile(hscore, 0.25, na.rm = TRUE),
+                hscore_u95 = quantile(hscore, 0.75, na.rm = TRUE))
+      # ggplot() + geom_density2d(aes(x = hscore, y = cv_count, color = norm_method, linetype = pipe)) +
+      # facet_grid(norm_method~pipe)
+```
+
+
+```{r}
+count_var_bias_summary %>% filter(norm_method %in% c("dsqlog","rawlog", "tsslog")) %>% 
+      ggplot(aes(x = cv_count_median, y = hscore_median, 
+                 color = norm_method, shape = pipe, linetype = pipe)) + 
+      geom_point(size = 4) + 
+      geom_errorbar(aes(ymin = hscore_l95, ymax = hscore_u95)) + 
+      geom_errorbarh(aes(xmin = cv_count_l95, xmax = cv_count_u95)) + theme_bw() +
+      labs(x = "OTU-level Coefficient of Variation", y = "H-Score") +
+      theme(legend.position = "bottom")
+ggsave("~/Desktop/measurement_var_bias.png", width = 5.48, height = 6,dpi = 450)
+```
 
 ## Feature Exploration
 

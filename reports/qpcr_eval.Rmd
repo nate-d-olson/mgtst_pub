@@ -1,0 +1,239 @@
+---
+title: "qPCR analysis"
+author: "Nate Olson"
+date: "1/2/2017"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(ggplot2)
+library(readxl)
+```
+
+
+## qPCR Run File Info
+```{r}
+dat_dir <- "~/Desktop/to_file/mix_qpcr_data/"
+qpcr_files <- list.files(path = dat_dir, pattern = ".*txt", full.names = TRUE)
+```
+
+
+```{r message=FALSE}
+file_types <- c("Amplification Data", "Multicomponent Data", "Results")
+qpcr_dat <- data_frame(qpcr_files) %>% 
+  mutate(file_type = str_extract(qpcr_files, "Amplification Data|Multicomponent Data|Results")) %>% 
+  filter(!is.na(file_type)) %>% 
+  mutate(run_id = str_extract(qpcr_files, "(ERCC|Nate).*2016120[0-9]"),
+         assay = if_else(grepl("ERCC",qpcr_files),"ERCC","Bac_Abu"),
+         dat = map(qpcr_files, ~read_tsv(., skip = 43)))
+```
+
+### Function to generate list of data frames with different data types
+```{r}
+## Split Data Frame by file type
+make_qpcr_dat_list <- function(dat){
+  list(amp = dat %>% filter(file_type == "Amplification Data"),
+       multi = dat %>% filter(file_type == "Multicomponent Data"),
+       results = dat %>% filter(file_type == "Results"))
+}
+
+
+make_qpcr_df_list <- function(qpcr_nested_df, sample_id_df){
+  dat_list <- qpcr_nested_df %>% select(-qpcr_files, -assay) %>% make_qpcr_dat_list()
+
+  ## Modified column types preventing combining dataframes
+  dat_list$results <- dat_list$results %>% 
+    mutate(dat = map(dat, ~mutate(., `Cq Conf` = as.character(`Cq Conf`))),
+           dat = map(dat, ~mutate(., CT = as.character(CT))),
+           dat = map(dat, ~mutate(., `Quantity Mean` = as.character(`Quantity Mean`))),
+           dat = map(dat, ~mutate(., `Quantity SD` = as.character(`Quantity SD`))))
+  
+  ## Cleaning up data
+  dat_list %>% map(unnest) %>% map(left_join, sample_id_df)
+}
+```
+
+### ERCC 
+Extracting Sample IDs
+```{r}
+## Spike-in meta-data
+ercc_meta <- read_excel("~/Projects/mgtst_pub/data/raw/MixStudy_Nate_20161209.xls",
+           sheet = "ERCC Spike", skip = 16)  %>% 
+      select(`Gene Symbol`, Sample_spike, Treatment) %>% 
+      add_column(sample_ercc = paste0("ERCC",1:10)) %>% 
+      add_column(standard = paste0("Std",c(1,3,5,7,9,2,4,6,8,10)))
+
+
+std_sams <- c(1:6, "NTC","NC")
+pre_sams <- c(0:5,10,15)
+post_sams <- c(20,1:5,10,15)
+
+sample_map <- data_frame(
+      `Well Position` = paste0(rep(LETTERS[1:8], 12), rep(1:12,each =  8)),
+      sample_type = rep(c(rep(c(rep("standard", 6), rep("control",2)), 3), rep("mixtures",24)), 2),
+      sams = c(rep(std_sams,3), rep(pre_sams, 3),rep(std_sams,3),rep(post_sams, 3))
+)
+
+## Run ids to differentate plates
+ercc_plates <- qpcr_dat %>% filter(assay == "ERCC") %>% .$run_id %>% unique()
+Sample_spike <- paste0("E01JH00",c("04","11","16","17","38"))
+
+ercc_plate_map <- read_excel("~/Projects/mgtst_pub/data/raw/MixStudy_Nate_20161209.xls",
+           sheet = "ERCC_Quant_PlateMap", skip = 1, col_names = FALSE) %>% 
+  filter(!is.na(X1), !grepl("Plate", X1)) %>% 
+  add_column(run_id = rep(ercc_plates, each = 8)) %>% 
+  add_column(Sample_spike = rep(Sample_spike, each = 8)) %>% 
+  gather("Col","sample_id", -run_id, -X1, -Sample_spike) %>% 
+  rename(Row = X1) %>% 
+  mutate(Col = str_replace(Col,"X","") %>% as.numeric()  - 1,
+         `Well Position` = paste0(Row, Col),
+         Treatment = if_else(Col %in% 1:6, "Pre","Post")) %>% 
+  select(run_id, `Well Position`, Treatment, Sample_spike, sample_id) %>% 
+      left_join(ercc_meta) %>% left_join(sample_map)
+
+```
+
+Generating Data Frame List
+
+```{r}
+ercc_qpcr <- qpcr_dat %>% filter(assay == "ERCC") %>% make_qpcr_df_list(ercc_plate_map)
+```
+
+%%TODO - clean up variable values
+### Controls
+```{r}
+ercc_qpcr$results %>% colnames()
+```
+
+### Standard Curves
+```{r}
+ercc_std <- ercc_qpcr$results %>% filter(sample_type == "standard") %>% 
+      mutate(sams = as.numeric(sams), CT = as.numeric(CT)) 
+
+ercc_std_fit <- ercc_std %>% group_by(Treatment, Sample_spike) %>% 
+      nest() %>% mutate(fit = map(data, ~lm(CT~sams, data = .)))
+
+ercc_qpcr$results %>% filter(sample_type == "standard") %>% 
+      ggplot(aes(x = -as.numeric(sams), y = as.numeric(CT), color = `Gene Symbol`)) + 
+      geom_point() + facet_grid(Treatment~Sample_spike)
+```
+
+
+### Bacterial Abundance
+Extracting Sample IDs
+```{r}
+sam_dat <- read_excel("~/Projects/mgtst_pub/data/raw/MixStudy_Nate_20161209.xls", 
+                      sheet = "ReDo_QDNA_20161209",skip =3,col_names = FALSE)
+bac_abu_sam_ids <- sam_dat %>% select(X1,X2) %>% 
+  filter(X1 %in% paste0(rep(LETTERS[1:8], each = 7),3:8)) %>% rename(`Well Position` = X1, sample_id = X2)
+
+shan_std_ids <- sam_dat %>% select(X1,X2) %>% filter(X1 %in% paste0(LETTERS[1:8],2)) %>% 
+  mutate(X2 = paste0("shan_",X2)) %>% rename(`Well Position` = X1, id = X2)
+
+zymo_std_ids <- sam_dat %>% select(X11,X12) %>% filter(X11 %in% paste0(LETTERS[1:8],1)) %>% 
+  mutate(X12 = paste0("zymo_",X12)) %>% rename(`Well Position`= X11, id = X12) 
+
+sample_ids <- bind_rows(bac_abu_sam_ids, shan_std_ids, zymo_std_ids) 
+```
+
+
+```{r}
+bac_abu_qcr <- qpcr_dat %>% filter(assay == "Bac_Abu") %>% make_qpcr_df_list(sample_ids)
+```
+
+
+
+## Preliminary Results
+```{r}
+p1_amp <- read_tsv("~/Desktop/mix_qpcr_data/Nate_QDNA_P1_20161208_Multicomponent Data.txt", skip = 43) %>% 
+  mutate(plate = 1)
+p2_amp <- read_tsv("~/Desktop/mix_qpcr_data/Nate_QDNA_P2_20161208_Multicomponent Data.txt", skip = 43) %>% 
+  mutate(plate = 2)
+p3_amp <- read_tsv("~/Desktop/mix_qpcr_data/Nate_QDNA_P3_20161208_Multicomponent Data.txt", skip = 43) %>% 
+  mutate(plate = 3)
+
+amp_dat <- bind_rows(p1_amp, p2_amp, p3_amp)
+```
+
+```{r}
+sam_dat <- read_excel("~/Projects/mgtst_pub/data/raw/MixStudy_Nate_20161209.xls", 
+                      sheet = "ReDo_QDNA_20161209",skip =3,col_names = FALSE)
+bac_abu_sam_ids <- sam_dat %>% select(X1,X2) %>% 
+  filter(X1 %in% paste0(rep(LETTERS[1:8], each = 7),3:8)) %>% rename(`Well Position` = X1, id = X2)
+
+shan_std_ids <- sam_dat %>% select(X1,X2) %>% filter(X1 %in% paste0(LETTERS[1:8],2)) %>% 
+  mutate(X2 = paste0("shan_",X2)) %>% rename(`Well Position` = X1, id = X2)
+
+zymo_std_ids <- sam_dat %>% select(X11,X12) %>% filter(X11 %in% paste0(LETTERS[1:8],1)) %>% 
+  mutate(X12 = paste0("zymo_",X12)) %>% rename(`Well Position`= X11, id = X12) 
+
+sample_ids <- bind_rows(sam_ids, shan_std_ids, zymo_std_ids) 
+```
+
+```{r}
+amp_df <- left_join(sample_ids, amp_dat)
+```
+
+
+```{r}
+amp_df %>% ggplot() +
+  geom_path(aes(x = Cycle, y = SYBR, group = paste(plate,Well), color = factor(plate))) + facet_wrap(~id)
+```
+
+Need to annotate figure with Ct threshold.
+```{r}
+
+amp_df %>% filter(grepl("Std",id)) %>% separate(id, c("standard","id"),sep = "_") %>% 
+  ggplot() +
+  geom_path(aes(x = Cycle, y = SYBR, group = paste(plate,Well),
+                color = id, linetype = factor(plate))) +
+  facet_wrap(~standard) + theme_bw()
+```
+
+Shan Standard with samples in background
+```{r}
+sam_amp_df <- amp_df %>% filter(!grepl("Std",id))
+amp_df %>% filter(grepl("Std",id)) %>% 
+  separate(id, c("standard","id"),sep = "_") %>% filter(standard == "shan") %>% 
+  ggplot() +
+    geom_path(data = sam_amp_df, aes(x = Cycle, y = SYBR, group = paste(plate,Well)), color = "grey80") + 
+    geom_path(aes(x = Cycle, y = SYBR, group = paste(plate,Well),
+                color = id, linetype = factor(plate))) +
+  theme_bw() 
+```
+
+Amplification curves look good. Would probably like the slope to be a little steeper. 
+Need to think about what would make the quant values systematically high for post-exposure samples. 
+Also need to look into human DNA quant methods.
+```{r}
+sam_amp_df <- amp_df %>% filter(grepl("\\(Post",id))
+amp_df %>% filter(grepl("Std1",id)) %>% 
+  separate(id, c("standard","std_id"),sep = "_") %>% filter(standard == "shan") %>% 
+  ggplot() +
+    geom_path(aes(x = Cycle, y = SYBR, group = paste(plate,Well)), color = "grey80") +
+    geom_path(data = sam_amp_df, aes(x = Cycle, y = SYBR, group = paste(plate,Well), color = id)) +
+  theme_bw() + facet_wrap(~id, ncol = 2)
+```
+
+## ERCC
+
+```{r}
+dat_dir <- "~/Desktop/mix_qpcr_data/"
+ercc_files <- list.files(path = dat_dir ,pattern = "ERCC.*Multicomponent",full.names = TRUE)
+ercc_df <- ercc_files %>% 
+  str_extract("ERCC.*2016120.") %>% # parsing run id from filename
+  {set_names(ercc_files, .)} %>% 
+  map_df(~read_tsv(., skip = 43),.id = "run") 
+```
+
+Need to add sample and standard id information for splitting.
+The different assays have different baselines, this is especially noticable for the 2_7 run. 
+
+```{r}
+ercc_df %>% ggplot() +
+  geom_path(aes(x = Cycle, y = FAM, group = paste(run, Well))) + facet_wrap(~run)
+```
+
+

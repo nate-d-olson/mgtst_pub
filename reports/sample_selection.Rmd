@@ -9,7 +9,7 @@ output:
 
 ## Sample Selection
 ```{r}
-load("../data/etecExp.rda")
+load("../data/raw/etecExp.rda")
 ## needed for mypar
 library(metagenomeSeq)
 library(Biobase)
@@ -130,3 +130,8 @@ ggplot(ts_df, aes(x = time, y = count)) + geom_point(color = "grey60") +
     labs(x = "Day Relative to Treatment", y = "Count", 
          color = "Time Point Used")
 ```
+
+```{r}
+ggsave("~/Desktop/sample_selection.pdf", width = 7.25, height = 3)
+```
+
