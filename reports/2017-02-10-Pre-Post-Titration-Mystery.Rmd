@@ -16,20 +16,22 @@ load.project()
 setwd(cwd)
 ```
 ## Objective
-Determine what the proportion of pre and post in mixed samples based on titration. 
+Determine which wells/ samples in the PCR plate correspond to the unmixed pre and post samples. 
+Based on the experimental design, the samples with dilution factors of 0 are unmixed post-treatment and -1 are unmixed pre-treatment. 
+However, preliminary analysis indicates that the samples were potentially switched. 
 
 
 ## ERCC Spike-in results
-Based on qPCR results from `titration_validation.pdf` the ERCC spiked in to the unmixed post-treatment samples had the highest concentration (lowest Ct values) for titration factor 0. 
-Therefore, titration factor 0 is the unmixed post-treatment sample.  
-
-
-
+Based on qPCR results from `titration_validation.pdf` the ERCC spiked into the unmixed post-treatment samples had the highest concentration (lowest Ct values) for titration factor 0. 
+Therefore, titration factor 0 is the unmixed post-treatment sample. 
+Note that the sample used in the qPCR assays and 16S PCR are in individual tubes and not in 96 well plates and different sample ids were used for qPCR. 
+It is not unreasonable for the samples to be correctly labeled for the qPCR assays but switched for the 16S PCRs. 
 
 
 ## Expected Count Values 
 
-Based on qPCR and ERCC spike-ins the expectd count values should be calculated as follows
+Based on qPCR and ERCC spike-ins the expectd count values should be calculated as follows, with $p = 2^-t$ and $t$ is the titration factor. 
+
 $$
 C_{exp} = [C_{post}\times p] + [C_{pre} \times (1-p)]
 $$
@@ -73,7 +75,7 @@ count_rmse <- count_exp_obs %>% filter(sampleID != "NTC") %>%
                 nrmse_post_p = rmse_post_p/mean(exp_count_post_p))
 ```
 
-Lower normalized RMSE for all normalization methods when $2^-T$ is the proportion of pre-treatment sample in the mix. 
+Lower normalized RMSE for all normalization methods when $2^-t$ is the proportion of pre-treatment sample in the mix. 
 
 ```{r}
 count_rmse %>% filter(norm_method != "dsq", norm_method != "raw") %>% 
@@ -82,24 +84,6 @@ count_rmse %>% filter(norm_method != "dsq", norm_method != "raw") %>%
     geom_point(aes(x = norm_method, y = nrmse_pre_p, shape = pipe), color = "darkblue") + 
   theme_bw()
 ```
-
-```{r fig.cap = "Normalized RMSE for pipelines and normalization methods providing an overall summary of the count bias. Lower values are better."}
-count_rmse %>% 
-  ggplot() + geom_raster(aes(x = pipe, y = norm_method, fill = nrmse)) +
-  geom_text(aes(x = pipe, y = norm_method, label = round(nrmse, 2)), color = "grey") +
-    theme_bw() + labs(x = "Pipeline",y = "Normalization Methods", fill = "NRMSE")
-```
-
-Black line indicates expected 1 to 1 relationship between the expected and observed values.
-```{r fig.height = 6}
-count_exp_obs %>% filter(norm_method %in% c("csslog","tsslog", "rawlog")) %>% 
-      ggplot() + 
-      geom_hex(aes(x = count, y = exp_count)) + 
-      geom_abline(aes(intercept = 0, slope = 1)) + 
-      facet_wrap(pipe~norm_method, ncol = 3, scales = "free") + 
-      theme_bw() + labs(x = "Observed Counts", y = "Expected Counts")
-```
-
 
 
 ## Looking at pre and post specific features
