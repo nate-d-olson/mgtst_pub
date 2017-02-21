@@ -24,7 +24,8 @@ sav_dir <- paste0(project_dir,"data/basespace_sav/")
 sav_list <- list(
     march2016_v3 = paste0(sav_dir,"run_18071097_sav"),
     basespace_v3 = paste0(sav_dir,"run_3861867_sav"),
-    april2016_v3 = paste0(sav_dir,"run_18527531_sav")
+    april2016_v3 = paste0(sav_dir,"run_18527531_sav"),
+    nist2017_v3 = paste0(sav_dir, "run_170209_sav")
 )
 ```
 
@@ -176,6 +177,10 @@ ggplot(error_df) +
     theme_bw() +
     labs(x = "Cycle", y = "PhiX Error Rate", color = "Dataset") +
     facet_grid(chemistry~read, scales = "free_x")
+```
+
+```{r}
+# ggsave("nist_run_error_rate.png")
 ```
 
 #### Base Quality Score 
