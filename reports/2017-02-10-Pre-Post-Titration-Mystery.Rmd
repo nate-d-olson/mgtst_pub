@@ -20,6 +20,12 @@ Determine which wells/ samples in the PCR plate correspond to the unmixed pre an
 Based on the experimental design, the samples with dilution factors of 0 are unmixed post-treatment and -1 are unmixed pre-treatment. 
 However, preliminary analysis indicates that the samples were potentially switched. 
 
+Four primary lines of evidence supporting that the samples were switched. 
+
+1. ERCC Spike-in results: the observed Ct values for the ERCC spiked into post-treatment samples the slope of the regression between the Ct and titration factors was consistent with the expected slope of -1.  
+2. The overall the normalized root mean squared error was lower for the count values across normalization methods assuming the samples were switched.  
+3. For features that are present in all four pre-treatment samples (based on the experimental design) the observed count values decrease with increasing titration factor, the expected trend for post-treatment specific features. 
+4. Cluster analysis of titration factors -1, 0, 1, and 15 .... __TODO__
 
 ## ERCC Spike-in results
 Based on qPCR results from `titration_validation.pdf` the ERCC spiked into the unmixed post-treatment samples had the highest concentration (lowest Ct values) for titration factor 0. 
@@ -30,11 +36,18 @@ It is not unreasonable for the samples to be correctly labeled for the qPCR assa
 
 ## Expected Count Values 
 
-Based on qPCR and ERCC spike-ins the expectd count values should be calculated as follows, with $p = 2^-t$ and $t$ is the titration factor. 
+Based on the sample labels defined in the experimental design, the expectd count values should be calculated as follows, with $p = 2^-t$ and $t$ is the titration factor. 
 
 $$
 C_{exp} = [C_{post}\times p] + [C_{pre} \times (1-p)]
 $$
+If the pre- and post-treatment unmixed samples were switched in the 16S PCR plate the expected count values would be calculated as follows.
+
+$$
+C_{exp} = [C_{pre}\times p] + [C_{post} \times (1-p)]
+$$
+
+
 ```{r}
 count_df <- readRDS("../data/normalize_count_df.rds")
 ```
@@ -57,7 +70,7 @@ count_exp_obs <- count_df %>%
 ```
 
 
-## Metrics for evaluating count values 
+### Metrics for evaluating count values 
 
 The overall pipeline and normalization method performance was evaluated using root mean squared error (RMSE) and the normalized RMSE (NRMSE) or coefficient of variation of the RMSE. 
 
@@ -109,7 +122,7 @@ feature_explore <- count_df %>% filter(sampleID != "NTC") %>%
 top_pre <- feature_explore %>% filter(specific_anno == "pre_full", norm_method == "rawlog") %>% 
   group_by(pipe, norm_method, specific_anno, sampleID, otuID) %>% 
   summarise(total_count = sum(count)) %>% 
-  arrange(desc(total_count)) %>% group_by(pipe, specific_anno, norm_method) %>% top_n(5, total_count)
+  arrange(desc(total_count)) %>% group_by(pipe, specific_anno, norm_method) %>% top_n(3, total_count)
 ```
 
 ```{r}
@@ -119,7 +132,7 @@ top_pre_features <- top_pre %>% left_join(feature_explore)
 Pre-treatment specific features should increase in abundance with titration factor not decrease!
 ```{r}
 top_pre_features %>% 
-  ggplot(aes(x = dilution, y = count, color = pcr_rep)) + geom_point() + 
+  ggplot(aes(x = dilution, y = count, color = pcr_rep, shape = pipe)) + geom_point() + 
   facet_wrap(~otuID*sampleID, nrow = 2) + theme_bw()
 ```
 
@@ -128,20 +141,119 @@ top_pre_features %>%
 top_post <- feature_explore %>% filter(specific_anno == "post_full", norm_method == "rawlog") %>% 
   group_by(pipe, norm_method, specific_anno, sampleID, otuID) %>% 
   summarise(total_count = sum(count)) %>% 
-  arrange(desc(total_count)) %>% group_by(pipe, specific_anno, norm_method) %>% top_n(5, total_count)
+  arrange(desc(total_count)) %>% group_by(pipe, specific_anno, norm_method) %>% top_n(3, total_count)
 ```
 
 ```{r}
 top_post_features <- top_post %>% left_join(feature_explore)
 ```
 
-Post-treatment specific features tend to increase in abundance or remain high, excluding feature 595 for E01JH0004 and 3119 E01JH0016. 
+Post-treatment specific features tend to increase in abundance or remain high, excluding feature 3119 E01JH0016. 
 ```{r}
 top_post_features %>% 
-  ggplot(aes(x = dilution, y = count, color = pcr_rep)) + geom_point() + 
+  ggplot(aes(x = dilution, y = count, color = pcr_rep, shape = pipe)) + geom_point() + 
   facet_wrap(~otuID*sampleID, nrow = 2) + theme_bw()
 ```
 
+## Beta-Diversity Cluster Analysis
+Based on the experimental design the expectation is that the PCR replicates for titration factors -1 will be closest to 15, and 0 closest to 1, assuming the titration factor -1 is the unmixed pre-treatment samples. 
+
+```{r}
+ps_files <- list(
+      dada2  = "../data/phyloseq_dada2.RDS",
+      mothur = "../data/phyloseq_mothur.RDS",
+      qiime  = "../data/phyloseq_qiime.RDS"
+)
+ps <- ps_files %>% map(readRDS) 
+```
+
+```{r}
+sample_set <- sampleSheet %>% filter(barcode_lab == "JHU", seq_lab == "JHU", 
+                       titration %in% c(20,0,1,15)) %>% 
+      select(biosample_id, titration, pcr_16S_plate, pos) %>% 
+      unite(sample_name, pcr_16S_plate, pos, sep = "-")
+```
+
+
+```{r}
+subset_ps <- function(ps_obj){
+      
+      ## subset by titrations of interest
+      ps_subset <- subset_samples(ps_obj, dilution %in% c(-1,0,1,15)) 
+      ps_subset@sam_data$dilution <- factor(ps_subset@sam_data$dilution)
+      
+      ps_subset
+}
+```
+
+```{r}
+sample_ids <- sampleSheet$biosample_id %>% unique()
+subset_obj <- ps %>% map(subset_ps)
+subset_ord <- subset_obj %>% map(ordinate, "PCoA", "bray")
+```
+
+```{r}
+pl_list <- map2(subset_obj, subset_ord, plot_ordination, type = "sample",color = "dilution")
+```
+
+For four of the biological replicates (4, 11, 16 and 38) dilution 1 is closest to dilution -1, supporting the theory that the samples were switched. 
+Dilutions 0, 1, and 15 for biological replicate 17 were tightly clustered which also suggest that the samples were switched, though better separation would better support our theory that the samples are switched.  
+
+```{r}
+pl_list$dada2 + ggtitle("DADA2 Titration Ordinations") + facet_wrap(~sampleID, scales = "free") + theme_bw()
+```
+
+Dilutions 0, 1, and 15 are tightly grouped for biological replicate 17.  
+For biological replicates 4, 11, 16 and 38, dilution -1 is closest to dilution 1.
+
+```{r}
+pl_list$mothur + ggtitle("Mothur Titration Ordinations") + facet_wrap(~biosample_id, scales = "free") + theme_bw()
+```
+
+Dilutions 0, 1, and, 15 overlap for biological replicate 17. For biological replicates 16, and 38 dilution -1 is closest to 1.  Dilutions 0 and 15 are closer to dilution -1 than dilution 1 for biological replicates 4 and 11. 
+```{r}
+pl_list$qiime + ggtitle("QIIME Titration Ordinations") + facet_wrap(~sampleID, scales = "free") + theme_bw()
+```
+
+### Separate Ordination by Sample ID
+As dilutions -1, 0, and 1 overlap for some of the ordination plots, will calculate the ordination plots for the biological replicates indvidually to get better separation. 
+
+```{r}
+subset_ps2 <- function(ps_obj, biorep){
+      sams <- sample_data(ps_obj) %>% as_data_frame() %>%
+            rownames_to_column(var = "rownames") %>%
+            filter(dilution %in% c(-1,0,1,15), sampleID == biorep) %>%
+            .$rownames
+      ps_subset <- prune_samples(samples = sams, ps_obj)
+      
+      ps_subset
+}
+
+plot_ord <- function(subset_obj, ord, biorep, pipe){
+      plot_ordination(subset_obj, ord, color = "dilution") + 
+                 ggtitle(paste("Ordination", biorep, pipe)) + theme_bw()
+}
+```
+
+```{r}
+sample_ids <- sampleSheet %>% filter(biosample_id != "NTC") %>% 
+      .$biosample_id %>% unique()
+ps_df <- data_frame(biorep = rep(sample_ids, each = 3)) %>% 
+      add_column(pipe = rep(names(ps),5)) %>% 
+      add_column(ps_obj = rep(ps, 5))
+ps_subset_df <- ps_df %>% mutate(subset_obj = map2(.x = ps_obj, .y = biorep, .f = subset_ps2))
+ps_ord <- ps_subset_df %>% mutate(ord = map(subset_obj, ordinate, method = "PCoA",distance = "bray"))
+ps_plot <- ps_ord %>% mutate(ord_plots = pmap(list(subset_obj, ord, biorep, pipe), plot_ord))
+```
+
+For ordinations of individual biological replicates and pipelines dilution -1 is closest to dilution 1 for all ordinations excluding biological replicate 17, where the closest dilution to -1 is ambiguous. 
+The percent of the observed variability explained by the principal corrdiate separating  dilution -1 from other dilutions is greater than 60 percent for all ordinations.  
+
+```{r}
+ps_plot$ord_plots
+```
+
+
 ## Conclusion
 The results indicate that the pre and post treatment unmixed samples were most likely switched in the PCR plate. 
-The ERCC spike-in results indicate that this error did not impact how the titrations were made, therefore expectations regarding the count values holds. 
+The ERCC spike-in results indicate that this error did not impact how the titrations were made, therefore expectations regarding the count values holds after correcting for the switched samples. 
