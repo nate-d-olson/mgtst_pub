@@ -13,6 +13,8 @@ Initial quality assessment of the sequence files (fastq) was performed using the
       * CSS - cumulative sum scaling
       * Senthil's method
       * rarefaction
+      * square root transformation - AIST spike-ins
+      * Holmes arcsin transformation
 
 ##  log-fold Change Assessment
 * Variance 

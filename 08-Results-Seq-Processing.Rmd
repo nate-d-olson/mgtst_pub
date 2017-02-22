@@ -27,7 +27,7 @@ qiimeOTU <- NROW(mrexp$qiime)
 
 
 * Characterization of different pipelines
-      - number of clusters   
+      - total number of features   
             - DADA2 `r dadaOTU`  
             - mothur `r mothurOTU`   
             - qiime `r qiimeOTU`  
