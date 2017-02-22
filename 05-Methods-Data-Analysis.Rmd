@@ -1,15 +1,23 @@
 ## Data Analysis
-All data analysis was performed using the statistical programming language R (REF) and the Rstudio IDE (REF). 
+All data analysis was performed using the statistical programming language R (REF) and the RStudio IDE (REF). 
 Initial quality assessment of the sequence files (fastq) was performed using the Bioconductor package Rqc (REF). 
 
+## Measurement Assessment 
+* Variance
+* Bias
+      * expectation calculation
 
-## Normalization and Differential Abundance
 * Normalization Methods
       * None
       * TSS - total sum scaling
       * CSS - cumulative sum scaling
       * Senthil's method
       * rarefaction
+
+##  log-fold Change Assessment
+* Variance 
+* Bias 
+      * expectation calculation
 * Differential Abundance Methods
       * metagenomeFeatures
       * DESeq

@@ -12,6 +12,7 @@
 
 * Assessing normalization and differential abundance  
       * Current approaches, and limitations  
+            * how do spike-ins fit into this work  
       * Bias-variance trade off  
 
 * Study objectives  
