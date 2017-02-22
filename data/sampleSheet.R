@@ -19,10 +19,11 @@ get_sampleSheet <- function(){
             ntc <- data_frame(biosample_id = rep("NTC",6),
                               sample_type = "control", titration = NA)
             
-            data_frame(biosample_id = bio_replicates, 
-                       sample_type = "titration", titration = titration_96) %>% 
-                  bind_rows(ntc) %>% mutate(sample_type = ifelse(titration %in% c(0,20), 
-                                                                 "unmixed",sample_type)) ->df_96
+            df_96 <- data_frame(biosample_id = bio_replicates, 
+                                sample_type = "titration", 
+                                titration = titration_96) %>% 
+                  bind_rows(ntc) %>% 
+                  mutate(sample_type = ifelse(titration %in% c(0,20), "unmixed",sample_type)) 
       }
       
       make_plan_a_df <- function(biosample_id, titration){
@@ -70,7 +71,7 @@ get_sampleSheet <- function(){
       
       ## Annotating with barcode information -----------------------------------------
       illumina_index <- read_csv("data/raw/illumina_index.csv", comment = "#") %>%
-          rename(kit_version = `Kit Version`, index_name = `i7 index name`)
+          dplyr::rename(kit_version = `Kit Version`, index_name = `i7 index name`)
       assign_plate <- c(A= 1, B= 1, C= 2, D = 2)
       assign_lab <- c(A= "JHU", B= "NIST", C= "NIST", D = "JHU")
       
@@ -79,7 +80,7 @@ get_sampleSheet <- function(){
           group_by(kit_version) %>% mutate(row = LETTERS[1:8]) %>%
           mutate(pcr_16S_plate = assign_plate[kit_version],
                  barcode_lab = assign_lab[kit_version]) %>%
-          rename(For_Index = Index, For_Index_ID = index_name,
+          dplyr::rename(For_Index = Index, For_Index_ID = index_name,
                  For_sample_sheet = sample_sheet, For_barcode_seq = barcode_seq) %>%
           select(kit_version, For_Index_ID, pcr_16S_plate, barcode_lab, row)
       
@@ -88,7 +89,7 @@ get_sampleSheet <- function(){
           group_by(kit_version) %>% mutate(col = 1:12) %>%
           mutate(pcr_16S_plate = assign_plate[kit_version],
                  barcode_lab = assign_lab[kit_version]) %>%
-          rename(Rev_Index = Index, Rev_Index_ID = index_name,
+          dplyr::rename(Rev_Index = Index, Rev_Index_ID = index_name,
                  Rev_sample_sheet = sample_sheet, Rev_barcode_seq = barcode_seq) %>%
           select(kit_version, Rev_Index_ID, pcr_16S_plate, barcode_lab, col)
       
@@ -118,7 +119,10 @@ get_sampleSheet <- function(){
                  For_Index_ID, Rev_Index_ID, seq_lab)
       
       
-      
+      ## adding corrected titrations
+      sample_sheet <- sample_sheet %>% 
+            mutate(t_fctr = factor(titration),
+                  t_fctr = fct_recode(t_fctr, `0` = "20", `20` = "0"))
       write_csv(sample_sheet, "data/raw/sample_sheet.csv")
       sample_sheet
 }
