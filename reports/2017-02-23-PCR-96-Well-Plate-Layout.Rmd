@@ -85,3 +85,10 @@ pcr_plate_layout %>% mutate(Row = as.numeric(factor(row))) %>%
 ggsave("../img/pcr_plate_16S.png")
 ```
 
+## Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
