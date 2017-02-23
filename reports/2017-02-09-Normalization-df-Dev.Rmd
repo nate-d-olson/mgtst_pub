@@ -81,6 +81,21 @@ calc_css_counts <- function(mrexp, norm = TRUE,log = TRUE,sl = 1000, p = 0.75){
             left_join(sam_dat) 
 }
 
+calc_uqs_counts <- function(mrexp, p = 0.75, log = FALSE){
+      require(matrixStats)
+      x <- MRcounts(mrexp)
+      x[x==0] <- NA
+      upper_sf <- colQuantiles(x,p = p ,na.rm=TRUE)
+      nmat <- sweep(MRcounts(mrexp),2,upper_sf,'/')
+      if(log) nmat <- log2(nmat + 1)
+      
+      nmat %>% as_tibble() %>% 
+            rownames_to_column(var = "featureIndices") %>% 
+            gather("samID","count",-featureIndices) %>% 
+            left_join(sam_dat) 
+      
+}
+
 # TSS from http://mixomics.org/mixmc/normalisation/ 
 calc_tss_counts <- function(mrexp){
       mrexp@assayData$counts %>% {apply(., 2, function(x){ x/sum(x) })} %>% 
@@ -124,15 +139,15 @@ rawlog_counts <- mrexp %>% map_df(calc_raw_counts, .id = "pipe") %>%
 ```
 
 ```{r message = FALSE}
-uqs_counts <- mrexp %>% map_df(calc_css_counts, p = 0.75,sl = 1, log = FALSE, .id = "pipe")
-uqslog_counts <- mrexp %>% map_df(calc_css_counts, sl = 1, .id = "pipe")
+uqs_counts <- mrexp %>% map_df(calc_uqs_counts, p = 0.75, log = FALSE, .id = "pipe")
+uqslog_counts <- mrexp %>% map_df(calc_css_counts, p = 0.75, log = TRUE, .id = "pipe")
 ```
 
 ```{r message = FALSE}
 css_counts <- mrexp %>% 
-  {map_df(.x=., .f=~calc_css_counts(.,log = FALSE, p = cumNormStat(.), sl = 1), .id = "pipe")}
+  {map_df(.x=., .f=~calc_css_counts(.,log = FALSE, p = 0.75, sl = 1), .id = "pipe")}
 csslog_counts <- mrexp %>% 
-  {map_df(.x=., .f=~calc_css_counts(., p = cumNormStat(.), sl = 1),  .id = "pipe")}
+  {map_df(.x=., .f=~calc_css_counts(., log = TRUE, p = 0.75, sl = 1),  .id = "pipe")}
 ```
 
 
