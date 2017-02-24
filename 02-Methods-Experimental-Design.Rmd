@@ -23,10 +23,7 @@ Table design
 
 To ensure that the two-sample titrations were correctly mixed independent ERCC plasmids were spiked into the unmixed pre and post treatment samples (Supplemental Table ERCC).
 The ERCC plasmids were resuspendended in 100 $ng/\mu L$ tris-EDTA buffer and 2 $ng/\mu L$ was spiked into each sample.  
-__TODO__ Check if the ERCC were first diluted then 2 ul were spiked into the unmixed samples  
-
 Plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) specific to each ERCC plasmids using the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA).
-
 To account for differences in the proportion of bacterial DNA in the pre and post-treatment samples, the amount of bacterial DNA was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA).
 All two-sample titrations and unmixed samples were run in triplicate along with a standard curve.
 An in-house standard curve consisting of log10 dilutions of _E. coli_ DNA was used as the standard curve. ( __TODO__ Supplemental Material justification for using in-house instead of manufacturer provided standard curve).

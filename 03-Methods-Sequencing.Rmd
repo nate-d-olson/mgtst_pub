@@ -7,9 +7,9 @@ The primer sequences include additional overhang adapter sequences to facilitate
 
 The 16S targeted PCR was performed according to the Illumina protocol using the KAPA HiFI HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
 The resulting PCR product was verified using agarose gel electrophoresis.
-Next the PCR product was purified and concentration was assessed using picogreen ( __Reagent Info, plate reader info__). 
-After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D (Illumina Inc., San Diego CA).
-The indexed PCR products were again purified and concentration was assessed using picogreen ( __Reagent Info__).
+Quality control DNA concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and after normalization. DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Mocledular Devices LLC. Sunnyvale CA, USA) flourescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Mocledular Devices LLC. Sunnyvale CA, USA). 
+After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D ( __Check Barcodes__ Illumina Inc., San Diego CA).
 The purified sample concentration was normalized using SequalPrep (ThermoFisher, Waltham MA), according to the manufactuers protocol and pooled prior to sequencing.
-Due to low concentration of the pooled amplicon library the follow method was used __TODO__.
+The pooled library concentration was measured using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
+Due to low concentration of the pooled amplicon library the modified protocol for low concentration libraries was used.
 The library was run on a Illumina MiSeq and base calls were made using Illumina Real Time Analysis Software version 1.18.54.
