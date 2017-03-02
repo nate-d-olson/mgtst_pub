@@ -1,0 +1,65 @@
+---
+title: "Investigation of Mix Specific Features"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, message = FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+```
+
+
+## Objective
+A large number of features were only present in the titrations and not the unmixed samples. 
+Some fraction of these features are due to sampling where low abundance features will not be in the unmixed sample datasets but present in some of the titrations. 
+
+## Approach 
+Look at the abundance and presence in titrations of unmixed specific features to determine if the mix specific features are an artifact of the sampling procedure or the feature inference procedure.  
+
+
+```{r}
+# feature_specificity_counts_df <- readRDS("../data/feature_specificity_counts_df.rds")
+feature_specificity_df <- readRDS("../data/feature_specificity_df.rds") 
+```
+
+```{r}
+glimpse(feature_specificity_df)
+```
+
+```{r}
+feature_specificity_df %>% filter(specific_anno != "biorep_neg") %>% 
+      ggplot() + geom_point(aes(x = Samp, y = Reads, color = specific_anno), alpha = 0.25) +
+      facet_grid(specific_anno~pipe) + scale_y_log10() + theme_bw()
+```
+
+* Vertical lines at 4, for pre- and post-full specific features are features that are present in the umixed samples and not the titration or mixture samples.  
+
+```{r}
+feature_specificity_df %>% filter(specific_anno == "mix_specific") %>% 
+      ggplot() + geom_point(aes(x = Samp, y = Reads/Samp, color = factor(NTC)), alpha = 0.25) +
+      facet_grid(sampleID~pipe) + scale_y_log10() + theme_bw() + 
+      labs(x = "Number of Samples", y = "Average Reads per Sample")
+```
+
+* NTC is the number of no template controls that feature is observed in  
+* There are a total of 28 titration samples, 7 titrations time 5 PCR replicates  
+* Not sure what the expectation is for the unmixed samples  
+* Should be able to predict assuming multinomial sampling  
+* The average read pre sample less than 10 agrees with prior expectation. The higher average number of reads per sample for DADA2 indicates to me that these mix-specific feature are artifacts of the feature inference procedure rather than a sampling artifact. 
+
+
+## Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
