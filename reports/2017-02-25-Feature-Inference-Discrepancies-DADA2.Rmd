@@ -58,22 +58,22 @@ get_seqtable <- function(sam){
 sams <- paste0("1-",LETTERS[1:8],"2") %>% c(.,"1-B2")
 sam_list <- as.list(sams) %>% set_names(sams)
 seqTable <- map_df(.x = sam_list, .f = get_seqtable, .id = "sampleID")
-saveRDS(seqTable, "E01JH00011_plate1_half1_dada_seq_tbl.rds")
+# saveRDS(seqTable, "E01JH00011_plate1_half1_dada_seq_tbl.rds")
+## Clean-up
+rm(derepFs)
+rm(dadaFs)
 ```
 
-seqTable data description
-sampleID - PCR (sample) the sequence is from
-seq - representative sequence, most abundant sequence in the feature
-n0 - could not find in dada2 documentation
-uniqueIndex - dada2 assigned index
-genotypeIndex - dada2 assigned index 
-derepSeq - unique sequence
-id - sequence id for source read
 
-```{r}
-seqTable %>% glimpse()
-```
+__seqTable data.table variable description__  
 
+* sampleID - PCR (sample) the sequence is from  
+* seq - representative sequence, most abundant sequence in the feature  
+* n0 - could not find in dada2 documentation  
+* uniqueIndex - dada2 assigned index  
+* genotypeIndex - dada2 assigned index   
+* derepSeq - unique sequence   
+* id - sequence id for source read   
 
 ### Distribution of dereplicated sequences across samples.
 Extracting the sequence top 4 and most abundant features.  
@@ -97,17 +97,92 @@ top_sam_seqTable %>%  ggplot() +
 
 
 
-## Ranking features
+## Total Variance Feature Ranking
 Based on conversation with Hector (3/1), for each feature 
 1. center and scale unique sequence abundance distribution across samples 
 2. center values by sample 
 3. calculate total feature variance as $\sqrt{SS}$
 
-```{r fig.cap="Diagram of variance ranking method"}
-knitr::include_graphics("IMG_2467.JPG")
+```{r}
+seq_abu <- seqTable %>% group_by(seq,derepSeq, sampleID) %>% summarise(count = n())
+
+## removing singleton unique sequences - irrelevant to distribution based analysis
+seq_abu_filt <- seq_n %>% filter(count > 1) %>% select(-count) %>% left_join(seq_abu)
+
+seq_rank <- seq_abu_filt %>%  
+      group_by(seq, derepSeq) %>% mutate(mu = mean(count), stdev = sd(count)) %>% 
+      ## when standard deviation is 0 how to scale? - replacing with 1
+      mutate(stdev = if_else(stdev == 0, 1, stdev)) %>% 
+      ## count_cs unique sequence wise centered and scaled value
+      ungroup() %>% mutate(count_cs = (count - mu)/stdev)  %>%
+      group_by(seq, sampleID) %>% mutate(seq_cs_mu = mean(count_cs)) %>%
+      ## count_csc sample-wise centered count_cs
+      ungroup() %>% mutate(count_csc = count_cs - seq_cs_mu) %>%
+      ## seq_var_ss - sequence wise square root sum of squares of count_csc
+      group_by(seq) %>% summarise(seq_var_ss = sqrt(sum(count_csc^2))) %>% 
+      ## ranking features by variance ss
+      ungroup() %>% arrange(desc(seq_var_ss)) %>% mutate(var_ss_rank = 1:n())
 ```
 
-Use total variance calculation to rank features, looking at the features with the greatest variance. 
+
+```{r}
+seq_rank %>% ggplot() + geom_density(aes(x = seq_var_ss)) + theme_bw() + 
+      labs(x = "Total Variance", y = "Density")
+```
+
+
+```{r}
+top_seqTable <- seq_rank %>% left_join(seq_abu_filt) %>% filter(var_ss_rank < 10)
+top_seqTable %>%  ggplot() + 
+      geom_path(aes(x = sampleID, y = count, group = derepSeq)) + 
+      scale_y_log10() + theme_bw() + facet_wrap(~var_ss_rank, nrow = 1) + 
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+top_seqTable <- seq_rank %>% left_join(seq_abu_filt) %>% filter(var_ss_rank %in% 11:20)
+top_seqTable %>%  ggplot() + 
+      geom_path(aes(x = sampleID, y = count, group = derepSeq)) + 
+      scale_y_log10() + theme_bw() + facet_wrap(~var_ss_rank, nrow = 1) + 
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+top_seqTable <- seq_rank %>% left_join(seq_abu_filt) %>% filter(var_ss_rank %in% 21:30)
+top_seqTable %>%  ggplot() + 
+      geom_path(aes(x = sampleID, y = count, group = derepSeq)) + 
+      scale_y_log10() + theme_bw() + facet_wrap(~var_ss_rank, nrow = 1) + 
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+top_seqTable <- seq_rank %>% left_join(seq_abu_filt) %>% filter(var_ss_rank %in% 31:40)
+top_seqTable %>%  ggplot() + 
+      geom_path(aes(x = sampleID, y = count, group = derepSeq)) + 
+      scale_y_log10() + theme_bw() + facet_wrap(~var_ss_rank, nrow = 1) + 
+      theme(axis.text.x = element_text(angle = 90))
+
+```
+
+
+```{r}
+top_seqTable <- seq_rank %>% left_join(seq_abu_filt) %>% filter(var_ss_rank %in% 41:50)
+top_seqTable %>%  ggplot() + 
+      geom_path(aes(x = sampleID, y = count, group = derepSeq)) + 
+      scale_y_log10() + theme_bw() + facet_wrap(~var_ss_rank, nrow = 1) + 
+      theme(axis.text.x = element_text(angle = 90))
+
+```
+
+```{r}
+full_seqTable <- seq_rank %>% left_join(seq_abu_filt)
+full_plot <- full_seqTable %>%  ggplot() + 
+      geom_path(aes(x = sampleID, y = count, group = derepSeq)) + 
+      scale_y_log10() + theme_bw() + facet_wrap(~var_ss_rank) + 
+      theme(axis.text.x = element_text(angle = 90))
+ggsave(full_plot, filename = "unique_seq_dist_full.pdf", width = 48, height = 36)
+```
 
 ### Oligotype Analysis for most abundant feature
 
@@ -118,7 +193,7 @@ abu_seq <- seqTable %>% group_by(seq) %>% summarise(count = n()) %>%
 names(abu_seq) <- "top_feature"
 abu_seqTable <- seqTable %>% filter(seq == abu_seq)
 seqs <- abu_seqTable$derepSeq 
-names(seqs) <- paste0(abu_seqTable$sampleID," ", abu_seqTable$id)
+names(seqs) <- paste0(abu_seqTable$sampleID,"-", abu_seqTable$id)
 
 ## saving sequences to file
 fasta_file <- file.path(dada_pipe_dir,"oligotype_analysis", "E01JH00011_top_feature.fasta")
@@ -229,16 +304,12 @@ Based on the MSA, what appear to be non-16S reads were assigned to the feature.
       1. calculate pairwise distances using ..... Mothur with sequence alignment?
 
 ```{r}
-dist_mat <- read_delim("/Users/nolson/Projects/16S_etec_mix_study/analysis/pipelines/dada2/oligotype_analysis/E01JH00011_top_feature.good.filter.dist",col_names = FALSE, delim = " ")
+dist_mat <- read_delim("/Users/nolson/Projects/16S_etec_mix_study/analysis/pipelines/dada2/oligotype_analysis/E01JH00011_top_feature_unique_curated.filter.dist",col_names = FALSE, delim = " ")
 ```
 ```{r}
 dist_mat %>% ggplot() + geom_density(aes(x = X3)) + theme_bw() + labs(x = "Distance", y = "Density")
 ```
 
-
-```{r}
-dist_mat %>% arrange(desc(X3))
-```
 
 
 
