@@ -38,7 +38,7 @@ fasta_file <- file.path(dada_pipe_dir,"oligotype_analysis", "E01JH00011_top_feat
 ## Saving unique sequences
 fasta_file <- file.path(dada_pipe_dir,"oligotype_analysis", "E01JH00011_top_feature_unique.fasta") 
 seq_df <- data_frame(seqs = seqs, seq_name = names(seqs)) %>% 
-      filter(seq_name %in% tax_classified$X1) %>% group_by(seqs) %>% top_n(1)
+     group_by(seqs) %>% sample_n(1)
 seqs <- seq_df$seqs
 names(seqs) <- seq_df$seq_name
 seqs %>% DNAStringSet() %>% writeXStringSet(fasta_file)
