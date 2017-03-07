@@ -1,5 +1,4 @@
 
-
 ## Library Preparation and Sequencing
 The 16S PCR targeted the V3-V4 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
 The V3-V4 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at) (__TODO__ Supplemental Figure Amplicon Region).

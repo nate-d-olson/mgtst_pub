@@ -1,4 +1,5 @@
 ## Sequence QA
+__Potentially Move To Supplemental__
 
 ### 16S PCR validation
 The initial 16S PCR product was first verified for amplification and amplicon size using gel electrophoresis.  

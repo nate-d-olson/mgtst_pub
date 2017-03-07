@@ -7,7 +7,7 @@ __Section objectives__
 * capturing differences in quality across samples 
 * Statements/ Figures showing how datasets behave
 
-
+__MOVE TO ARTIFACTS__
 ```{r echo = FALSE}
 mrexp_files <- list(
       dada2 = "data/mrexp_dada2.RDS",
@@ -63,6 +63,10 @@ ggplot(curve_df) +
     facet_grid(pipe~sampleID, scales = "free") + 
     theme_bw() + theme(legend.position = "bottom")
 ```
+
+## Characterization of Differences in Feature Number
+* Exploration of DADA2 features - specifically low total number of features  
+* QIIME lower number of sequences?
 
 
 ### Beta Diversity - Overall sample similarity

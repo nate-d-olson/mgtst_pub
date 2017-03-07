@@ -10,6 +10,8 @@
       * Complexity of real samples  
       * Provides a level of truth  
 
+* 16S metagenomic measurement process - specifically sequence processing
+
 * Assessing normalization and differential abundance  
       * Current approaches, and limitations  
             * how do spike-ins fit into this work  
@@ -18,4 +20,5 @@
 * Study objectives  
       * Demonstrate how mixtures can be used for 16S  
       * Generate a dataset for use in evaluating 16S  
-      * Develop methods for assessing normalization and differential abundance  
+      * Develop methods for assessing normalization and differential abundance 
+      * Identification of feature characteristics responsible for low performance

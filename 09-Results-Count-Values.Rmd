@@ -3,7 +3,7 @@ See `artifacts/count_values.pdf`
 
 - Overall Bias and Variance Summary  
 - features only in Pre and post unmixed  
-- effectiveness of high and low variance replicates 
+- effectiveness of high and low variance replicates __Not sure what I meant here__
 - Correlating factors with feature level normalization performance
       - factors: well position, primer mismatches, GC, high level taxonomic group (gram positive vs. gram negative) 
       - Potentially test for a phylogenetic signal?
