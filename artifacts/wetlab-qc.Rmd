@@ -1,5 +1,5 @@
 ---
-title: "wet lab QC"
+title: "Wet Lab Quality Control"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 always_allow_html: yes
@@ -16,8 +16,57 @@ setwd(cwd)
 ```
 
 
-### Wetlab QC  
+## Overview
+Results of the quality control measurements made as part of the wet lab sample processing. 
+The intial 16S rRNA PCR was verified using gel electrophoresis. 
+DNA concentration measurements were made after the clean-up of the two PCR steps, 16S rRNA and barcoding, as well as after normalization. 
+The pooled library was validated for DNA concentration and size using Qubit and Bioanalyzer. 
 
+__Key Point__ What samples if any to exclude from analysis
+
+### 16S rRNA PCR Gel 
+
+__TODO__ Annotate wells
+Wells 18 and 27 in second row are broken  
+
+```{r}
+knitr::include_graphics("../img/1st_16S_PCR_P1_P2_Gel_20160224.tif")
+```
+
+## DNA concentration Post 16S PCR
+Post 16S PCR DNA concentration is tstWetLabQC - measurements were made at JHU
+```{r echo = FALSE}
+pcr_conc_16S <- tstWetLabQC %>% left_join(tstPcrSampleMetaData)
+
+```
+Three no template control samples have measureable but low DNA concentrations. 
+This is not unexpected as contaminants in PCR reagents are common (Mark from Abbot reference).
+
+```{r}
+pcr_conc_16S %>% filter(biosample_id == "NTC", conc_ngul > 0) %>% 
+      knitr::kable()
+```
+
+Of the 180 samples 5 had 16S rRNA PCR products with DNA concentration measurements less than 0.5 ng/ul. 
+The DNA concenrtation was remeasured using Qubit for samples with DNA concentrations less than 0.5. 
+Of the 5 samples quantified with Qubit, only one of the samples had a concentration below the limit of detection for the assay (1-F9). 
+This sample is considered lost and excluded from downsteam analysis.  
+
+__TODO__ See if this corresponds with the gel electrophoresis results.  
+
+```{r}
+pcr_conc_16S %>% filter(biosample_id != "NTC", conc_ngul < 0.5) %>% knitr::kable()
+```
+
+## Barcode and Normalization DNA concentration
+__TODO__ Get values with JHU 
+
+__TODO__ incorporate NIST values into ProjectTemplate 
+
+## Pooled library QC results
+__TODO__ Get from sequencing labs
+
+<!--
 ### 16S PCR Concentration Post-Cleanup
 ```{r echo = FALSE}
 #tstWetLabQC %>% left_join(tstPcrSampleMetaData) %>% .$conc_ngml %>% summary()
@@ -72,3 +121,4 @@ excel file 16032_NIST_norm_15uL.xlsx
     * methods  
     * results 
 
+-->
