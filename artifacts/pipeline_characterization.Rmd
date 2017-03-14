@@ -27,20 +27,10 @@ mrexp <- mrexp_files %>% map(readRDS)
 ```
 
 
-# Introduction 
-The sequencing dataset was processed using three ( __TODO__ Fourth pipeline - Popline) bioinformatic pipelines. 
-The following analysis provides and overview of the resulting datasets; 
-
-1. based on the count table characteristics (number of features and sparsness)
-2. sample coverage (rarefaction curves),
-3. variability and range of observed log-fold change values (MA plots beween pre- and post-treatment samples)
-4. overall similarity between pre- and post-treatment samples (beta-diversity ordination) 
-5. Feature specificity - how much information for the titration values is provided by the unmixed samples 
+The sequencing dataset was processed using three bioinformatic pipelines. 
+The following analysis provides and overview of the resulting dataset; count table characteristics,  sample coverage, overall similarity between pre- and post-treatment samples.
 
 ## Count Table Characteristics
-Total number of features for all samples and count table sparsity for the bioinformatic pipelines.  
-
-__NOTE__ Sparsity lower for De-novo clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
 ```{r}
 ## Loading seq count data
 project_dir <- "~/Projects/16S_etec_mix_study/"
@@ -82,8 +72,6 @@ meta_df <- sampleSheet %>%
     left_join(grp_df) %>% left_join(qa_file_info)
 ```
 
-
-
 ```{r}
 ## number of OTUs
 features <- mrexp %>% map_dbl(NROW)
@@ -114,34 +102,49 @@ count_df <- mrexp %>% map(extract_samples) %>%
       map_df(rownames_to_column, var = "id", .id = "pipe") %>% 
       dplyr::rename(counts = `.x[[i]]`)
 
+count_summary <- count_df %>% group_by(pipe) %>% 
+      summarise(count_med = median(counts) %>% round(0),
+                count_min = min(counts) %>% round(0),
+                count_max = max(counts) %>% round(0)) %>% 
+      mutate(`Sample Coverage` = paste0(count_med, " (", count_min, "-", count_max,")")) %>% 
+      select(pipe, `Sample Coverage`)
+
 reads_df <- meta_df %>% filter(Read == "R1") %>% 
-      select(ill_id, reads, group) %>% dplyr::rename(id = ill_id)
+      select(ill_id, reads, group) %>% dplyr::rename(id = ill_id) 
+
 filter_rate_df <- count_df %>% left_join(reads_df) %>%
-      mutate(filter_rate = 1 - counts/reads)
+      mutate(filter_rate = 1 - counts/reads) 
+
+filter_rate_summary <- filter_rate_df %>% group_by(pipe) %>% 
+      summarise(filt_med = median(filter_rate) %>% round(2),
+                filt_min = min(filter_rate) %>% round(2),
+                filt_max = max(filter_rate) %>% round(2)) %>% 
+      mutate(`Filter Rate` = paste0(filt_med, " (", filt_min, "-", filt_max,")")) %>% 
+      select(pipe, `Filter Rate`)
 ```
 
-```{r}
-data_frame(pipe = names(mrexp), features, sparsity) %>% knitr::kable()
-```
 
+Total number of features for all samples and count table sparsity for the bioinformatic pipelines. 
+The expectation is that this dataset will be more sparse relative to other datasets due to the redundant nature of the samples where 35 of the 45 samples are derived directly from the other 10 samples and that there are four PCR replicates for each sample. 
+Sparsity lower for De-novo clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
 Different pipelines have different approaches for handling low quality reads. See individual pipeline reports for which steps reads are excluded from the datasets. 
 QIIME pipeline has the highest filter rate while the highest number of features per sample. 
 
 ```{r}
-ggplot(filter_rate_df) + 
-      geom_boxplot(aes(x = pipe, y = filter_rate),outlier.size = 0) +
-      geom_jitter(aes(x = pipe, y = filter_rate), width = 0.25, alpha = 0.5) +
-      theme_bw() + 
-      labs(x = "Bioinformatic Pipeline", y = "Sequence Filter Rate")
+data_frame(pipe = names(mrexp), 
+           Features = features, 
+           Sparsity = round(sparsity,2)) %>% 
+      left_join(count_summary) %>% left_join(filter_rate_summary) %>% 
+      dplyr::rename(Pipelines = pipe) %>% 
+      knitr::kable(caption = "Summary statistics for the different bioinformatic pipeliens. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total feature abundance. Filter rate is the proportion of reads that were removed while processing the sequencing data for each bioinformatic pipeline.")
 ```
 
 
-
 ## Sample Coverage 
-Sample coverage show using rarefaction curves. 
+Rarefaction curves are commonly used to demonstrate how well a community has been sampled ( __REF__ ).
 The slope of the curve decreases as sample coverage increases. 
 Rarefaction curve for sequence inference has flattened out indicating the community has been fully sampled. 
-Whereas the curves have not flatten out for _de novo_ and open reference clustering indicating that the community has not been fully sampled. 
+Whereas the curves have not reached their asymptotes for _de novo_ and open reference clustering indicating that the community has not been fully sampled. 
 Comparison of the individual sample rarefaction curves to the rarefaction curves after aggregating counts for the four replicates indicates that the rarefaction curves of the individual for the _de novo_ and open-reference clustering more representative of the diversity in the four replicates combined than the features generated using the sequence inference method. 
 
 ```{r results = 'hide'}
@@ -177,43 +180,76 @@ agg_curve <- mrexp %>% map(extract_samples) %>% map(agg_sample) %>%
 agg_curve_df <- agg_curve %>% separate(samID,c("sampleID","dilution"),sep = ":",remove = FALSE) 
 ```
 
+```{r fig.cap = "Rarefaction curves for the unmixed pre- and post-treatment samples. The solid lines represent individual PCR replicates and the dashed lines the pooled replicates."}
+agg_curve_df <- agg_curve_df %>% 
+      mutate(Treatment = if_else(dilution == 0, "Pre", "Post"))
+
+curve_df %>% mutate(Treatment = if_else(dilution == 0, "Pre", "Post")) %>% 
+      ggplot() + 
+      geom_path(aes(x = sample, y = OTUs, color = Treatment, group = samID)) +  
+      geom_path(data = agg_curve_df, 
+                aes(x = sample, y = OTUs, color = Treatment, group = samID), 
+                alpha = 0.5, linetype = 2) + 
+      facet_grid(sampleID~pipe) + #, scale = "free") + 
+      theme_bw() + theme(legend.position = "bottom") +
+      labs(x = "Sampling Depth", y = "Features")
+```
+
+
+## Similarity Between Pre- and Post-Treatment Samples 
+Replicates group together.  
+Overall samples group together more by treatment status than biological sample. 
+
 ```{r}
-# agg_curve_df
-ggplot(curve_df) + 
-    geom_path(aes(x = sample, y = OTUs, color = factor(dilution), group = samID)) +  
-      geom_path(data = agg_curve_df, aes(x = sample, y = OTUs, color = factor(dilution), group = samID), alpha = 0.5, linetype = 2) + 
-    facet_grid(pipe~sampleID, scale = "free") + 
-    theme_bw() + theme(legend.position = "bottom")
+ps_files <- list(
+      dada2  = "../data/phyloseq_dada2.RDS",
+      mothur = "../data/phyloseq_mothur.RDS",
+      qiime  = "../data/phyloseq_qiime.RDS"
+)
+ps <- ps_files %>% map(readRDS) 
 ```
 
-## Range of logFC values
-To get a general idea regarding the overall range of logFC values to expect for the titrations provided an MA plot comparing the pre- and post-treatment samples. 
-
-__TODO__ Comment on the relationship between the observed logFC values and titrations
 ```{r}
-sample_ids <- pData(mrexp$dada2)$sampleID %>% unique()
-sample_ids <- sample_ids[sample_ids != "NTC"]
-
-ma_df <- mrexp %>% map_df(get_ma_df_by_sample, sample_ids, .id = "pipe")
-```
-
-```{r ma_plot, fig.cap = "MA plot for different bioinformatic pipelines. Points at top and bottom of plots are OTUs only present in pre-treatment and post-treatment samples respectively."}
-# __TODO__ Filter low quality samples 
-ggplot(ma_df) + geom_point(aes(x = A, y = logFC, group = otu, color = sampleID), alpha = 0.5) + 
-      geom_hline(aes(yintercept = -1), linetype = 2) + 
-      geom_hline(aes(yintercept = 1), linetype = 2) + 
-      theme_bw() +
-      scale_x_log10() +
-      facet_wrap(~pipe)
+sample_set <- sampleSheet %>% filter(barcode_lab == "JHU", seq_lab == "JHU", 
+                       titration %in% c(20,0)) %>% 
+      select(biosample_id, titration, pcr_16S_plate, pos) %>% 
+      unite(sample_name, pcr_16S_plate, pos, sep = "-")
 ```
 
 
-## Similarity between pre- and post-treatment samples
-Beta diversity ordination plot 
+```{r}
+subset_ps <- function(ps_obj){
+      
+      ## subset by titrations of interest
+      ps_subset <- subset_samples(ps_obj, dilution %in% c(-1,0)) 
+      ps_subset@sam_data$dilution <- factor(ps_subset@sam_data$dilution)
+      
+      ps_subset
+}
+```
 
-## Feature Specificity
-see Mix Specific Feature report
-see Pre- Post-Specific report 
+```{r}
+sample_ids <- sampleSheet$biosample_id %>% unique()
+subset_obj <- ps %>% map(subset_ps)
+subset_ord <- subset_obj %>% map(ordinate, "PCoA", "bray")
+```
+
+```{r}
+pl_list <- map2(subset_obj, subset_ord, plot_ordination, 
+                type = "sample",color = "sampleID", shape = "dilution")
+```
+
+```{r}
+pl_list$dada2 + ggtitle("DADA2 Ordination") + theme_bw()
+```
+
+```{r}
+pl_list$mothur + ggtitle("Mothur Ordination") + theme_bw()
+``` 
+
+```{r}
+pl_list$qiime + ggtitle("QIIME Ordination") + theme_bw()
+```
 
 # Conclusion
 
