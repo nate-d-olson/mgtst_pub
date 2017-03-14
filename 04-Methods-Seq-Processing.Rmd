@@ -1,3 +1,6 @@
+## Sequencing Data Quality Assessment
+To generate summaries of QA metrics for the 384 datasets in the study (192 samples with forward and reverse reads) used the bioconductor `Rqc` package (REF) to calculate the quality metrics used in the following analysis. 
+
 ## Sequence Processing
 Sequence data was processed using a number of bioinformatic pipelines, Mothur [@schloss2009introducing], QIIME [@caporaso2010qiime], DADA2 [@callahan2016dada2], and an in-house pipeline with _de-novo_ clustering and phylogenetic placement.
 The Mothur (version 1.37, http://www.mothur.org/) pipeline used was based on the MiSeq SOP [@schloss2009introducing,@kozich2013development].
