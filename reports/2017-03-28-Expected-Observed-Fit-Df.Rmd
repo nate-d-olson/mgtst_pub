@@ -1,0 +1,90 @@
+---
+title: "Expected-Observed Count Linearity"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd) 
+count_exp_df <- readRDS("../data/expected_count_values_df.rds") 
+```
+
+## Objective
+Evaluate how well the expected and observed count values agree. 
+Using the `expected_count_values_df.rds` data frame generated in `2017-03-28-Development-Titration-Pred-Df.Rmd`. 
+Outline
+1. Initial EDA for sanity check
+1. Calculate lm fit 
+1. Fit characterization
+
+
+## Fit approach
+1. Using `lm` with observed and expected values, looking for estimate deviance from slope of 1 and intercept 0
+      1. Can summarize two values by calculating the euclidean distance  
+1. calculate p-values for slope of 1 and intercept 0
+1. How much of the observed variability is explained by the assumed one to one relationship
+      1. $R^2$ - need to calculate assuming slope and intercept are 1 and 0  
+
+###
+```{r}
+count_exp_df %>%
+      ggplot() + 
+      geom_point(aes(x = obs_count, y = exp_count), fill = "darkblue", 
+                 color = "white", alpha = 0.5, shape = 21) + 
+      geom_abline(aes(intercept = 0, slope =1), color = "darkorange") +
+     facet_wrap(~pipe, scales = "free")+ theme_bw() + 
+      labs(y = "Expected Count", x = "Observed Count")
+```
+
+
+
+```{r}
+count_exp_df %>% 
+      ggplot() +
+      geom_point(aes(x = exp_count, y = residual), fill = "darkblue", 
+                 color = "white", alpha = 0.5, shape = 21) +
+      geom_smooth(aes(x = exp_count, y = residual), 
+            method = "lm", se = TRUE, color = "darkorange") +
+      facet_grid(biosample_id~pipe, scales = "free_x", space = "free") + theme_bw() +
+      labs(x = "Expected Count", y = "Residuals")
+```
+
+
+## Fitting model to individual Features
+```{r}
+count_exp_nested <- count_exp_df %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      nest() 
+
+count_exp_fit <- count_exp_nested %>% 
+      mutate(fit = map(data,~lm(residual ~ exp_count, data = .)))
+
+count_exp_fit_tidy <- count_exp_fit %>% 
+      mutate(fit_summary = map(fit, broom::tidy)) %>% 
+      select(-data, -fit) %>% unnest() %>% 
+      mutate(term = if_else(term == "(Intercept)", "Intercept","Slope")) 
+
+count_exp_fit_glance <- count_exp_fit %>% 
+      mutate(fit_summary = map(fit, broom::glance)) %>% 
+      select(-data, -fit) %>% unnest() %>% 
+      select(-statistic, -p.value) 
+```
+
+
+
+## Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+``` 
