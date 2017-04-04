@@ -122,7 +122,9 @@ exp_count <- calc_expected(count_df, pre_post_counts)
 
 
 ## annotating data frame 
-count_exp_df <- left_join(exp_count, count_df) %>% dplyr::rename(obs_count = count)
+count_exp_df <- left_join(exp_count, count_df) %>% 
+      dplyr::rename(obs_count = count) %>% 
+      mutate(residual = exp_count - obs_count)
 ```
 
 ```{r}
@@ -145,7 +147,9 @@ pre_post_counts <- get_pre_post_counts(count_df)
 exp_count <- calc_expected(count_df, pre_post_counts) 
 
 ## annotating data frame 
-count_exp_df <- left_join(exp_count, count_df) %>% dplyr::rename(obs_count = count)
+count_exp_df <- left_join(exp_count, count_df) %>% 
+      dplyr::rename(obs_count = count) %>% 
+      mutate(residual = exp_count - obs_count)
 ```
 
 ```{r}
