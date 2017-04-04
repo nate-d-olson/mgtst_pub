@@ -8,6 +8,8 @@ output:
   html_document: default
 ---
 
+__TODO__ Add sanity checks for expected value calculations 
+
 ```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(ProjectTemplate)
@@ -27,10 +29,15 @@ Generate a data_frame with observed and predicted count values for individual PC
 Expected values are calculated using unmixed PCR count table values from the same set of PCR replicates, same half of one of the replicate 96 well plates. 
 
 
-
+## Functions for Processing Data 
 ```{r}
 ## Extracting a tidy dataframe with count values from MRexpiment objects
-get_count_df <- function(mrobj){
+get_count_df <- function(mrobj, agg_genus = FALSE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
       mrobj <- cumNorm(mrobj, p = 0.75)
       mrobj %>%
             # not sure whether or not to normalize counts prior to analysis
@@ -41,63 +48,108 @@ get_count_df <- function(mrobj){
             gather("id","count", -feature_id)
 }
 
-count_df <- mrexp %>% map_df(get_count_df, .id = "pipe")
 
-## Annotate with meta data and exclude NTCs
-count_df <- pData(mrexp$dada2) %>% right_join(count_df) %>%
-      filter(biosample_id != "NTC")
 ```  
-
-```{r}
-count_df %>% glimpse()
-```
-
 
 Extracting observed count values for unmixed pre and post samples
 
-```{r}
-## Pre and post full features are not necessarily pre or post specific
-post_count <- count_df %>%
-      filter(t_fctr == 0) %>%
-      select(pipe, biosample_id, feature_id, pcr_rep, count) %>%
-      dplyr::rename(post_count = count) 
+```{r} 
+get_pre_post_counts <- function(count_df){
+      pre_post_df <- count_df %>% 
+            filter(t_fctr %in% c(0, 20)) %>% 
+            mutate(pre_post = if_else(t_fctr == 0, "post_count", "pre_count")) 
+      
+      ## sanity checks 
+      post_check <- pre_post_df %>% filter(pre_post == "post_count") %>% .$t_fctr %>% unique()
+      if(length(post_check) != 1){
+            print("post t_fctr not unique")
+            paste0("Post: ", post_check) %>% print()
+      } 
+      
+      if(post_check != 0){
+            print("post t_fctr not 20")
+            paste0("Post t_fctr: ", post_check) %>% print()      
+      }
+      
+      pre_check <- pre_post_df %>% filter(pre_post == "pre_count") %>% .$t_fctr %>% unique()
+      if(length(pre_check) != 1){
+            print("pre t_fctr not unique")
+            paste0("Pre: ", pre_check) %>% print()
+      } 
+      
+      if(pre_check != 20){
+            print("pre t_fctr not 20")
+            paste0("Pre t_fctr: ", pre_check) %>% print()
+      }
+      pre_post_df %>% 
+            select(pipe, biosample_id, feature_id, pcr_rep, count, pre_post) %>% 
+            spread(pre_post, count)
 
-pre_count <- count_df %>%
-      filter(t_fctr == 20) %>%
-      select(pipe, biosample_id, feature_id, pcr_rep, count) %>%
-      dplyr::rename(pre_count = count) 
+}
 
-pre_post_count <-  full_join(pre_count, post_count) %>% 
-      mutate(pre_count = if_else(is.na(pre_count), 0, pre_count),
-             post_count = if_else(is.na(post_count), 0, post_count))
 ``` 
 
-Use observed count values and titration factor to calculate expected values for titrations. 
+Calculating expected counts 
 
 ```{r}
-titration_list <- data_frame(titration = c(1:5,10,15)) %>% 
-      mutate(post_prop = 2^-titration) %>% list() %>% rep(nrow(pre_post_count))
+calc_expected <- function(count_df, pre_post_counts){
+      
+      titration_list <- data_frame(titration = c(1:5,10,15)) %>% 
+            mutate(post_prop = 2^-titration) %>% list() %>% rep(nrow(pre_post_counts))
+      
+      pre_post_counts %>% ungroup() %>% 
+            add_column(titration = titration_list) %>% unnest() %>% 
+            mutate(exp_count = post_count * post_prop + pre_count * (1-post_prop))
+}
+```
 
-titration_pred <- pre_post_count %>% ungroup() %>% 
-      add_column(titration = titration_list) %>% unnest() %>% 
-      mutate(exp_count = post_count * post_prop + pre_count * (1-post_prop))
+## Generating Expected Count Data Frames 
+One data frame for feature level analysis and one when aggregating at the genus level. 
+
+### Feature Level
+```{r}
+count_df <- mrexp %>% map_df(get_count_df, .id = "pipe")
+
+## Annotate with metadata and exclude NTCs
+count_df <- pData(mrexp$dada2) %>% right_join(count_df) %>%
+      filter(biosample_id != "NTC")
+``` 
+
+Adding expected count values to observed count value data frame and calculating residuals. 
+```{r}
+pre_post_counts <- get_pre_post_counts(count_df) 
+exp_count <- calc_expected(count_df, pre_post_counts) 
+
+
+## annotating data frame 
+count_exp_df <- left_join(exp_count, count_df) %>% dplyr::rename(obs_count = count)
 ```
 
 ```{r}
-count_exp_df <- count_df %>% 
-      ungroup() %>% 
-      filter(titration %in% c(1:5,10,15)) %>%  
-      dplyr::rename(obs_count = count) %>% 
-      right_join(titration_pred) %>% 
-      mutate(residual = exp_count - obs_count)
+count_exp_df %>% saveRDS("../data/expected_count_values_feature_df.rds") 
+```
+
+### Genus Level
+
+```{r}
+count_df <- mrexp %>% map_df(get_count_df, agg_genus = TRUE, .id = "pipe")
+
+## Annotate with metadata and exclude NTCs
+count_df <- pData(mrexp$dada2) %>% right_join(count_df) %>%
+      filter(biosample_id != "NTC")
+``` 
+
+Adding expected count values to observed count value data frame and calculating residuals. 
+```{r}
+pre_post_counts <- get_pre_post_counts(count_df) 
+exp_count <- calc_expected(count_df, pre_post_counts) 
+
+## annotating data frame 
+count_exp_df <- left_join(exp_count, count_df) %>% dplyr::rename(obs_count = count)
 ```
 
 ```{r}
-count_exp_df %>% glimpse()
-```
-
-```{r}
-count_exp_df %>% saveRDS("../data/expected_count_values_df.rds") 
+count_exp_df %>% saveRDS("../data/expected_count_values_genus_df.rds") 
 ```
 
 ## Session information
