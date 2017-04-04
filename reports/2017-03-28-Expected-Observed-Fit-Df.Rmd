@@ -1,5 +1,5 @@
 ---
-title: "Expected-Observed Count Linearity"
+title: "Expected-Observed Count Model Fit"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 always_allow_html: yes
@@ -15,71 +15,71 @@ cwd <- getwd()
 setwd("../")
 load.project()
 setwd(cwd) 
-count_exp_df <- readRDS("../data/expected_count_values_df.rds") 
 ```
 
 ## Objective
-Evaluate how well the expected and observed count values agree. 
-Using the `expected_count_values_df.rds` data frame generated in `2017-03-28-Development-Titration-Pred-Df.Rmd`. 
-Outline
-1. Initial EDA for sanity check
-1. Calculate lm fit 
-1. Fit characterization
+Fit a linear model of the residuals to the observed count values.  
+Using the `expected_count_values_features_df.rds` and `expected_count_values_genus_df.rds` data frames generated in `2017-03-28-Development-Titration-Pred-Df.Rmd`. 
 
-
-## Fit approach
-1. Using `lm` with observed and expected values, looking for estimate deviance from slope of 1 and intercept 0
-      1. Can summarize two values by calculating the euclidean distance  
-1. calculate p-values for slope of 1 and intercept 0
-1. How much of the observed variability is explained by the assumed one to one relationship
-      1. $R^2$ - need to calculate assuming slope and intercept are 1 and 0  
-
-###
+### Fit approach
+Use `lm` with residuals (expected - observed) to the expected count values, looking for estimate deviance from slope of 0 and intercept 0
+ 
+## Functions for Processing Data
 ```{r}
-count_exp_df %>%
-      ggplot() + 
-      geom_point(aes(x = obs_count, y = exp_count), fill = "darkblue", 
-                 color = "white", alpha = 0.5, shape = 21) + 
-      geom_abline(aes(intercept = 0, slope =1), color = "darkorange") +
-     facet_wrap(~pipe, scales = "free")+ theme_bw() + 
-      labs(y = "Expected Count", x = "Observed Count")
-```
+get_fit <- function(count_exp_df){
+      count_exp_df %>% 
+            group_by(pipe, biosample_id, feature_id) %>% 
+            nest() %>% 
+            mutate(fit = map(data,~lm(residual ~ exp_count, data = .)))
+}
 
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::tidy)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            mutate(term = if_else(term == "(Intercept)", "Intercept","Slope"))
+}
 
-
-```{r}
-count_exp_df %>% 
-      ggplot() +
-      geom_point(aes(x = exp_count, y = residual), fill = "darkblue", 
-                 color = "white", alpha = 0.5, shape = 21) +
-      geom_smooth(aes(x = exp_count, y = residual), 
-            method = "lm", se = TRUE, color = "darkorange") +
-      facet_grid(biosample_id~pipe, scales = "free_x", space = "free") + theme_bw() +
-      labs(x = "Expected Count", y = "Residuals")
+get_glance_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::glance)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            select(-statistic, -p.value) 
+}
 ```
 
 
 ## Fitting model to individual Features
 ```{r}
-count_exp_nested <- count_exp_df %>% 
-      group_by(pipe, biosample_id, feature_id) %>% 
-      nest() 
+count_exp_df <- readRDS("../data/expected_count_values_feature_df.rds")  
 
-count_exp_fit <- count_exp_nested %>% 
-      mutate(fit = map(data,~lm(residual ~ exp_count, data = .)))
+count_fit <- get_fit(count_exp_df)
+count_fit %>% saveRDS("../data/expected_count_values_features_fit.rds") 
 
-count_exp_fit_tidy <- count_exp_fit %>% 
-      mutate(fit_summary = map(fit, broom::tidy)) %>% 
-      select(-data, -fit) %>% unnest() %>% 
-      mutate(term = if_else(term == "(Intercept)", "Intercept","Slope")) 
+# Data frames with fit summary statistics and parameter estimates
+get_tidy_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_features_tidy.rds") 
 
-count_exp_fit_glance <- count_exp_fit %>% 
-      mutate(fit_summary = map(fit, broom::glance)) %>% 
-      select(-data, -fit) %>% unnest() %>% 
-      select(-statistic, -p.value) 
+get_glance_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_features_glance.rds") 
+``` 
+
+
+
+## Fit model to Genus aggregated features 
+```{r}
+count_exp_df <- readRDS("../data/expected_count_values_genus_df.rds") 
+
+count_fit <- get_fit(count_exp_df)
+count_fit %>% saveRDS("../data/expected_count_values_genus_fit.rds") 
+
+# Data frames with fit summary statistics and parameter estimates
+get_tidy_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_genus_tidy.rds") 
+
+get_glance_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_genus_glance.rds") 
 ```
-
-
 
 ## Session information
 ```{r}
