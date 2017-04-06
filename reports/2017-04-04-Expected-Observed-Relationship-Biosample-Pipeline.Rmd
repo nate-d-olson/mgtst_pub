@@ -1,0 +1,128 @@
+---
+title: "Expected and Observed Count Values - Biosample, Pipeline"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd) 
+library(ape) 
+library(nlme)
+```
+
+### Objective
+Evaluate the overall fit for biological replicates and pipelines. 
+Want to see which has greater variability. 
+Is there a pipeline or biological sample effect. 
+The pipeline effect would be due to differences in feature definition. 
+The biological sample effect would indicate a potential issue titration generation. 
+
+
+### Loading Data 
+Feature level count data
+```{r}
+## Subsetting features to only include pre, post, and full features
+count_exp_df <- readRDS("../data/expected_count_values_feature_df.rds") 
+feature_cat <- readRDS("../data/feature_categories_df.rds")
+count_exp_df <- left_join(count_exp_df, feature_cat) %>% 
+      filter(cat %in% c("cat_full", "cat_pre", "cat_post")) 
+```
+
+Genus level count data
+```{r}
+## Subsetting features to only include pre, post, and full features
+genus_exp_df <- readRDS("../data/expected_count_values_genus_df.rds") 
+genus_cat <- readRDS("../data/genus_categories_df.rds")
+genus_exp_df <- left_join(genus_exp_df, genus_cat) %>% 
+      filter(cat %in% c("cat_full", "cat_pre", "cat_post")) 
+```
+
+## Observed - Expected By Pipeline and Biological Replicate
+### Feature level analysis
+Overall relationship between the observed and expected values by pipeline and biological replicate. 
+Orange line is a fitted smoothing function (loess, local polynomial regression) to highlight the relationship between the observed and expected counts. 
+```{r }
+count_exp_df %>% ggplot() + 
+      #geom_point(aes(x = obs_count + 1, y = exp_count + 1), 
+      #           fill = "darkblue", color = "white", alpha = 0.5, shape = 21) + 
+      geom_hex(aes(x = obs_count + 1, y = exp_count + 1)) + 
+      geom_smooth(aes(x = obs_count + 1, y = exp_count + 1), color = "darkorange") + 
+      #geom_abline(aes(intercept = 0, slope =1), color = "darkorange") +
+     facet_grid(pipe~biosample_id)+ theme_bw() + 
+      labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
+      scale_y_continuous(trans = "log2") + 
+      scale_x_continuous(trans = "log2") + 
+      theme(axis.text.x = element_text(angle = 270))
+```
+
+### Genus level analysis
+```{r}
+genus_exp_df %>% ggplot() + 
+      #geom_point(aes(x = obs_count + 1, y = exp_count + 1), 
+      #           fill = "darkblue", color = "white", alpha = 0.5, shape = 21) + 
+      geom_hex(aes(x = obs_count + 1, y = exp_count + 1)) + 
+      geom_smooth(aes(x = obs_count + 1, y = exp_count + 1), color = "darkorange") + 
+      #geom_abline(aes(intercept = 0, slope =1), color = "darkorange") +
+     facet_grid(pipe~biosample_id)+ theme_bw() + 
+      labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
+      scale_y_continuous(trans = "log2") + 
+      scale_x_continuous(trans = "log2") + 
+      theme(axis.text.x = element_text(angle = 270))
+```
+
+### Comparison of Raw and Genus Feature Levels
+Comparison of raw feature level and features aggregated to the genus level. Black line indicates the expected 1-to-1 relationship between the expected and observed counts. 
+
+```{r}
+exp_df <-bind_rows(ftu = count_exp_df, genus = genus_exp_df,.id = "feature_level")
+exp_df %>% ggplot() + 
+      geom_abline(aes(intercept = 0, slope = 1)) + 
+      geom_smooth(aes(x = obs_count + 1, y = exp_count + 1, color = feature_level)) + 
+     facet_grid(pipe~biosample_id)+ theme_bw() + 
+      labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
+      scale_y_continuous(trans = "log2") + 
+      scale_x_continuous(trans = "log2") + 
+      theme(axis.text.x = element_text(angle = 270))
+```
+
+## Attributing Variability 
+Use a mixed effects model to characterize the impact of pipeline and biological replicate.
+
+```{r}
+count_fit <- lme(residual ~ exp_count, random =  ~ biosample_id | pipe, data = count_exp_df)
+summary(count_fit)
+```
+
+
+
+```{r}
+genus_fit <- lme(residual ~ exp_count, random =  ~ biosample_id | pipe, data = genus_exp_df)
+summary(genus_fit)
+```
+
+Comparison of variance components
+```{r}
+var_count <- varcomp(count_fit, scale = TRUE)
+var_genus <- varcomp(genus_fit, scale = TRUE)
+data_frame(comp = names(var_count), 
+           raw_feature = round(var_count * 100,2), 
+           genus = round(var_genus * 100,2))
+```
+
+
+## Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+``` 
