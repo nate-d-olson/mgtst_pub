@@ -28,10 +28,10 @@ Assign raw features and aggregated genus level features to categories.
 
 ## Feature Categories
 * Null - features not present in more than one PCR replicate for any sample of a biological replicate, and pipeline. 
-* Full - features present in at least two PCR replicates for all samples of a biological replicate, and pipeline. 
-* Mix - features only present in at least two PCR replicates for a mixed sample but not observed in any of the unmixed sample PCR replicates. 
-* Pre - present in three or more PCR replicates for unmixed pre-treatment samples, not observed in any PCR replicates of the unmixed post treatment samples, and present in at least 20 total PCR replicates. 
-* Post - present in three or more PCR replicates for the unmixed post-treatment samples, not observed in any PCR replicates of the unmixed pre-treatment samples, and present in at least 8 total PCR replicates. 
+* Full - features present in at least one PCR replicates for all samples and absent in less than 12 of the 36 total PCR replicates of a biological replicate, and pipeline. 
+* Mix - features present in at least two PCR replicates for a mixed sample but not observed in any of the unmixed sample PCR replicates. 
+* Pre - present in three or more PCR replicates for unmixed pre-treatment samples, not observed in any PCR replicates of the unmixed post treatment samples, and present in at least 24 total PCR replicates. 
+* Post - present in three or more PCR replicates for the unmixed post-treatment samples, not observed in any PCR replicates of the unmixed pre-treatment samples, and present in at least 12 total PCR replicates. 
 
 
 
@@ -55,7 +55,7 @@ get_count_df <- function(mrobj, agg_genus = FALSE){
 
 get_rep_info <- function(count_df){
       count_replicate_df <- count_df %>% 
-            mutate(detect = if_else(count > 0, 1, 0)) %>%
+            mutate(detect = if_else(count > 1, 1, 0)) %>%
             group_by(pipe, biosample_id, titration, t_fctr, feature_id) %>% 
             summarise(total_detect = sum(detect),
                       n_replicates = n(),
@@ -82,10 +82,14 @@ assign_cat <- function(rep_info){
       
       left_join(prop_summary, unmix_prop) %>% 
             mutate(cat_null = if_else(prop_max < 0.5, 1, 0),
-                   cat_full = if_else(prop_min >= 0.5, 1, 0),
+                   cat_full = if_else(prop_min >= 0.25 & prop_sum > 7, 1, 0),
                    cat_mix  = if_else(prop_max >= 0.5 & T0 == 0 & T20 == 0, 1, 0),
-                   cat_pre  = if_else(T20 >= 0.75 & T0 == 0 & prop_sum > 5, 1, 0),
-                   cat_post = if_else(T0 >= 0.75 & T20 == 0 & prop_sum > 2, 1, 0),
+                   ## Post prop 5 - expected at least three replicates for titrations 4, 5, 10, and 15 
+                   ## Pre prop 3 - expected at least three replicates for titrations 1, 2, 3, and 4 
+                   ## titration 4, is ~94% post
+                   ## titration 4, is ~94% post
+                   cat_pre  = if_else(T20 >= 0.75 & T0 == 0 & prop_sum > 6, 1, 0),
+                   cat_post = if_else(T0 >= 0.75 & T20 == 0 & prop_sum > 3, 1, 0),
                    cat_none = if_else(cat_null + cat_full + cat_mix + cat_pre + cat_post == 0, 1, 0))
 }
 ```
@@ -96,8 +100,10 @@ count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>%
       left_join(pData(mrexp$dada2)) %>% 
       filter(biosample_id != "NTC") 
 
+#count_df
 rep_info <- get_rep_info(count_df) 
 
+#rep_info
 feature_info <- assign_cat(rep_info)
 
 feature_cat <- feature_info %>% 
@@ -108,6 +114,8 @@ feature_cat <- feature_info %>%
 
 feature_cat %>% saveRDS("../data/feature_categories_df.rds") 
 ```
+
+
 
 #### Category Sanity Check
 ```{r}
@@ -145,6 +153,32 @@ feature_info %>% filter(cat_none == 1, prop_sum > 2, T0 > 0.5 | T20 > 0.5) %>%
       ggplot() + geom_histogram(aes( x= prop_sum)) + facet_grid(T0 ~ T20) + theme_bw()
 ```
 
+```{r}
+feature_cat %>% filter(cat != "cat_null") %>% 
+      mutate(cat = gsub(pattern = "cat_", replacement = "", cat),
+             cat = fct_relevel(cat, c("full","pre","post", "mix","none"))) %>%
+      ggplot() + geom_bar(aes(x = cat)) + 
+      facet_grid(pipe ~ ., scales = "free_y") + 
+      theme_bw() + theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+feature_cat %>% group_by(cat) %>% sample_n(2) %>% 
+#rep_info %>% group_by(pipe, biosample_id, feature_id) %>% 
+#      mutate(total_prop = sum(detect_prop)) %>% filter(detect_prop != 0) %>% ungroup() %>% 
+#      select(feature_id, biosample_id, pipe, total_prop) %>% unique() %>% sample_n(10) %>% 
+      left_join(rep_info) %>% 
+      ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, detect_prop, fun = sum),
+             t_fctr = fct_relevel(t_fctr, paste0("T",c(0:5,10,15,20))),
+             cat = gsub(pattern = "cat_", replacement = "", cat)) %>% 
+      ggplot() + geom_raster(aes(x = t_fctr, y = feature_id, fill = detect_prop * 4)) + 
+      labs(x = "Titration", y = "Features", fill = "Number of \nPCR Replicates") + theme_bw() + 
+      facet_grid(cat~., scales = "free_y") +
+      theme(axis.text.y = element_blank())
+```
+
 ### Genus Level Category Assignments
 ```{r}
 count_df <- mrexp %>% map_df(get_count_df,agg_genus = TRUE, .id = "pipe") %>% 
@@ -152,8 +186,10 @@ count_df <- mrexp %>% map_df(get_count_df,agg_genus = TRUE, .id = "pipe") %>%
       filter(biosample_id != "NTC") 
 
 rep_info <- get_rep_info(count_df) 
+rep_info %>% saveRDS("../data/genus_rep_info_df.rds") 
 
 feature_info <- assign_cat(rep_info) 
+feature_info %>% saveRDS("../data/genus_info_df.rds") 
 
 feature_cat <- feature_info %>% 
       select(pipe, biosample_id, feature_id, 
@@ -201,6 +237,25 @@ Ones that stand out are features detected in 4 T0 (pre-treatment features) with 
 feature_info %>% filter(cat_none == 1, prop_sum > 2, T0 > 0.5 | T20 > 0.5) %>%
       ggplot() + geom_histogram(aes( x= prop_sum)) + facet_grid(T0 ~ T20) + theme_bw()
 ```
+
+## Alternative Characterization 
+```{r}
+detect_idx <- rep_info %>% mutate(detect = detect_prop * 4, 
+                    t_fctr = fct_relevel(t_fctr, paste0("T",c(0:5,10,15,20))),
+                    idx_buffer = 10^(as.numeric(t_fctr)-1),
+                    idx = detect * idx_buffer) %>% 
+      group_by(pipe,biosample_id,feature_id) %>% mutate(idx = sum(idx)) %>% 
+      filter(idx != 0)  
+
+detect_idx %>% 
+      group_by(idx, pipe, biosample_id, feature_id) %>% 
+      mutate(total_detect = sum(detect)) %>% 
+      filter(total_detect > 9) %>%
+      group_by(idx, pipe) %>% 
+      summarise(count = n()) %>% 
+       arrange(desc(count)) 
+```
+
 
 # Session information
 ```{r}
