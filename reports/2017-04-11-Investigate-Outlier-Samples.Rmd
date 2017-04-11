@@ -23,7 +23,6 @@ Sample 1-F4 had low base quality score for the reverse read.
 count_exp_df <- readRDS("../data/expected_count_values_feature_df.rds") 
 feature_cat <- readRDS("../data/feature_categories_df.rds")
 count_exp_df <- left_join(count_exp_df, feature_cat) %>% 
-      left_join(ntc_features) %>% 
       filter(cat %in% c("cat_full", "cat_pre", "cat_post")) %>% 
       mutate(bad_sample = if_else(id %in% c("1-F9","1-F4"),id,"0"))
 ```
