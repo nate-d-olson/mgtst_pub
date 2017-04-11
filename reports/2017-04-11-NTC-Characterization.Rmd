@@ -40,6 +40,10 @@ get_count_df <- function(mrobj, agg_genus = FALSE){
 pipeline_dir <- "../../mgtst_pipelines"
 mrexp <- get_mrexp(pipeline_dir)
 
+
+```
+
+```{r}
 count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>% 
       left_join(pData(mrexp$dada2))
 ```
@@ -108,11 +112,69 @@ ntc_summary %>% filter(n_present > 6 | total_count > 4000) %>%
       arrange(Rank5) %>% knitr::kable()
 ```
 
+## NTC Feature Bias Analysis
+```{r}
+count_exp_df <- readRDS("../data/expected_count_values_feature_df.rds")
+feature_cat <- readRDS("../data/feature_categories_df.rds")
+count_exp_df <- left_join(count_exp_df, feature_cat) %>%
+      left_join(ntc_summary) %>%
+      filter(cat %in% c("cat_full", "cat_pre", "cat_post")) %>%
+      mutate(ntc = if_else(is.na(n_present), "0","1"),
+             bad_sample = if_else(id %in% c("1-F9","1-F4"),id,"0"))
+```
 
+Features observed in at least one no template control sample overlaid on plot of all features. 
+Overall the no template control features perform similarly in terms of bias relative to features not present in any no template control sample. 
+```{r message=FALSE}
+count_exp_df %>%
+    ggplot() + 
+    geom_hex(aes(x = obs_count + 1, y = exp_count + 1)) + 
+  
+      geom_point(data =  filter(count_exp_df, ntc == "1"),
+                 aes(x = obs_count + 1, y = exp_count + 1), color = "lightgreen", alpha = 0.25) + 
+        geom_smooth(aes(x = obs_count + 1, y = exp_count + 1, color = ntc)) + 
+    facet_grid(pipe~biosample_id)+ theme_bw() + 
+    labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
+    scale_y_continuous(trans = "log2") + 
+    scale_x_continuous(trans = "log2") + 
+    theme(axis.text.x = element_text(angle = 270))
+```
+
+## Genus level No Template Control Analysis
+
+```{r}
+genus_df <- mrexp %>% map_df(get_count_df, agg_genus = TRUE, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2))
+```
+
+
+```{r}
+ntc_genus <- genus_df %>% filter(biosample_id == "NTC") %>% 
+      filter(count != 0) %>% 
+      group_by(pipe, feature_id) %>% 
+      summarise(total_count = sum(count),
+                med_count = median(count), 
+                n_present = n())
+```
+
+
+```{r}
+ntc_genus %>% ggplot() + 
+      geom_point(aes(x = n_present, y = total_count)) + theme_bw() +
+      labs(x = "Number of NTC Samples", y = "Total Abundance")
+```
+
+
+__High Frequency and Abundance Genus Level Features__
+```{r}
+ntc_genus %>% filter(n_present > 6 | total_count > 5000) %>% 
+      arrange(desc(n_present)) %>% knitr::kable()
+```
 
 ## Saving data 
 ```{r}
 ntc_summary %>% saveRDS("../data/ntc_features.rds")
+ntc_genus %>% saveRDS("../data/ntc_genus.rds")
 ```
 
 
