@@ -98,6 +98,7 @@ ntc_summary %>% filter(n_present > 6) %>%
 __Taxonomy of high abundance and fequency features__  
 
 * Taxonomy of high abundance no template control features is not consistent between pipelines.  
+* May not want to drop all no template controls features as _Escherichia/Shigella_ features that are relevant to the study were present in NTCs.  
 
 ```{r}
 feature_taxa <- mrexp %>% map_df(fData, .id = "pipe") %>% 
