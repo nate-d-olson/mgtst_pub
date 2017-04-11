@@ -105,8 +105,8 @@ assign_cat <- function(rep_info){
 ### Feature Level Category Assignments
 ```{r}
 count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>% 
-      left_join(pData(mrexp$dada2)) #%>% 
-      # filter(biosample_id != "NTC") 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC")
 
 #count_df
 rep_info <- get_rep_info(count_df) 
