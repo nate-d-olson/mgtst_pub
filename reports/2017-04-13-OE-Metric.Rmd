@@ -1,5 +1,5 @@
 ---
-title: "OE Metric"
+title: "EO Metric"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 always_allow_html: yes
@@ -10,7 +10,6 @@ output:
 
 ```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
-library(git2r)
 library(ProjectTemplate)
 cwd <- getwd()
 setwd("../")
@@ -22,14 +21,17 @@ setwd(cwd)
 Develop a metric for characterizing how well a observed features agree with expectation.
 
 
-__OE Metric__  
+__EO Metric__  
  
- $$(observed - expected)/(observed + expected)$$
+ $$\frac{expected - observed}{expected + observed}$$
 
-Values range from -1 to 1, with values of -1 for observed counts of 0 and non-zero expected counts, 1 when expected count is 0 and observed counts are non-zero. 
-0 represent agreement between observed and expected counts. 
+Values range from -1 to 1 with values of;  
 
-## Calculated Expected Count Values 
+- 1 for observed counts of 0 and non-zero expected counts, 
+- -1 when expected count is 0 and observed counts are non-zero, 
+- 0 represents agreement between observed and expected counts. 
+
+## Expected Count Values 
 
 ## Negative Binomal for Weighted Count Estimates
 Calculating proportion of pre and post counts using negative binomial. 
@@ -130,80 +132,111 @@ exp_prop_df <- calc_expected_prop(pre_post_prop)
 exp_count_df <- count_df %>% 
       filter(t_fctr %in% c(1:5, 10, 15)) %>% 
       left_join(exp_prop_df) %>% 
-      mutate(exp_count = total_abu * exp_prop)
+      mutate(exp_count = total_abu * exp_prop) %>% 
+      filter(!(pre == 0 & post == 0 & count == 0))
 ```
 
-## Alternative Metric
+## EO Metric
 
 ```{r}
-oe_metric_df <- exp_count_df %>% 
-      mutate(oe_metric = (exp_count - count)/(exp_count + count))
+eo_metric_df <- exp_count_df %>% 
+      mutate(eo_metric = (count - exp_count)/(count + exp_count))
+```
+
+Overall the metric distribution skews to the right indicating that the expected values tend to be greater than the observed values with a medain around 0. 
+There are more PCR replicates with observed counts of but 0 expected counts than expected counts with 0 observed counts. 
+
+```{r}
+eo_metric_df %>% ggplot() + 
+      geom_histogram(aes(x = eo_metric)) + theme_bw() +
+      labs(x = "Exp-Obs Metric")
+```
+
+The EO metric tends to center around 0 with increasing Pre-Treament feature proportion but increases with Post-treatment feature proportion. 
+Low pre and post treatment feature proportion have higher EO metrics indicating expected counts are overestimates for lower proportions. 
+This is potentially due to a limit of detection, can look at the EO metric for feature-pcr reps with expected count values < 1 and != 0 (see table following plot). 
+
+```{r}
+eo_metric_df %>% 
+      select(pipe, biosample_id, id, feature_id, t_fctr, pre, post, eo_metric) %>% 
+      gather("unmix","q",-eo_metric, -pipe, -biosample_id, -id, -feature_id,-t_fctr) %>% 
+      ggplot() +
+      geom_hex(aes(x = q, y = eo_metric)) + 
+      geom_smooth(aes(x = q, y = eo_metric), color = "darkorange") +
+      facet_wrap(~unmix, scale = "free_x") +  
+      theme_bw() +
+      labs(x = "Treatment Feature Proportion", y = "Exp-Obs Metric")
 ```
 
 ```{r}
-oe_metric_df %>% ggplot() + 
-      geom_histogram(aes(x = oe_metric)) + theme_bw()
+eo_metric_df %>% 
+      filter(exp_count < 1, exp_count != 0) %>% 
+      select(total_abu, count, exp_count, eo_metric) %>% arrange(eo_metric) %>% 
+      knitr::kable()
 ```
 
-```{r}
-oe_metric_df %>% ggplot() +
-      geom_hex(aes(x = pre, y = oe_metric))
-```
+
+For the example subset of the metric skew and -1 and 1 peaks differ by pipeline, biosample, and titration. 
+Will want to look at larger set of features before drawing any conclusions. 
 
 ```{r}
-oe_metric_df %>% ggplot() +
-      geom_hex(aes(x = post, y = oe_metric))
-```
-
-```{r}
-oe_metric_df %>% ggplot() + 
-      geom_histogram(aes(x = oe_metric)) + theme_bw() + 
-      facet_wrap(~biosample_id)
-```
-
-```{r}
-oe_metric_df %>% 
+eo_metric_df %>% 
       mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
       ggplot() + 
-      geom_histogram(aes(x = oe_metric)) + theme_bw() + 
-      facet_wrap(~t_fctr)
+      geom_histogram(aes(x = eo_metric)) +
+      facet_grid(biosample_id~t_fctr) + theme_bw() +
+      labs(x = "Exp-Obs Metric")
 ```
 
+The EO-metric distribution also tend to vary by feature, again a larger set of features is needed before drawing any conclusions.  
+
 ```{r}
-oe_metric_df %>% ggplot() + 
-      geom_point(aes(x = count + 1, y = oe_metric, color = biosample_id)) +
-      theme_bw() + facet_wrap(~feature_id)
+eo_metric_df %>% ggplot() + 
+      geom_point(aes(x = count, y = eo_metric, color = biosample_id)) +
+      facet_wrap(~feature_id) + 
+      theme_bw() +
+      labs(x = "Observed Count", y = "Exp-Obs Metric")
 ```
 
 
-## Summarizing by Titration
+## Summarizing by Titration and Feature 
+To evaluate performance for a set of PCR replicates and across a feature can use the mean or median as summary metrics.  
+
 ```{r}
-oe_summary <- oe_metric_df %>% 
+eo_summary <- eo_metric_df %>% 
       group_by(pipe, biosample_id, t_fctr, feature_id) %>% 
-      mutate(oet_mean = mean(oe_metric),
-             oet_median = median(oe_metric)) %>% 
+      mutate(eot_mean = mean(eo_metric),
+             eot_median = median(eo_metric)) %>% 
       group_by(pipe, biosample_id, feature_id) %>% 
-      mutate(oef_mean = mean(oe_metric),
-             oef_median = median(oe_metric))
+      mutate(eof_mean = mean(eo_metric),
+             eof_median = median(eo_metric))
 ```
 
+Mean EO metric for a feature titration PCR replicates.
 ```{r}
-oe_summary %>% 
-      ggplot() + geom_histogram(aes(x = oet_mean)) + 
-      facet_wrap(~t_fctr) + theme_bw()
+eo_summary %>% 
+      ggplot() + geom_histogram(aes(x = eot_mean)) + 
+      facet_wrap(~t_fctr) + theme_bw() +
+      labs(x = "Exp-Obs Metric Feature-Titration")
 ```
 
+Mean EO metric across all PCR replicates and titrations for a feature. 
 ```{r}
-oe_summary %>% 
-      ggplot() + geom_histogram(aes(x = oef_median)) + 
-      facet_wrap(~t_fctr) + theme_bw()
+eo_summary %>% 
+      ggplot() + geom_histogram(aes(x = eof_median)) + 
+      facet_wrap(~t_fctr) + theme_bw() +
+      labs(x = "Exp-Obs Metric Feature")
 ```
 
-## Metric and Scatter Plots
+## Metric and Scatter Plots 
+Table of feature level OE metrics and corresponding scatter plots of observed counts by titration. 
+OE-metric is NA when all counts for all samples and replicates is 0.  
+
 ```{r}
-oe_summary %>% ungroup() %>% 
-      select(biosample_id, feature_id, oef_median) %>% unique() %>% 
-      spread(biosample_id, oef_median)
+eo_summary %>% ungroup() %>% 
+      select(biosample_id, feature_id, eof_median) %>% unique() %>% 
+      spread(biosample_id, eof_median) %>% 
+      knitr::kable()
 ```
 
 ```{r}
@@ -211,14 +244,18 @@ count_df %>%
       mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
       ggplot() + 
       geom_point(aes(x = t_fctr, y = count)) + 
-      facet_grid(feature_id~biosample_id, scales = "free")
+      facet_grid(feature_id~biosample_id, scales = "free") +
+      theme_bw() +
+      labs(x = "Titration", y = "Observed Raw Counts")
+      
 ```
 
 # Session information 
 
 ## Git repo commit information
 ```{r}
-repo <- repository(path = ".")
+library(git2r)
+repo <- repository(path = "../")
 last_commit <- commits(repo)[[1]]
 ```
 
