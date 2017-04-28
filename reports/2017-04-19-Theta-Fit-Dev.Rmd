@@ -1,0 +1,274 @@
+---
+title: "Theta Fit"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(ggfortify)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp <- get_mrexp(pipeline_dir)
+```
+
+## Objective
+Workout modeling based bias and variance assessment method. 
+For this approach a linear model is used to estimate C{pre and post - pre.
+
+$$C_{obs} = \theta C_{post} + (1-\theta)C_{pre}$$
+We can rearrange this equation to get:
+$$C_{obs} = \theta (C_{pre} -C_{pre}) + C_{pre}$$
+
+
+
+Then using a linear model we can estimate $C_pre$, model intercept, and $C_{post} - C_{pre}$, slope estimates for each value of $\theta$ or titration ($T$). 
+
+$$ C_{obs} \sim 1 + \theta:T$$
+
+## Simulated Count Data To Develop Method 
+
+1. Simulate 8 features with proprotions between 0.1 and 0.001 for pre and post.
+2. Use proportions to generate simulated counts based on the proportions defined in 1 for pre, post, and titrations. 
+3. Fit model to simulated data 
+
+```{r}
+n_features <- 8
+pre <- sample(seq(to = 0.1, from = 0.001, by = 0.001), size = n_features)
+post <- sample(seq(to = 0.1, from = 0.001, by = 0.001), size = n_features)
+TF <- c(0, 1:5, 10, 15, 20)
+theta <- 2^-TF 
+TF <- factor(TF, levels = c(0, 1:5, 10, 15, 20))
+n_reps <- 4
+feature_sim <- data_frame(TF, theta) %>% 
+      add_column(feature = rep(list(1:n_features), length(TF))) %>% 
+      add_column(prop_pre = rep(list(pre), length(TF))) %>% 
+      add_column(prop_post = rep(list(post), length(TF))) %>%
+      unnest()
+
+pcr_rep_sim <- data_frame(pcr_rep = 1:n_reps) %>% 
+      add_column(sim_dat = rep(list(feature_sim), n_reps)) %>% 
+      unnest()
+## using single library size may want to try to simulate 
+sim_counts <- pcr_rep_sim %>% 
+      mutate(rep_prob = prop_post * theta + prop_pre * (1-theta)) %>% 
+      rowwise() %>% 
+      mutate(count = rbinom(n = 1, size = 10000, prob = rep_prob)) 
+nested_sim <- sim_counts %>% group_by(feature) %>% nest()
+```
+
+Scatter plot of simulated count data. 
+Features 1, 3, 5, and 7 and a relatively small difference between the unmixed pre and post counts compared to the other features. 
+Feature 2 and 8 have higher pre treatment counts with 4 and 6 lower post treatment counts.  
+```{r}
+ggplot(sim_counts) + 
+      geom_point(aes(x = TF, y = count)) + 
+      facet_wrap(~feature, nrow = 2) + theme_bw()
+```
+
+### Fitting Models
+Fitting three models to the simualted data, standard least squares regression (`lm`), generalized linear models with binomial and poisson families.  
+See appendix for fit summary plots. 
+
+```{r}
+fit_sim <- nested_sim %>% 
+      mutate(data = map(data, ~filter(., TF %in% c(0:5,20))),
+            fit_lm = map(data, ~lm(count ~theta:TF, data = .)),
+             fit_binom = map(data, ~glm(count/10000 ~theta:TF, data = .,family = binomial())),
+             fit_pois = map(data, ~glm(count ~ theta:TF, data = ., family = poisson(link = "identity")))) %>% 
+      mutate(tidy_lm = map(fit_lm, broom::tidy),
+             tidy_binom = map(fit_binom, broom::tidy),
+             tidy_pois = map(fit_pois, broom::tidy)) %>% 
+      mutate(glance_lm = map(fit_lm, broom::glance),
+             glance_binom = map(fit_binom, broom::glance),
+             glance_pois = map(fit_pois, broom::glance))
+```
+
+
+Comparison of binomial and standard linear model. 
+```{r}
+anova(fit_sim$fit_lm[[1]], fit_sim$fit_binom[[1]])
+```
+
+Extracting estimated values for model comparison. 
+Not sure how to appropriately correct the standard error for the binomial model so that the units are the same across models. 
+```{r}
+fit_tidy <- fit_sim %>% select(feature, tidy_lm, tidy_pois, tidy_binom) %>% 
+      gather(key = "model","tidy", -feature) %>% unnest() %>% 
+      mutate(estimate = if_else(model == "tidy_binom", estimate * 10000, estimate),
+             std.error = if_else(model == "tidy_binom", std.error * (1/10000)^2, std.error))
+```
+
+```{r}
+exp_val <- sim_counts %>% filter(TF %in% c(0,20)) %>%
+      group_by(feature, TF) %>%
+      summarise(count = mean(count)) %>%
+      spread(TF, count) %>%
+      mutate(`Post-Pre` = `0` - `20`)
+```
+
+
+### Fit Estimate Plots 
+Fit estimates for different titrations, in the following plots the grey line indicates the espected Post-Pre estimated value. 
+```{r}
+fit_tidy %>% filter(term != "(Intercept)") %>%
+      mutate(term = factor(term, levels = paste0("theta:TF", c(0:5,10,15,20)))) %>%
+      ggplot() +
+      geom_point(aes(x = term, y = estimate, color = model)) +
+      geom_errorbar(aes(x = term, ymin = estimate - 2*std.error, ymax = estimate + 2*std.error, color = model)) +
+      geom_hline(data = exp_val, aes(yintercept = `Post-Pre`), color = "grey60")  +
+      facet_grid(feature~model, scales = "free_y") +
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+fit_tidy %>% filter(term != "(Intercept)", term != "theta:TF15", term != "theta:TF10") %>%
+      mutate(term = factor(term, levels = paste0("theta:TF", c(0:5,10,15,20)))) %>%
+      ggplot() +
+      geom_point(aes(x = term, y = estimate, color = model)) +
+      geom_errorbar(aes(x = term, ymin = estimate - 2*std.error, ymax = estimate + 2*std.error, color = model)) +
+      geom_hline(data = exp_val, aes(yintercept = `Post-Pre`), color = "grey60")  +
+      facet_grid(feature~model, scales = "free_y") +
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+Only looking at glm-poisson and lm. 
+The poisson and lm models have similar estimates thought the confidence intervals vary between the models. 
+```{r}
+fit_tidy %>% filter(term != "(Intercept)", term != "theta:TF15", term != "theta:TF10", model != "tidy_binom") %>%
+      mutate(term = factor(term, levels = paste0("theta:TF", c(0:5,10,15,20)))) %>%
+      ggplot() +
+      geom_point(aes(x = term, y = estimate, color = model)) +
+      geom_errorbar(aes(x = term, ymin = estimate - 2*std.error, ymax = estimate + 2*std.error, color = model)) +
+      geom_hline(data = exp_val, aes(yintercept = `Post-Pre`), color = "grey60")  +
+      facet_grid(feature~., scales = "free_y") +
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+### Titration Order Matters 
+When titration factors are ordered from highest (pre-unmixed) to lowest (post-unmixed) the estimates generally increase or decrease with titration depending on whether the feature proportion is greater for unmixed pre or unmixed post.  
+
+```{r}
+fit_sim <- nested_sim %>% 
+      mutate(data = map(data, ~mutate(., TF = factor(TF, levels = c(20,15,10,5:0)))),
+             fit_lm = map(data, ~lm(count ~ theta:TF, data = .)),
+             fit_binom = map(data, ~glm(count/10000 ~ theta:TF, data = ., 
+                                        family = binomial())),
+             fit_pois = map(data, ~glm(count ~ theta:TF, data = ., 
+                                       family = poisson(link = "identity")))) %>% 
+      mutate(tidy_lm = map(fit_lm, broom::tidy),
+             tidy_binom = map(fit_binom, broom::tidy),
+             tidy_pois = map(fit_pois, broom::tidy)) %>% 
+      mutate(glance_lm = map(fit_lm, broom::glance),
+             glance_binom = map(fit_binom, broom::glance),
+             glance_pois = map(fit_pois, broom::glance))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+fit_tidy <- fit_sim %>% select(feature, tidy_lm, tidy_pois, tidy_binom) %>% 
+      gather(key = "model","tidy", -feature) %>% unnest() %>% 
+      mutate(estimate = if_else(model == "tidy_binom", estimate * 10000, estimate),
+             std.error = if_else(model == "tidy_binom", std.error * (1/10000)^2, std.error))
+```
+
+```{r}
+exp_val <- sim_counts %>% filter(TF %in% c(0,20)) %>%
+      group_by(feature, TF) %>%
+      summarise(count = mean(count)) %>%
+      spread(TF, count) %>%
+      mutate(`Post-Pre` = `0` - `20`)
+```
+
+```{r}
+fit_tidy %>% filter(term != "(Intercept)", term != "theta:TF15", 
+                    term != "theta:TF10", term != "theta:TF20", 
+                    model != "tidy_binom") %>%
+      # mutate(term = factor(term, levels = paste0("theta:TF", c(0:5,10,15,20)))) %>%
+      ggplot() +
+      geom_point(aes(x = term, y = estimate, color = model)) +
+      geom_errorbar(aes(x = term, ymin = estimate - 2*std.error, 
+                        ymax = estimate + 2*std.error, color = model)) +
+      geom_hline(data = exp_val, aes(yintercept = `Post-Pre`), color = "grey60")  +
+      facet_wrap(~feature, scales = "free_y") +
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+## Example Model Fit
+
+```{r}
+fit <- fit_sim$fit_lm[[1]]
+```
+
+Issue with matrix not being full rank due to low theta values. 
+
+```{r}
+summary(fit)
+```
+
+Cannot use modeling approach - invertability issue due to low entries in model matrix ...
+
+```{r}
+x <- model.matrix(fit)
+eval <- t(x) %*% x %>% eigen() %>% .$values
+max(eval)/min(eval)
+```
+
+## Appendix 
+### Fit Summary Plots
+Plots are ordered by `lm`, `glm-poisson`, and `glm-binomial` 
+```{r}
+for(i in 1:n_features){
+      print(autoplot(fit_sim$fit_lm[[i]]) + ggtitle(paste("Feature:", i,", Model: LM" )))
+      print(autoplot(fit_sim$fit_pois[[i]]) + ggtitle(paste("Feature:", i,", Model: GLM-Poisson" )))
+      print(autoplot(fit_sim$fit_binom[[i]]) + ggtitle(paste("Feature:", i,", Model: GLM-Bionomial")))
+}
+```
+
+
+# Session information 
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```

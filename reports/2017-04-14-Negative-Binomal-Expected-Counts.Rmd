@@ -27,20 +27,20 @@ Expected values are calculated using unmixed PCR count table values from the sam
 ### Negative Binomal for Weighted Count Estimates
 Calculating proportion of pre and post counts using negative binomial. 
 
-- $q_{i,j,k}$ is the proportion of feature $i$ in PCR $k$ of sample $j$ where a sample is defined as an individual unmixed or mixed samples for a biological replicate.  
-- $p_{j,k}$ is the total feature abundance for sample $j$, sum of all feature counts not the number of sequences generated for the sample.  
-- $v_{i,j,k}$ is the variance of feature $i$ in PCR replicate $j$ of sample $k$.  
+- $p_{ijk}$ is the proportion of feature $i$ in PCR $k$ of sample $j$ where a sample is defined as an individual unmixed or mixed samples for a biological replicate.  
+- $r_{jk}$ is the total feature abundance for sample $j$, sum of all feature counts not the number of sequences generated for the sample.  
+- $v_{ijk}$ is the variance of feature $i$ in PCR replicate $j$ of sample $k$.  
 
-$$v_{i,j,k} = \frac{q_{i,j,k}(1-q_{i,j,k})}{p_j,k}$$
+$$v_{i,j,k} = \frac{p_{ijk}r_{jk}}{(1-p_{ijk})^2}$$
 
-- $w_{i,j,k}$ is the weight function
+- $w_{ijk}$ is the weight function
 
-$$w_{i,j,k} = \frac{v_{i,j,k}^{ -1}}{\sum_{k \in j}v_{i,j,k}^{ -1}}$$
+$$w_{ijk} = \frac{v_{ijk}^{ -1}}{\sum_{k \in j}v_{ijk}^{ -1}}$$
 
 
-- $q_{i,j}$ - the weighted count estimate for feature $i,k$
+- $q_{ij}$ - the weighted count estimate for feature $ij$
 
-$$q_{i,j} = \sum_{k\in j} w_{i,j,k}q_{i,j,k}$$ 
+$$q_{ij} = \sum_{k\in j} w_{ijk}q_{ijk}$$ 
 
 ## EO Metric
 
@@ -73,7 +73,7 @@ calc_pre_post_prop <- function(count_df){
       ## Estimating $q_{i}$ for pre and post
       nb_est <- count_df %>% filter(t_fctr %in% c(0, 20)) %>% 
             mutate(prop = count/total_abu, 
-                   prop_var = (prop * (1 - prop))/total_abu,
+                   prop_var = (prop * total_abu)/(1 - prop)^2,
                    inv_var = 1/prop_var) %>% 
             group_by(pipe, biosample_id, t_fctr, feature_id) %>% 
             mutate(weight = inv_var / sum(inv_var)) %>% 
@@ -135,6 +135,16 @@ eo_exp_count_df %>% saveRDS("../data/nb_expected_eo_metric_feature_df.rds")
 
 ``` 
 
+Sanity Check Plot - Relationship between the observed and expected values
+```{r}
+eo_exp_count_df %>% ggplot() + 
+      geom_point(aes(x = count, y = exp_count)) +
+      geom_smooth(aes(x = count, y = exp_count, color = biosample_id)) +
+      facet_wrap(~pipe, scales = "free") + theme_bw()
+```
+
+
+
 ### Genus Level Expected Counts
 ```{r}
 count_df <- mrexp %>% map_df(get_count_df, agg_genus = TRUE, css = FALSE, .id = "pipe") %>% 
@@ -151,6 +161,15 @@ eo_exp_count_df <- count_df %>%
       calc_eo_metric()
 
 eo_exp_count_df %>% saveRDS("../data/nb_expected_eo_metric_genus_df.rds")
+```
+
+
+Sanity Check Plot - Relationship between the observed and expected values
+```{r}
+eo_exp_count_df %>% ggplot() + 
+      geom_point(aes(x = count, y = exp_count)) +
+      geom_smooth(aes(x = count, y = exp_count, color = biosample_id)) +
+      facet_wrap(~pipe, scales = "free") + theme_bw()
 ```
 
 

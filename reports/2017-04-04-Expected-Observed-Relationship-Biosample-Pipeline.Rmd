@@ -52,11 +52,8 @@ Overall relationship between the observed and expected values by pipeline and bi
 Orange line is a fitted smoothing function (loess, local polynomial regression) to highlight the relationship between the observed and expected counts. 
 ```{r }
 count_exp_df %>% ggplot() + 
-      #geom_point(aes(x = obs_count + 1, y = exp_count + 1), 
-      #           fill = "darkblue", color = "white", alpha = 0.5, shape = 21) + 
       geom_hex(aes(x = obs_count + 1, y = exp_count + 1)) + 
       geom_smooth(aes(x = obs_count + 1, y = exp_count + 1), color = "darkorange") + 
-      #geom_abline(aes(intercept = 0, slope =1), color = "darkorange") +
      facet_grid(pipe~biosample_id)+ theme_bw() + 
       labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
       scale_y_continuous(trans = "log2") + 

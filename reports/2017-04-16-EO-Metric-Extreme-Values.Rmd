@@ -1,0 +1,232 @@
+---
+title: "EO - Metric Categorization"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(git2r)
+library(tidyverse)
+```
+
+
+```{r}
+feature_exp_df <- readRDS("../data/nb_expected_eo_metric_feature_df.rds") 
+
+genus_exp_df <- readRDS("../data/nb_expected_eo_metric_genus_df.rds") 
+
+exp_df <- bind_rows(feature = feature_exp_df, genus = genus_exp_df, .id = "fLvl")
+```
+
+## Objective
+Evaluate features for extreme EO metric values
+
+- Look into PCR reps with -1 and 1
+- correlate observed and expected counts with 1 and -1 values respectively
+- Identify features where all PCR reps for all titrations are -1 or 1 
+- Correlate total abundance and number of features
+
+
+## EO -1
+
+__NOTES__  
+- Verical line at 1  
+- Most of the PCR replicate level EO metrics are less than 1 for QIIME and nearly all are greater than 1 for DADA2  
+
+```{r}
+exp_df %>% filter(eo_metric == -1) %>% 
+      ggplot() +
+      geom_boxplot(aes(x = biosample_id, y = exp_count + 1, fill = pipe), alpha = 0.25) + 
+      geom_hline(aes(yintercept = 1 + 1)) + 
+      scale_y_log10() + theme_bw() + 
+      labs(x = "Biological Replicate", y = "Expected Count Values", fill = "Pipeline") +
+      facet_wrap(~fLvl) + theme(axis.text.x = element_text(angle = 90))
+```
+
+
+### Probability of 0 observed counts
+Assuming a negative binomial distribution for the counts able to calculate the probability of no observed counts based on the expected count proportion and sample total abundance.  
+```{r}
+eo_neg1 <- exp_df %>% filter(eo_metric == -1)
+```
+
+Example calculation
+```{r}
+1 - pnbinom(q = 208790, size = 1, prob = 1.03e-5, lower.tail = F)
+```
+
+```{r}
+eo_neg1 <- eo_neg1 %>% 
+      mutate(p0 = 1 - pnbinom(q = total_abu, 
+                              size = 1, 
+                              prob = exp_prop, 
+                              lower.tail = F))
+```
+
+__Distribution of probabilities__  
+For most of the features the probability of 0 observed counts is > 0.1 indicating that sampling depth alone accounts for most of the features with EO values of 1. 
+
+```{r}
+eo_neg1 %>% filter(!(pipe == "dada2" & biosample_id == "E01JH0038")) %>% 
+      ggplot() +
+      geom_density(aes(x = p0, fill = biosample_id), alpha = 0.25) + 
+      theme_bw() +
+      facet_grid(fLvl~pipe, scales = "free_y")
+```
+
+```{r}
+eo_neg1 %>% filter(pipe == "dada2", biosample_id == "E01JH0038") %>%
+      ggplot() + geom_density(aes(x = p0)) + 
+      facet_wrap(~fLvl, scales = "free_y") + theme_bw()
+```
+
+Choosing 0.01 as a cutoff to explore features where sampling alone does not account for no observed counts. 
+This value is arbitry and should be revised. 
+
+QIIME has more features than mothur, and mothur more features than DADA2. 
+Will want a method to normalize the bar chat to better reflect the differences in the total number of features per sample.  
+
+```{r}
+eo_neg1 %>%       
+      filter(p0 < 0.01) %>% 
+      ggplot() +
+      geom_bar(aes(x = biosample_id, fill = pipe), position = "dodge") + 
+      theme_bw() +
+      facet_grid(fLvl~., scales = "free_y")
+```
+
+
+## Frequency of Features with a -1 EO by sample
+
+What are the two outlier samples? 
+```{r}
+exp_df %>% filter(eo_metric == -1, pipe == "dada2") %>% 
+      ggplot() + geom_bar(aes(x = id)) + 
+      facet_wrap(~fLvl, scale = "free_y", ncol = 1) +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+exp_df %>% filter(eo_metric == -1, pipe == "mothur") %>% 
+      ggplot() + geom_bar(aes(x = id)) + 
+      facet_wrap(~fLvl, scale = "free_y", ncol = 1) +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+exp_df %>% filter(eo_metric == -1, pipe == "qiime") %>% 
+      ggplot() + geom_bar(aes(x = id)) + 
+      facet_wrap(~fLvl, scale = "free_y", ncol = 1) +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+Sample 1-E4 has a high number of features with both 1 and -1 EO metric  
+
+```{r}
+eo_neg1 %>% 
+      group_by(fLvl, pipe, biosample_id, id) %>% 
+      summarise(count = n()) %>% 
+      group_by(fLvl, pipe) %>%
+      top_n(2, count) %>% spread(fLvl, count)
+```
+
+
+## -1 EO Metric and Sample Total Abundance
+Aside from samples with total abundance less than 50,000 reads, the number of features with a EO metric of -1 is consistent between biological replicates within pipelines. 
+
+```{r}
+exp_df %>% filter(eo_metric == -1) %>% 
+      group_by(fLvl, pipe, biosample_id, id, total_abu) %>% 
+      summarise(count = n()) %>%
+      ggplot() +
+      geom_point(aes(x = total_abu, y = count)) + 
+      geom_smooth(aes(x = total_abu, y = count, color = biosample_id)) +
+      facet_grid(fLvl~pipe, scales = "free_y") +theme_bw()
+```
+
+
+### Number PCR Replicates with -1 E0 metrics for a sample 
+
+__NOTES__  
+- Features with count of 1, where only 1 of 4 PCR replicates have EO metric values of -1  
+- Features with only one PCR replicate with a EO metric of -1, indicates that the one PCR is potentially an outlier. 
+- Features with -1 EO metric for all four PCR replicates indicates a potential error or bias in sequencing or bioinformatic pipeline. 
+
+
+```{r}
+exp_df %>% filter(eo_metric == -1) %>% 
+      group_by(fLvl, pipe, biosample_id, feature_id, t_fctr) %>% 
+      summarise(count = n()) %>% 
+      ggplot() +
+      geom_bar(aes(x = pipe, fill = as.factor(count)), position = "dodge") + 
+      facet_grid(fLvl~biosample_id, scale = "free_y")
+```
+
+## E0 1
+__NOTES__  
+- The observed count values for PCR replicate level EO metrics is 1 or less for most biological replicates and pipelines for Mothur and QIIME at both the feature level and genus aggregated level.  
+- For the DADA2 pipeline the observed count values are higher, with a median value around 10 for all biological replicates at both the feature and genus level.  
+- The consistently higher observed count levels indicate a potential error with the feature inference method. Though the higher than observed counts could be the result of a potential artifact of the sequencing/ PCR procedure where a sequence fails to amplify in the presence of other sequences in the sample due to competing for primer binding sites. The fact that the higer observd count values are only observed for one of the three pipelines indicates that it is more likely, though not guaranteed  the result of an issue with the feature inference procedure and not sequencing.  
+
+```{r}
+exp_df %>% filter(eo_metric == 1) %>% 
+      ggplot() +
+      geom_boxplot(aes(x = biosample_id, y = count, fill = pipe), alpha = 0.25) + 
+      geom_hline(aes(yintercept = 1 + 1)) + 
+      scale_y_log10() + theme_bw() + 
+      labs(x = "Biological Replicate", y = "Observed Count Values", fill = "Pipeline") +
+      facet_wrap(~fLvl) + theme(axis.text.x = element_text(angle = 90))
+```
+
+__Next Steps__
+- Look into differences in sampling depth between unmixed and mixed samples.  
+- Is there a higher frequency of EO metric values of 1 for some PCR replicates. 
+      - Correlate number of features with a metric value of 1 with `total_abu` 
+```{r}
+exp_df %>% filter(eo_metric == 1, pipe == "dada2") %>% 
+      ggplot() + geom_bar(aes(x = id)) + 
+      facet_wrap(~fLvl, scale = "free_y", ncol = 1) +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+What is the one outlier sample? 
+```{r}
+exp_df %>% filter(eo_metric == 1, pipe == "mothur") %>% 
+      ggplot() + geom_bar(aes(x = id)) + 
+      facet_wrap(~fLvl, scale = "free_y", ncol = 1) +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+exp_df %>% filter(eo_metric == 1, pipe == "qiime") %>% 
+      ggplot() + geom_bar(aes(x = id)) + 
+      facet_wrap(~fLvl, scale = "free_y", ncol = 1) +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+- The number of features with EO metrics of 1 for a PCR replicate is correlated with the total abundance, excluding the one outlier for Mothur (not included in plot).  
+- This correlation indicates that for at least some of the features with EO metric values of 1 can be explained by sampling. Will want to compare sampling depth for the titration to the unmixed samples.  
+
+```{r}
+exp_df %>% filter(eo_metric == 1) %>% 
+      group_by(fLvl, pipe, biosample_id, id, total_abu) %>% 
+      summarise(count = n()) %>% filter(count < 1000) %>% 
+      ggplot() +
+      geom_point(aes(x = total_abu, y = count)) + 
+      geom_smooth(aes(x = total_abu, y = count, color = biosample_id)) +
+      facet_grid(fLvl~pipe, scales = "free_y")
+```
+
+```{r}
+exp_df %>% filter(eo_metric == 1) %>% 
+      group_by(fLvl, pipe, biosample_id, id, total_abu) %>% 
+      summarise(count = n()) %>% 
+      filter(count > 1000)
+```
+
+
+
