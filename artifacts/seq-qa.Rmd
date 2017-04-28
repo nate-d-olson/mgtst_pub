@@ -4,7 +4,7 @@ author: "Nate Olson"
 date: '`r Sys.Date()`'
 always_allow_html: yes
 output:
-  pdf_document: default
+  bookdown::pdf_document2: default
   html_document: default
 ---
 
@@ -15,7 +15,8 @@ setwd("../")
 load.project()
 setwd(cwd)
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE) 
-project_dir <- "~/Projects/16S_etec_mix_study/"
+project_dir <- "../../16S_etec_mix_study/"
+pipeline_dir <- "../../mgtst_pipelines/"
 ```
 
 Quality assessment of sequencing run summarizing the PhiX error rate, number of reads per sample, and quality score distributions over the length of the reads. 
@@ -23,7 +24,7 @@ Differences in the number of reads per sample are important for normalization an
 
 
 ```{r fq_data_files}
-fastq_dir <- file.path(project_dir, "data/fastq/jhu_run2/")
+fastq_dir <- file.path(project_dir, "data/")
 dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
                            recursive = TRUE, full.names = TRUE)
 seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
@@ -72,10 +73,10 @@ meta_df <- sampleSheet %>%
 Two barcoded experimental samples have less than 50,000 reads \@ref(fig:readCount). The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). Sample E01JH0016 titration 5 position F9 of plate 1 initial 16S PCR failed.  
 Excluding the one failed reaction the total range in the observed number of sequences per sample is approximately 40,000 to 150,000 reads.  
 
-__TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normaization data. 
+__TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normalization data. 
 __TODO__ Comparison to differences in number of reads per sample observed in other studies. 
 
-```{r table_count}
+```{r tableCount}
 meta_df %>% mutate(exp_ntc = ifelse(biosample_id == "NTC", "NTC","EXP")) %>% 
     filter(Read == "R1", ill_id != "1-F9") %>% 
     group_by(exp_ntc, plate) %>% 
@@ -121,9 +122,6 @@ Error rate is compared to a 16S public dataset on basespace ( 16S-Metagenomic-Li
 The error rate for was higher at the ends of both R1 and R2 compared to the public dataset \@ref(fig:phixError). 
 This higher error rate may impact the number of reads pairs successfully merged and the accuracy of the sequence in the middle of the amplicon. 
 
-<!-- 
-__NOTE__ Not sure whether or not to include in publication as supplemental material.
--->
 
 ```{r phixError, fig.cap = "PhiX error rate for JHU barcoded samples compared to the public dataset. R1 and R2 are the forward and reverse reads and cycle is the position in the read.", fig.lp="fig:"}
 ggplot(error_df) +
