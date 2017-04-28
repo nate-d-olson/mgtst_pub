@@ -47,7 +47,7 @@ get_sampleSheet <- function(){
                       seq_sample_sheet = bind_rows(seq_jhu, seq_nist)))
       }
       
-      titration <- c(20,0:4,5,10,15)
+      titration <- c(0:5,10,15,20)
       plan_a_sample_sheets <- make_plan_a_df(biosample_id, titration)
       plan_a_pcr <- plan_a_sample_sheets$pcr_sample_sheet
       plan_a <- plan_a_sample_sheets$seq_sample_sheet
@@ -136,4 +136,4 @@ rm(get_sampleSheet)
 tstPcrSampleMetaData <- sampleSheet %>% filter(barcode_lab == "JHU",seq_lab == "JHU") %>% 
             select(-ID, -barcode_lab, -kit_version, -For_Index_ID, -Rev_Index_ID, -seq_lab)
 
-ProjectTemplate::cache("tstPcrSampleMetaData")
+# ProjectTemplate::cache("tstPcrSampleMetaData")
