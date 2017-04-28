@@ -18,10 +18,11 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
 ```{r echo = FALSE}
+pipeline_dir <- "../../mgtst_pipelines"
 mrexp_files <- list(
-      dada2 = "../data/mrexp_dada2.RDS",
-      mothur = "../data/mrexp_mothur.RDS",
-      qiime = "../data/mrexp_qiime_refclus_nochimera.RDS"
+      dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_mrexp.rds")
 )
 mrexp <- mrexp_files %>% map(readRDS)
 ```
@@ -33,8 +34,7 @@ The following analysis provides and overview of the resulting dataset; count tab
 ## Count Table Characteristics
 ```{r}
 ## Loading seq count data
-project_dir <- "~/Projects/16S_etec_mix_study/"
-fastq_dir <- paste0(project_dir, "data/fastq/jhu_run2/")
+fastq_dir <- file.path(pipeline_dir, "data")
 dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
                            recursive = TRUE, full.names = TRUE)
 seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
@@ -79,7 +79,7 @@ features <- mrexp %>% map_dbl(NROW)
 ## spareseness
 extract_samples <- function(mrobj){
       sam_names <- pData(mrobj) %>% rownames_to_column() %>% 
-            filter(sampleID != "NTC") %>% .$rowname
+            filter(biosample_id != "NTC") %>% .$rowname
       mrobj[,colnames(mrobj) %in% sam_names]
 }
 
@@ -147,6 +147,29 @@ Rarefaction curve for sequence inference has flattened out indicating the commun
 Whereas the curves have not reached their asymptotes for _de novo_ and open reference clustering indicating that the community has not been fully sampled. 
 Comparison of the individual sample rarefaction curves to the rarefaction curves after aggregating counts for the four replicates indicates that the rarefaction curves of the individual for the _de novo_ and open-reference clustering more representative of the diversity in the four replicates combined than the features generated using the sequence inference method. 
 
+```{r}
+get_curve_df <- function(mrobj){
+      count_tbl <- mrobj[,pData(mrobj)$titration %in% c(20,0)]@assayData$counts %>% t() 
+      dim(count_tbl)
+      pData(mrobj)
+      samID <- rownames(count_tbl)
+      
+      curve_dat <- rarecurve_dat(count_tbl, step = 500)
+      
+      curve_df <- curve_dat %>% set_names(samID) %>% map(data.frame) %>%
+            map_df(rownames_to_column, var = "sample", .id = "samID") %>%
+            mutate(sample = str_replace(sample, "N","") %>% as.numeric())
+      
+      colnames(curve_df)[3] <- "OTUs"
+      
+      pData(mrobj) %>% rownames_to_column(var = "samID") %>%
+            # separate(id, into = c("pcr_16S_plate","well"),remove = FALSE, sep = "-") %>% 
+            mutate(pcr_16S_plate = as.numeric(pcr_16S_plate)) %>% 
+            select(biosample_id, samID, titration, pcr_16S_plate) %>%
+            right_join(curve_df)
+}
+```
+
 ```{r results = 'hide'}
 curve_df <- mrexp %>% map_df(get_curve_df, .id = "pipe")
 ```
@@ -167,8 +190,8 @@ get_curve_agg_df <- function(mrobj){
 }
 
 agg_sample <- function(mrobj){
-      mrobj <- mrobj[,pData(mrobj)$dilution %in% c(-1,0)]
-      aggfct <- pData(mrobj) %>% unite(aggfct, sampleID, dilution, sep = ":") %>% 
+      mrobj <- mrobj[,pData(mrobj)$titration %in% c(20,0)]
+      aggfct <- pData(mrobj) %>% unite(aggfct, biosample_id, titration, sep = ":") %>% 
             .$aggfct %>% factor()   
             
       metagenomeSeq::aggregateBySample(mrobj, fct = aggfct, aggfun = rowSums) 
@@ -177,20 +200,21 @@ agg_curve <- mrexp %>% map(extract_samples) %>% map(agg_sample) %>%
       map_df(get_curve_agg_df, .id = "pipe")
 
 
-agg_curve_df <- agg_curve %>% separate(samID,c("sampleID","dilution"),sep = ":",remove = FALSE) 
+agg_curve_df <- agg_curve %>% 
+      separate(samID,c("biosample_id","titration"), sep = ":", remove = FALSE) 
 ```
 
 ```{r fig.cap = "Rarefaction curves for the unmixed pre- and post-treatment samples. The solid lines represent individual PCR replicates and the dashed lines the pooled replicates."}
 agg_curve_df <- agg_curve_df %>% 
-      mutate(Treatment = if_else(dilution == 0, "Pre", "Post"))
+      mutate(Treatment = if_else(titration == 0, "Post", "Pre"))
 
-curve_df %>% mutate(Treatment = if_else(dilution == 0, "Pre", "Post")) %>% 
+curve_df %>% mutate(Treatment = if_else(titration == 0, "Post", "Pre")) %>% 
       ggplot() + 
       geom_path(aes(x = sample, y = OTUs, color = Treatment, group = samID)) +  
       geom_path(data = agg_curve_df, 
                 aes(x = sample, y = OTUs, color = Treatment, group = samID), 
                 alpha = 0.5, linetype = 2) + 
-      facet_grid(sampleID~pipe) + #, scale = "free") + 
+      facet_grid(biosample_id~pipe) + #, scale = "free") + 
       theme_bw() + theme(legend.position = "bottom") +
       labs(x = "Sampling Depth", y = "Features")
 ```
@@ -198,13 +222,14 @@ curve_df %>% mutate(Treatment = if_else(dilution == 0, "Pre", "Post")) %>%
 
 ## Similarity Between Pre- and Post-Treatment Samples 
 Replicates group together.  
-Overall samples group together more by treatment status than biological sample. 
+Overall samples group together more by treatment status than biological sample \@ref(fig:ordPlots). 
+__TODO__ Clean-up formatting  
 
 ```{r}
 ps_files <- list(
-      dada2  = "../data/phyloseq_dada2.RDS",
-      mothur = "../data/phyloseq_mothur.RDS",
-      qiime  = "../data/phyloseq_qiime.RDS"
+      dada2 = file.path(pipeline_dir, "dada2/dada_ps.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_ps.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_ps.rds")
 )
 ps <- ps_files %>% map(readRDS) 
 ```
@@ -221,8 +246,8 @@ sample_set <- sampleSheet %>% filter(barcode_lab == "JHU", seq_lab == "JHU",
 subset_ps <- function(ps_obj){
       
       ## subset by titrations of interest
-      ps_subset <- subset_samples(ps_obj, dilution %in% c(-1,0)) 
-      ps_subset@sam_data$dilution <- factor(ps_subset@sam_data$dilution)
+      ps_subset <- subset_samples(ps_obj, titration %in% c(20,0)) 
+      ps_subset@sam_data$titration <- factor(ps_subset@sam_data$titration)
       
       ps_subset
 }
@@ -236,20 +261,15 @@ subset_ord <- subset_obj %>% map(ordinate, "PCoA", "bray")
 
 ```{r}
 pl_list <- map2(subset_obj, subset_ord, plot_ordination, 
-                type = "sample",color = "sampleID", shape = "dilution")
+                type = "sample",color = "biosample_id", shape = "titration")
 ```
 
-```{r}
-pl_list$dada2 + ggtitle("DADA2 Ordination") + theme_bw()
+```{r ordPlots, results='hold', fig.cap = "Pre- and Post-treatment PCoA for Bray-Curtis Beta diversity.", fig.width = 3, fig.height = 3}
+pl_list$dada2 + ggtitle("DADA2 Ordination") + theme_bw() + theme(legend.position = "none")
+pl_list$mothur + ggtitle("Mothur Ordination") + theme_bw() + theme(legend.position = "none")
+pl_list$qiime + ggtitle("QIIME Ordination") + theme_bw() 
 ```
 
-```{r}
-pl_list$mothur + ggtitle("Mothur Ordination") + theme_bw()
-``` 
-
-```{r}
-pl_list$qiime + ggtitle("QIIME Ordination") + theme_bw()
-```
 
 # Conclusion
 
