@@ -1,0 +1,81 @@
+---
+title: "EO Metric Figures"
+author: "Nate Olson"
+date: "4/25/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+count_df <- readRDS("../data/nb_expected_eo_metric_feature_df.rds")
+```
+
+## Relationship between expected and observed count for all features and PCR replicates
+```{r}
+count_df %>% 
+      filter(count >= 1 | exp_count >= 1) %>% 
+      ggplot() + 
+      geom_hex(aes(x = count + 1, y = exp_count + 1)) + 
+      geom_smooth(aes(x = count + 1, y = exp_count + 1), color = "darkorange") + 
+     facet_grid(pipe~biosample_id)+ theme_bw() + 
+      labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
+      scale_y_continuous(trans = "log2") + 
+      scale_x_continuous(trans = "log2") + 
+      theme(axis.text.x = element_text(angle = 270))
+```
+
+## EO Metric Distribution 
+For most PCR replicates the expected or observed counts are 0. 
+```{r}
+count_df %>% filter(count >= 1 | exp_count >= 1) %>% 
+      ggplot() + geom_density(aes(x = eo_metric)) + theme_bw()
+```
+
+The EO-metric can be used to obtain a feature level summary by taking the median EO metric value across PCR replicates and titrations. 
+```{r}
+feature_lvl_eo <- count_df %>% filter(count != 0 | exp_count != 0) %>% 
+      group_by(biosample_id, pipe, feature_id) %>% 
+      summarise(med_eo = median(eo_metric))
+```
+
+
+Can filter features that are not behaving as expected, present only in unmixed or mixed samples by excluding features with a median EO metric of -1 or 1. 
+```{r}
+feature_lvl_eo %>% filter(abs(med_eo) != 1) %>% 
+      ggplot() + geom_boxplot(aes(x = pipe, y = med_eo)) + 
+      facet_wrap(~biosample_id) + theme_bw() +
+      labs(x = "Pipeline", y = "Median EO-Metric")
+```
+
+```{r}
+feature_lvl_eo %>% filter(abs(med_eo) != 1) %>% 
+      ggplot() + geom_boxplot(aes(x = biosample_id, y = med_eo)) + 
+      theme_bw() +  
+      labs(x = "Biological Replicate", y = "Median EO-Metric")
+```
+
+
+```{r}
+feature_lvl_eo %>% filter(abs(med_eo) != 1) %>% 
+      ggplot() + geom_boxplot(aes(x = pipe, y = med_eo)) + 
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) + 
+      labs(x = "Pipeline", y = "Median EO-Metric")
+```
+
+```{r}
+fit <- lm(med_eo ~ biosample_id, data = feature_lvl_eo %>% filter(abs(med_eo) != 1, pipe == "dada2"))
+```
+
+```{r}
+summary(fit)
+```
+
+```{r}
+library(ggfortify)
+autoplot(fit)
+```
+

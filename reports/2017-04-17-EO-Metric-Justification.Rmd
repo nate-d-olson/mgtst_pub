@@ -1,0 +1,144 @@
+---
+title: "EO - Metric Description"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(tidyverse)
+library(git2r)
+```
+
+## Objective
+Describe the EO metric and compare use to traditional error rate. 
+
+### EO Metric
+ 
+$$\frac{expected - observed}{expected + observed}$$
+
+Values range from -1 to 1 with values of;  
+
+- 1 for observed counts of 0 and non-zero expected counts, 
+- -1 when expected count is 0 and observed counts are non-zero, 
+- 0 represents agreement between observed and expected counts. 
+
+### Error Rate 
+
+$$\frac{expected - observed}{expected}$$
+
+Values range from -Infinity to 1 with values of;  
+
+- 1 for observed counts of 0 and non-zero expected counts, 
+- -Infinity when expected count is 0 and observed counts are non-zero, 
+- 0 represents agreement between observed and expected counts. 
+- Benefit of the error rate metric is that when data are well behaved, difference between observed and expected is less than the expected value, the absolute value of the error rate is easily interpreted as the percent error. 
+
+
+## Metric Distributions for Mix-Study Data 
+EO Metric and Error Rate values across all biological replicates and pipelines. 
+The following distributions highlight the long lower tail for the error rate metric and the peaks at -1 and 1 for unobserved unmixed and titration sample counts. 
+
+```{r}
+exp_count_df <- readRDS("../data/nb_expected_eo_metric_feature_df.rds") %>% 
+      mutate(error_rate = (exp_count - count)/exp_count)
+```
+
+```{r, message = FALSE}
+exp_count_df %>% filter(!is.na(eo_metric), error_rate != -Inf) %>% 
+      select(pipe, biosample_id, feature_id, error_rate, eo_metric) %>%
+      gather("key","value", -pipe, -biosample_id, -id, -feature_id) %>% 
+      ggplot() + geom_density(aes(x = value)) + theme_bw() + 
+      facet_wrap(~key, scales = "free_x")
+```
+
+
+## Simulated Count Data
+Simulating count data to demonstrate the relationship between the error rate and EO metric and how the two metrics vary with expected and observed count values.  
+Traditional error rate, values have an upper limit of 1 but a lower limit of -infinity. 
+For datasets where the difference between the observed and expected value is frequently larger than the expected value, the non-symmetric distribution of the error rate and long lower tail makes metric value interpretation challenging. 
+Whereas the EO metric ranges from -1 to 1 with consistent interpretation of the tails.  
+
+```{r}
+expected <- seq(from = 0, to = 10000, by = 100)
+observed <- seq(from = 0, to = 10000, by = 100)
+dat <- data_frame(exp = rep(expected, each = length(observed)), 
+                  obs = rep(observed, length(expected)))
+dat <- dat %>% 
+      mutate(eo = (exp - obs)/(exp + obs), 
+             error_rate = (exp - obs)/exp) %>% 
+      mutate(sim = paste0("SIM", 1:n()))
+```
+
+```{r}
+dat %>% filter(error_rate != -Inf) %>% 
+      gather("key", "value", -sim, -exp, -obs) %>% 
+      ggplot() + geom_density(aes(x = value)) + theme_bw() + 
+      facet_wrap(~key, scales = "free_x")
+```
+
+### EO Metric In Action 
+EO metric for simulated expected and observed count values. 
+Perfect agreement between the expected and observed count values has an eo metric of 0 and unobserved count in unmixed samples and titrations have values of -1 and 1, y- and x-axis respectively.  
+
+```{r}
+dat %>% 
+      ggplot(aes(x = exp, y = obs)) + geom_point(aes(color = eo)) + 
+      scale_colour_gradient2() + theme_bw() +
+      labs(x = "Expected Count", y = "Observed Count", fill = "EO Metric")
+```
+
+
+## Relationship between Error Rate and EO Metric 
+While the EO metric aids in the interpretation of the tails, the relationship between the error rate and EO metric is non-symetic. 
+As a result negative and positive EO values should be interpreted differently. 
+For example an error rate of -0.5 has an EO metric of -0.2 and an error rate of 0.5 an EO metric of 0.33. 
+
+```{r}
+dat %>% ggplot() + geom_line(aes(x = error_rate, y = eo)) + theme_bw() +
+      labs(x = "Error Rate", y = "EO Metric")
+```
+
+```{r} 
+dat_seg <- dat %>% filter(abs(error_rate) %in% c(0, 0.25, 0.5, 0.75, 1)) %>% 
+      select(error_rate, eo) %>% unique()
+dat %>% filter(error_rate > -1) %>% 
+      ggplot() + geom_line(aes(x = error_rate, y = eo)) + 
+      geom_segment(data = dat_seg, 
+                   aes(x = error_rate, xend = error_rate, y = -0.67, yend = eo), 
+                   linetype = 2, color = "grey60") + 
+      geom_segment(data = dat_seg, 
+             aes(x = -1 , xend = error_rate, y = eo, yend = eo), 
+             linetype = 2, color = "grey60") + 
+      theme_bw() +
+      scale_y_continuous(breaks = dat_seg$eo, labels = round(dat_seg$eo,2)) +
+      scale_x_continuous(breaks = dat_seg$error_rate) +
+      theme(panel.grid = element_blank()) + labs(x = "Error Rate", y = "EO Metric")
+```
+
+# Session information 
+
+## Git repo commit information
+```{r}
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
