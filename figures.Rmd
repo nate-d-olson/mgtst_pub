@@ -44,6 +44,7 @@ knitr::include_graphics("img/experimental_design.png")
 ```
 
 
+
 # Titration Validation
 ERCC spike-in qPCR and bacterial DNA qPCR
 See `mixing_and_validating_titrations.pdf` in artifacts
@@ -63,10 +64,13 @@ See `seq-qa.pdf` in artifacts.
 ## Pipeline Characterization
 see `pipeline_characterization.pdf` in artifacts 
 
+
 # Feature categories
-Objective of this categorization is to identify a set of features we would expect to be well behaved based on presence/ absence data alone. 
-Informative features will be used for quantitative analysis and uninformative features qualitative analysis.  
-Uninformative features are potential indicators of an artifact of feature inference (clustering) are features where non-detected PCR replicates and samples cannot be explained by random sampling alone  given the observed count values. 
+Objective of this categorization is to identify a set of candidate features we expect to be well behaved based on presence/ absence data alone. 
+Candidate features will be used for quantitative analysis.  
+Features not identified as candidate features are potential indicators of an artifact of feature inference (clustering). 
+Features that are artifacts of the feature inference method are features where random sampling along cannot explain why a feature is not observed in a given PCR replicate assuming random sampling  and number of reads obtained for the PCR replicte. 
+
 
 Excluding features observed in no template controls, unable to differentiate between count values due to reagent contaminants or thoes from the biological samples. 
 
@@ -115,8 +119,36 @@ feature_cat %>% filter(cat != "cat_null") %>%
     scale_y_log10()
 ```
 
+```{r}
+cat_prop_df <- feature_cat %>% filter(cat != "cat_null") %>% 
+    mutate(cat = gsub(pattern = "cat_", replacement = "", cat),
+           cat = if_else(cat == "near_full", "full",cat),
+           cat = fct_relevel(cat, c("full","post","pre","mix","none"))) %>% 
+      group_by(pipe, cat) %>% summarise(count = n()) %>% 
+      group_by(pipe) %>% mutate(cat_prop = count / sum(count))
 
-# Non-informative features - relating biological and experimental
+cat_prop_total_df <- cat_prop_df %>% group_by(cat) %>% 
+      summarise(total_count = sum(count)) %>% 
+      ungroup() %>% 
+      mutate(total_prop = total_count/sum(total_count))
+cat_prop_summary <- cat_prop_df %>% select(-count) %>% spread(pipe, cat_prop) %>% left_join(cat_prop_total_df)
+```
+
+```{r}
+cat_prop_summary %>% knitr::kable()
+```
+
+The proportion of features assigned to the different groups is not statistically significantly different between the three pipelines, with 97% of the features uncategorized. 
+
+```{r}
+chisq.test(cat_prop_summary$dada2, cat_prop_summary$total_prop)
+chisq.test(cat_prop_summary$qiime, cat_prop_summary$total_prop)
+chisq.test(cat_prop_summary$mothur, cat_prop_summary$total_prop)
+```
+
+
+# Non-informative features - relating biological and experimental 
+
 Dropout features - only pre or only post and present in all 4 PCR replicates
 Mix only features present in multiple titrations 
 
@@ -129,20 +161,20 @@ Feature dropout as artifact of:
 # Biosample and pipeline general evaluation - bias and variance
 
 ```{r}
-count_exp_df <- readRDS("data/expected_count_values_feature_df.rds") 
-feature_cat <- readRDS("data/feature_categories_df.rds")
-ntc_features <- readRDS("data/ntc_features.rds")
-count_exp_df <- left_join(count_exp_df, feature_cat) %>% 
-      anti_join(ntc_features) %>% 
-      filter(cat %in% c("cat_full", "cat_pre", "cat_post"), id != "1-F9")  
+feature_exp_df <- readRDS("data/nb_expected_eo_metric_feature_df.rds") 
+# feature_cat <- readRDS("data/feature_categories_df.rds")
+# ntc_features <- readRDS("data/ntc_features.rds")
+# count_exp_df <- left_join(count_exp_df, feature_cat) %>% 
+#       anti_join(ntc_features) %>% 
+#       filter(cat %in% c("cat_full", "cat_pre", "cat_post"), id != "1-F9")  
 
-genus_exp_df <- readRDS("data/expected_count_values_genus_df.rds") 
-genus_cat <- readRDS("data/genus_categories_df.rds")
-genus_ntc <- readRDS("data/ntc_genus.rds")
-genus_exp_df <- left_join(genus_exp_df, genus_cat) %>% 
-      anti_join(genus_ntc) %>% 
-      filter(cat %in% c("cat_full", "cat_pre", "cat_post"), id != "1-F9") 
-exp_df <- bind_rows(feature = count_exp_df, genus = genus_exp_df, .id = "fLvl")
+genus_exp_df <- readRDS("data/nb_expected_eo_metric_genus_df.rds") 
+# genus_cat <- readRDS("data/genus_categories_df.rds")
+# genus_ntc <- readRDS("data/ntc_genus.rds")
+# genus_exp_df <- left_join(genus_exp_df, genus_cat) %>% 
+#       anti_join(genus_ntc) %>% 
+#       filter(cat %in% c("cat_full", "cat_pre", "cat_post"), id != "1-F9") 
+exp_df <- bind_rows(feature = feature_exp_df, genus = genus_exp_df, .id = "fLvl")
 ```
 
 Overall relationship between the observed and expected values by pipeline and biological replicate. 
@@ -152,7 +184,7 @@ These include some of the _Escherichia_ features, may want to figure out a bette
 
 ```{r message=FALSE}
 exp_df %>% ggplot() + 
-      geom_smooth(aes(x = obs_count + 1, y = exp_count + 1, color = fLvl)) + 
+      geom_smooth(aes(x = count + 1, y = exp_count + 1, color = fLvl)) + 
       geom_abline(aes(intercept = 0, slope = 1), color = "grey60") + 
       facet_grid(pipe~biosample_id)+ theme_bw() + 
       labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
@@ -160,6 +192,7 @@ exp_df %>% ggplot() +
       scale_x_continuous(trans = "log2") + 
       theme(axis.text.x = element_text(angle = 270)) 
 ```
+
 
 
 # Bias - Biological Replicate 
@@ -333,6 +366,7 @@ r2_df %>% left_join(var_metric) %>% filter(r_squared < 0) %>%
 # Relating types of outlier features with biological and experimental factors
 * biological taxonomy/ phylogenetic signal
 * experimental - sampling based approach 
+
 
 # Session information 
 
