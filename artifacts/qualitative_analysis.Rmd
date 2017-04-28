@@ -1,0 +1,69 @@
+---
+title: "Measurement Assessment - Qualitative Analysis"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+feature_specificity_df <- readRDS("../data/feature_specificity_df.rds") 
+```
+
+Qualitative analysis: proportion of PCR replicates with 0 and non-zero count values. 
+
+# Outline
+* Mix specific - can the observed feature abundance be explained by random sampling alone {report: mix_specific_features}
+* Features present in 1-3 PCR replicates, relate median count values to proportion detect to get a LOD 
+* Fit a logistic regression for pre- and post- treatment specific features present in all four replicates,  proportion dect ~ expected count value 
+* Comparison of LOD by pipeline
+
+## Mix Specific Features  
+* Not sure what the expectation is for the unmixed samples  
+* Should be able to predict assuming multinomial sampling  
+* The average read pre sample less than 10 agrees with prior expectation. The higher average number of reads per sample for DADA2 indicates to me that these mix-specific feature are artifacts of the feature inference procedure rather than a sampling artifact. 
+
+```{r fig.cap = "Number of samples and average number of reads per sample for features only observed in the titrations and not the unmixed pre and post-treatment samples. Each point represent a titration specific feature in one of the biological replicates. Titration specific features can be observed in 28 samples, 4 PCR replicates for 7 titrations."}
+feature_specificity_df %>% filter(specific_anno == "mix_specific") %>% 
+      ggplot() + geom_point(aes(x = Samp, y = Reads/Samp, color = factor(NTC)), alpha = 0.25) +
+      facet_grid(.~pipe) + scale_y_log10() + theme_bw() + 
+      labs(x = "Number of Samples", y = "Average Reads per Sample")
+```
+
+## Estimating LOD
+The median abundance and proportion of PCR replicates was used to estimate the method limit of detection (LOD). 
+LOD is defined as the average number of reads per sample where the feature was present in 50\% of the PCR replicates. 
+All features and samples (both unmixed and titrations) were used to estimate the LOD. 
+
+```{r}
+lod_fit <- glm(avg_read ~ detect_prop, data = lod_df, family = binomial(link='logit'))
+```
+
+```{r}
+library(modelr)
+lod_fit_df <- add_predictions(lod_df,lod_fit)
+```
+
+```{r}
+ggplot(lod_fit_df) + geom_path(aes(x = avg_read, y = pred), color = "darkorange") + 
+      geom_point(aes(x = avg_read, y = detect_prop), color = "darkorange")
+```
+
+
+
+# Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```

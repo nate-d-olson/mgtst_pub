@@ -1,0 +1,90 @@
+---
+title: "Expected-Observed Count Model Fit"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd) 
+```
+
+## Objective
+Fit a linear model of the residuals to the observed count values.  
+Using the `expected_count_values_features_df.rds` and `expected_count_values_genus_df.rds` data frames generated in `2017-03-28-Development-Titration-Pred-Df.Rmd`. 
+
+### Fit approach
+Use `lm` with residuals (expected - observed) to the expected count values, looking for estimate deviance from slope of 0 and intercept 0
+ 
+## Functions for Processing Data
+```{r}
+get_fit <- function(count_exp_df){
+      count_exp_df %>% 
+            group_by(pipe, biosample_id, feature_id) %>% 
+            nest() %>% 
+            mutate(fit = map(data,~lm(residual ~ exp_count, data = .)))
+}
+
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::tidy)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            mutate(term = if_else(term == "(Intercept)", "Intercept","Slope"))
+}
+
+get_glance_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::glance)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            select(-statistic, -p.value) 
+}
+```
+
+
+## Fitting model to individual Features
+```{r}
+count_exp_df <- readRDS("../data/expected_count_values_feature_df.rds")  
+
+count_fit <- get_fit(count_exp_df)
+count_fit %>% saveRDS("../data/expected_count_values_features_fit.rds") 
+
+# Data frames with fit summary statistics and parameter estimates
+get_tidy_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_features_tidy.rds") 
+
+get_glance_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_features_glance.rds") 
+``` 
+
+
+
+## Fit model to Genus aggregated features 
+```{r}
+count_exp_df <- readRDS("../data/expected_count_values_genus_df.rds") 
+
+count_fit <- get_fit(count_exp_df)
+count_fit %>% saveRDS("../data/expected_count_values_genus_fit.rds") 
+
+# Data frames with fit summary statistics and parameter estimates
+get_tidy_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_genus_tidy.rds") 
+
+get_glance_fit(count_fit) %>% 
+      saveRDS("../data/expected_count_values_fit_genus_glance.rds") 
+```
+
+## Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+``` 

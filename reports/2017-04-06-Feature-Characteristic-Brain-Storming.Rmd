@@ -1,0 +1,21 @@
+---
+title: "Feature - Features"
+author: "Nate Olson"
+date: "March 23, 2017"
+output: html_document
+---
+
+Characteristics of features for use in evaluating how consistent count values are with the expected values:
+
+Reasons for features not being consistent with expections
+1. Clustering/ pipeline artifacts - biologically unrelated sequences grouped together 
+2. Proportion of bacterial DNA from pre- and post-treatment samples is not consistent with our expectations 
+3. Sequence specific artifact, e.g. GC bias, primer binding, organismal diversity (how conserved is the 16S gene), copy number, 
+
+
+1. Expected count value - are the values near the LOD?
+2. How many observed titration replicate counts are 0? 
+3. R^2
+4. Optimal distance
+
+

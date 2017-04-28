@@ -66,6 +66,14 @@ __TODO__ incorporate NIST values into ProjectTemplate
 ## Pooled library QC results
 __TODO__ Get from sequencing labs
 
+# Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
+
 <!--
 ### 16S PCR Concentration Post-Cleanup
 ```{r echo = FALSE}

@@ -1,0 +1,272 @@
+---
+title: "Bias Variance Fit Metric"
+author: "Nate Olson"
+date: "4/28/2017"
+output: html_document
+---
+
+## Sample Results
+```{r}
+## Extracting a tidy dataframe with count values from MRexpiment objects
+get_count_df <- function(mrobj, agg_genus = FALSE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
+      mrobj <- cumNorm(mrobj, p = 0.75)
+      mrobj %>%
+            # not sure whether or not to normalize counts prior to analysis
+            MRcounts(norm = FALSE, log = FALSE, sl = 1) %>%  
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+} 
+
+count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC") %>% 
+      ungroup() %>% 
+      mutate(t_fctr = fct_relevel(t_fctr, c(0:5, 10, 15, 20)),
+             titration = as.numeric(as.character(t_fctr)), 
+             theta = 2^(-titration),
+             theta = if_else(theta == 2^-20, 0, theta))  %>% 
+      filter(t_fctr %in% c(0:4,20))
+
+## Calculate scaling factor 
+count_df <- count_df %>% group_by(pipe, id) %>% 
+      mutate(total_count = sum(count),
+             scale_factor = total_count/ exp(mean(log(total_count))),
+             norm_count = count/scale_factor)
+
+## Excluding features were most PCR reps have 0 observed and 0 unmixed counts
+eo_metric <- readRDS("../data/nb_expected_eo_metric_feature_df.rds")   
+eo_metric_feature <- eo_metric %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      filter(t_fctr %in% c(0:4,20)) %>% 
+      summarise(med_eo = median(eo_metric)) 
+ 
+good_features <- eo_metric_feature %>% filter(abs(med_eo) != 1) 
+
+count_full_df <- count_df %>% right_join(good_features)
+
+nested_count_df <- count_full_df %>% group_by(pipe, biosample_id, feature_id) %>% nest()
+```
+
+Fitting model to real data
+```{r}
+fit_df <- nested_count_df %>%
+      mutate(fit = map(data, ~lm(norm_count ~ theta:t_fctr, data = .)))
+```
+
+```{r}
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::tidy)) %>% 
+            select(-data, -fit) %>% unnest()
+}
+
+tidy_fit <- get_tidy_fit(fit_df)
+```
+
+Consistent decrease in estimates with titration factor.  
+
+Two potential reasons;  
+
+1. model not estimating Post-Pre as expected,  
+2. assumptions about how the samples were mixed is not valid. 
+
+```{r}
+dat <- tidy_fit %>% 
+      mutate(term = factor(term, levels = c( paste0("theta:t_fctr",c(15,10,5:0)), "(Intercept)"))) %>%
+      filter(term != "theta:t_fctr20", term != "(Intercept)") %>% 
+      group_by(pipe, biosample_id, feature_id) %>% mutate(min_est = min(estimate)) 
+
+dat %>% ggplot() +
+      geom_path(aes(x = term, y = estimate, group = feature_id), alpha = 0.25) +
+      facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+dat %>% filter(biosample_id == "E01JH0004", pipe == "dada2") %>% 
+      ggplot() +
+      geom_path(aes(x = term, y = estimate + 1, 
+                    group = feature_id), alpha = 0.25) +
+      facet_grid(pipe~biosample_id, scales = "free_y") + 
+      theme(axis.text.x = element_text(angle = 90)) + scale_y_log10()
+```
+
+__TODO__ Features with no theta:t_fctr0
+
+```{r}
+dat %>% select(pipe, biosample_id, feature_id, term, estimate) %>% spread(term, estimate) %>% arrange(`theta:t_fctr0`)
+```
+
+
+### Model Diagnostics for Example Features
+```{r}
+fit_plots <- fit_df %>% filter(feature_id == "SV1") %>% .$fit %>% map(autoplot)
+```
+
+
+```{r}
+print(fit_plots)
+```
+
+The E. coli feature for the mothur and DADA2 pipeline look very similar but the numbers different
+```{r}
+sv1_tidy_df <- fit_df %>% filter(feature_id == "SV1") %>% 
+      mutate(fit_tidy = map(fit, broom::tidy)) %>% 
+      select(-fit,-data) %>% unnest()
+
+sv1_tidy_df %>% 
+      mutate(term = factor(term, levels = c( paste0("theta:t_fctr",c(15,10,5:0)), "(Intercept)"))) %>%
+      ggplot() + 
+      geom_point(aes(x = term, y = estimate)) +
+      geom_errorbar(aes(x = term, ymin = estimate - 2*std.error, ymax = estimate + 2*std.error)) +
+      #scale_y_log10() +
+      facet_wrap(~biosample_id) + theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+
+```
+
+```{r}
+fit_df %>% filter(feature_id == "SV1") %>% .$fit %>% map(summary)
+```
+
+
+```{r}
+otu1_tidy_df <- fit_df %>% filter(feature_id == "Otu00001") %>% 
+      mutate(fit_tidy = map(fit, broom::tidy)) %>% 
+      select(-fit,-data) %>% unnest()
+
+otu1_tidy_df %>% 
+      mutate(term = factor(term, levels = c( paste0("theta:t_fctr",c(15,10,5:0)), "(Intercept)"))) %>%
+      ggplot() + 
+      geom_point(aes(x = term, y = estimate)) +
+      geom_errorbar(aes(x = term, ymin = estimate - 2*std.error, ymax = estimate + 2*std.error)) +
+      facet_wrap(~biosample_id) + theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+## Bias -Variance Relationship
+```{r}
+fit_summary <- dat %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(mean_est = mean(estimate), cov_est = sd(estimate)/mean(estimate))
+
+get_glance_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::glance)) %>% 
+            select(-data, -fit) %>% unnest()
+}
+
+glance_fit <- get_glance_fit(fit_df)
+
+fit_summary <- glance_fit %>% select(pipe, biosample_id, feature_id, sigma) %>% left_join(fit_summary) %>% 
+      mutate(cov_sigma = sigma/mean_est)
+
+``` 
+ 
+Estimate is post 
+
+```{r}
+fit_summary %>% filter(abs(mean_est) < 1)
+```
+
+
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = biosample_id, y = cov_est, color = pipe)) + 
+      theme_bw()
+```
+
+
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = biosample_id, y = cov_sigma, color = pipe)) + 
+      theme_bw()
+```
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1, cov_sigma > -100) %>% ggplot() + 
+      geom_point(aes(x = cov_est, y = cov_sigma, color = biosample_id, shape = pipe)) + theme_bw()
+```
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1, cov_sigma > -100) %>% 
+      ggplot() + 
+      geom_point(aes(x = abs(mean_est) + 1, 
+                     y = cov_sigma, 
+                     color = biosample_id, shape = pipe)) + 
+      scale_x_continuous(trans = "log2") + 
+      theme_bw()
+```
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1, cov_sigma > -100) %>% 
+      ggplot() + 
+      geom_point(aes(x = abs(mean_est) + 1, 
+                     y = cov_est, 
+                     color = biosample_id, shape = pipe)) + 
+      scale_x_continuous(trans = "log2") + 
+      theme_bw()
+```
+
+
+```{r}
+feature_metrics <- fit_summary %>% filter(abs(mean_est) > 1) %>% 
+      select(pipe, biosample_id, feature_id, mean_est, cov_est, cov_sigma) %>% 
+      left_join(eo_metric_feature)
+```
+
+```{r}
+ggplot(feature_metrics) + geom_point(aes(x = cov_est,  y = med_eo))
+```
+
+
+```{r}
+feature_metrics %>%
+ggplot() + geom_point(aes(x = cov_sigma,  y = med_eo))
+```
+
+```{r}
+outlier_features <- feature_metrics %>% filter(abs(mean_est) > 1, abs(cov_sigma) > 10)
+```
+
+```{r}
+outlier_features %>% arrange(cov_sigma)
+```
+
+
+
+```{r}
+outlier_counts <- outlier_features %>% left_join(count_df)
+```
+
+```{r}
+outlier_counts %>% 
+      filter(t_fctr %in% (1:5)) %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5))) %>% 
+ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + 
+      facet_wrap(~feature_id, scales = "free")
+```
+
+```{r}
+tidy_fit
+```
+```{r}
+feature_metrics %>% filter(abs(mean_est) > 1, abs(cov_sigma) < 10) %>% ggplot() + 
+      geom_point(aes(x = cov_est, y = cov_sigma, color = biosample_id, shape = pipe)) + theme_bw()
+```
+
+```{r}
+feature_metrics 
+```
+
+

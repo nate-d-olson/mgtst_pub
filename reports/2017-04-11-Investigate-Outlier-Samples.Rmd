@@ -1,0 +1,68 @@
+---
+title: "Investigating potential outlier samples."
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+## Objective
+Sample 1-F9, a PCR replicate of E01JH0016, had a relatively low number of reads per sample (~10,000) compared to the other samples. 
+Additionally, the band was present when the 16S PCR amplicons were checked prior to library prep using gel electrophoresis. 
+Sample 1-F4 had low base quality score for the reverse read. 
+
+
+```{r}
+count_exp_df <- readRDS("../data/expected_count_values_feature_df.rds") 
+feature_cat <- readRDS("../data/feature_categories_df.rds")
+count_exp_df <- left_join(count_exp_df, feature_cat) %>% 
+      filter(cat %in% c("cat_full", "cat_pre", "cat_post")) %>% 
+      mutate(bad_sample = if_else(id %in% c("1-F9","1-F4"),id,"0"))
+```
+
+The low quality for the reverse read did not bias the observed counts for sample 1-F4. 
+The relativly low number of reads for sample 1-F9 appears to have biased the count values, will exclude this sample from analysis.  
+
+```{r}
+count_exp_df %>% filter(bad_sample != "0") %>% 
+    ggplot() + 
+      geom_abline(aes(intercept = 0, slope = 1)) + 
+    geom_point(aes(x = obs_count + 1, y = exp_count + 1)) + 
+    geom_smooth(aes(x = obs_count + 1, y = exp_count + 1), color = "darkorange") + 
+    facet_grid(pipe~biosample_id)+ theme_bw() + 
+    labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
+    scale_y_continuous(trans = "log2") + 
+    scale_x_continuous(trans = "log2") + 
+    theme(axis.text.x = element_text(angle = 270))
+```
+
+# Session information 
+
+## Git repo commit information
+```{r}
+repo <- repository(path = ".")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```

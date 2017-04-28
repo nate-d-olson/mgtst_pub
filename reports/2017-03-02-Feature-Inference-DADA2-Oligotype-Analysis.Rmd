@@ -2,7 +2,9 @@
 title: "Feature Inference DADA2 Oligotype Analysis"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, message = FALSE, include=FALSE}

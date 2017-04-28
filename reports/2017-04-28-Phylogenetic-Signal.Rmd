@@ -1,0 +1,98 @@
+---
+title: "Phylogenetic Signal Analysis"
+author: "Nate Olson"
+date: "4/28/2017"
+output: html_document
+---
+
+```{r}
+library(phylosignal)
+library(adephylo)
+library(ape)
+library(phylobase)
+```
+
+```{r}
+dada_tree <- read.tree("~/Projects/16S_etec_mix_study/analysis/pipelines/dada2/dada_tree/dada_centers.good.filter.tre")
+qiime_tree <- read.tree("~/Projects/mgtst_pipelines/qiime/otus_uc_fast/rep_set.tre")
+```
+
+```{r}
+dada_metrics <- feature_metrics %>%  
+      filter(feature_id %in% dada_tree$tip.label) %>% 
+      filter(pipe == "dada2") %>% group_by(feature_id) %>% summarise_all(.funs = mean)
+
+tips_to_drop <- dada_tree$tip.label[!(dada_tree$tip.label %in% dada_metrics$feature_id)] 
+
+dada_trim <- drop.tip(dada_tree,tip = tips_to_drop)
+
+
+qiime_metrics <- feature_metrics %>%  
+      filter(feature_id %in% qiime_tree$tip.label) %>% 
+      filter(pipe == "qiime") %>% group_by(feature_id) %>% summarise_all(.funs = max)
+
+tips_to_drop <- qiime_tree$tip.label[!(qiime_tree$tip.label %in% qiime_metrics$feature_id)] 
+
+qiime_trim <- drop.tip(qiime_tree,tip = tips_to_drop)
+```
+
+```{r}
+## Issue with negative edge lengths
+dada_trim$edge.length[dada_trim$edge.length < 0] <- 0
+```
+
+
+```{r}
+
+dada_labels <-  data_frame(tip.label = dada_trim$tip.label)
+dat <- list()
+dat$cov_est <- dada_metrics$cov_est
+dat$cov_sigma <- dada_metrics$cov_sigma 
+dat$eo <- dada_metrics$med_eo
+dat$tip.label <- dada_metrics$feature_id
+dat <- as.data.frame(dat) %>% right_join(dada_labels) %>% select(-tip.label) 
+p4d <- phylo4d(dada_trim, dat)
+``` 
+
+```{r}
+barplot.phylo4d(p4d, tree.type = "phylo", tree.ladderize = TRUE, show.tip = FALSE)
+```
+
+```{r}
+phyloSignal(p4d = p4d, method = c("I","Cmean"))
+``` 
+
+```{r}
+qiime_labels <-  data_frame(tip.label = qiime_trim$tip.label)
+dat <- list()
+dat$cov_est <- qiime_metrics$cov_est
+dat$cov_sigma <- qiime_metrics$cov_sigma 
+dat$eo <- qiime_metrics$med_eo
+dat$tip.label <- qiime_metrics$feature_id
+dat <- as.data.frame(dat) %>% right_join(qiime_labels) %>% select(-tip.label)
+p4d <- phylo4d(qiime_trim, dat)
+```
+
+
+```{r}
+barplot.phylo4d(p4d, tree.type = "phylo", tree.ladderize = TRUE, show.tip = FALSE)
+```
+
+```{r}
+phyloSignal(p4d = p4d, method = c("I","Cmean"))
+``` 
+
+
+```{r}
+phylosim <- phyloSim(tree = dada_trim, method = "Cmean", nsim = 100, reps = 99)
+```
+
+```{r}
+plot(phylosim, stacked.methods = FALSE, quantiles = c(0.05, 0.95))
+```
+
+```{r}
+
+dada.lipa <- lipaMoran(p4d)
+barplot.phylo4d(p4d, bar.col=(dada.lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```

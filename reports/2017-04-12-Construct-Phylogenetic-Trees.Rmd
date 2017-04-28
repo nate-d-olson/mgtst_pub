@@ -1,0 +1,69 @@
+---
+title: "Phylogenetic Tree Construction"
+author: "Nate Olson"
+date: "4/12/2017"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+## Objective
+Generate a phylogenetic tree to test for a phylogenetic signal with outlier features. 
+
+
+## Tree Construction
+Using mothur to generate multiple sequence alignment with SILVA reference alignment. 
+Then generating neighbor-joining phylogenetic tree. 
+
+```
+align.seqs(fasta=dada_centers.fasta, reference=~/Projects/mgtst_pipelines/reference/silva.nr_v119.34.align, flip=t, processors=8)
+screen.seqs(fasta=current, minlength=390, maxlength=425)
+filter.seqs(fasta=current, vertical=T, trump=.)
+clearcut(DNA=T)
+```
+
+```{r}
+align_report <- read_tsv("~/Desktop/dada_centers.align.report")
+```
+
+```{r}
+summary(align_report)
+```
+
+Potential set of features to look into reasoning for poor performance.
+```{r}
+align_report %>% filter(abs(PairwiseAlignmentLength) < 300)
+```
+
+
+```{r}
+library(dada2)
+library(phyloseq)
+library(msa)
+library(phangorn)
+```
+
+```{r}
+seqtab <- readRDS("~/Projects/mgtst_pipelines/dada2/seqtab.rds")
+seqs <- getSequences(seqtab)
+names(seqs) <- seqs # This propagates to the tip labels of the tree
+mult <- msa(seqs, method="ClustalW", type="dna", order="input")
+The phangorn package is then used to construct a phylogenetic tree. Here we first construct a neighbor-joining tree, and then fit a GTR+G+I maximum likelihood tree using the neighbor-joining tree as a starting point.
+
+library("phangorn")
+phang.align <- as.phyDat(mult, type="DNA", names=getSequence(seqtab))
+dm <- dist.ml(phang.align)
+treeNJ <- NJ(dm) # Note, tip order != sequence order
+fit = pml(treeNJ, data=phang.align)
+
+## negative edges length changed to 0!
+
+fitGTR <- update(fit, k=4, inv=0.2)
+fitGTR <- optim.pml(fitGTR, model="GTR", optInv=TRUE, optGamma=TRUE,
+                       rearrangement = "stochastic", control = pml.control(trace = 0))
+detach("package:phangorn", unload=TRUE)
+```
+

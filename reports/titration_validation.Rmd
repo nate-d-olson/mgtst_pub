@@ -3,8 +3,8 @@ title: "ERCC qPCR Titration QA"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 ```{r echo=FALSE, message=FALSE}
 library(ProjectTemplate)

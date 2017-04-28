@@ -6,7 +6,7 @@
 _book
 #reports/*html
 reports/*rds
-reports/*pdf
+#reports/*pdf
 reports/*cache
 
 ## Excluding latex build intermediate files

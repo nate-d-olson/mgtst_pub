@@ -3,8 +3,8 @@ title: "Feature Inference DADA2 Unique Sequence Abundance Distribution"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, message = FALSE, include=FALSE}

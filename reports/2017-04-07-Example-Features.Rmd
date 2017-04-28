@@ -1,0 +1,577 @@
+---
+title: "Example Features"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd) 
+```
+
+### Objective 
+Generate a set of example features and provide summary metrics for these features based on the different models and metrics being evaluated. 
+
+```{r}
+feature_cat <- readRDS("../data/feature_categories_df.rds")
+
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp <- get_mrexp(pipeline_dir)
+
+## Extracting a tidy dataframe with count values from MRexpiment objects
+get_count_df <- function(mrobj, agg_genus = FALSE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
+      mrobj <- cumNorm(mrobj, p = 0.75)
+      mrobj %>%
+            # not sure whether or not to normalize counts prior to analysis
+            MRcounts(norm = TRUE, sl = 1000) %>%  
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+} 
+
+count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC") %>% 
+      mutate(t_fctr = fct_relevel(t_fctr, c(20, 15, 10, 5:0))) %>%
+      left_join(feature_cat) #%>% filter(cat %in% c("cat_full", "cat_pre","cat_post"))
+```
+
+## Escherichia Features
+### DADA2
+```{r}
+count_df %>% filter(feature_id == "SV1") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + 
+      facet_wrap(~biosample_id, scales = "free") + theme_bw()
+
+```
+
+### Mothur 
+```{r}
+count_df %>% filter(feature_id == "Otu00001") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + 
+      facet_wrap(~biosample_id, scales = "free") + theme_bw()
+```
+
+
+
+
+### QIIME 
+No QIIME features classified to the genus level as _Escherichia_ were categorized as pre, post, or full. 
+```{r}
+mrexp$qiime %>% fData() %>% filter(Rank6 == "g__Escherichia")
+```
+
+```{r}
+count_df %>% filter(feature_id == "New.CleanUp.ReferenceOTU7975") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + 
+      facet_wrap(~biosample_id, scales = "free") + theme_bw()
+```
+
+```{r}
+count_df %>% filter(feature_id == "114510") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + 
+      facet_wrap(~biosample_id, scales = "free") + theme_bw()
+```
+
+```{r}
+count_df %>% filter(feature_id == "744023") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + 
+      facet_wrap(~biosample_id, scales = "free") + theme_bw()
+```
+
+## Post Treatment Drop-out
+```{r}
+count_df %>% filter(feature_id == "1040889", biosample_id == "E01JH0004", pipe == "qiime") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + theme_bw()
+```
+
+## Good Feature
+```{r}
+count_df %>% filter(feature_id == "SV1", biosample_id == "E01JH0038", pipe == "dada2") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + theme_bw()
+```
+
+## Mix Dropout 
+Feature present in unmixed post-treatment but at relatively low abundance for the titrations.
+```{r}
+count_df %>% filter(feature_id == "198151", biosample_id == "E01JH0004", pipe == "qiime") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + theme_bw()
+```
+
+## Random Outliers 
+Mostly low count values with a few PCR replicates with high count values. 
+```{r}
+count_df %>% filter(feature_id == "Otu00133", biosample_id == "E01JH0011", pipe == "mothur") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + theme_bw()
+```
+
+## Noisy Feature
+
+```{r}
+count_df %>% filter(feature_id == "Otu00060", biosample_id == "E01JH0017", pipe == "mothur") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + theme_bw()
+```
+
+## Partial Dropout 
+Multiple titrations and replicates with low abundance counts. 
+```{r}
+count_df %>% filter(feature_id == "Otu00143", biosample_id == "E01JH0016", pipe == "mothur") %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = count)) + theme_bw()
+```
+
+```{r}
+feature_subset <- count_df %>% filter(cat %in% c("cat_full", "cat_pre","cat_post")) %>% 
+      select(pipe, feature_id, biosample_id, cat) %>% unique() %>% 
+      group_by(pipe, cat) %>% sample_n(5, replace = F)
+```
+
+Breakdown of feature subset
+```{r}
+feature_subset %>% ggplot() + 
+      geom_bar(aes(x = cat, fill = biosample_id)) + theme_bw()
+```
+
+```{r}
+feature_subset_count <- count_df %>% right_join(feature_subset) 
+large_feature_plot <- feature_subset_count %>% ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+
+# ggsave(plot = large_feature_plot, 
+#        filename = "large_feature_plot.pdf", 
+#        width = 24, height = 18)
+```
+
+## Feature Metrics for Feature Subsets
+```{r}
+count_exp_df <- readRDS("../data/expected_count_values_feature_df.rds") 
+```
+
+```{r}
+count_exp_subset <- count_exp_df %>% right_join(feature_subset) 
+```
+
+
+### R^2 Expected - Observed Counts
+```{r}
+subset_r2_df <- count_exp_subset %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(ss_total = sum((obs_count - mean(obs_count))^2),
+                ss_res = sum(residual^2)) %>% 
+      mutate(r_squared = 1 - ss_res/ss_total)
+```
+
+```{r}
+subset_r2_df %>% ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, r_squared, .desc = TRUE)) %>% 
+      ggplot() + 
+      geom_hline(aes(yintercept = -10)) + 
+            geom_hline(aes(yintercept = -1)) + 
+      geom_hline(aes(yintercept = 0)) + 
+      geom_point(aes(x = feature_id, y = r_squared)) + coord_flip() + theme_bw()
+```
+
+```{r}
+neg10_subset_r2_df <- subset_r2_df %>% 
+      select(pipe, biosample_id, feature_id, r_squared) %>% 
+      unique() %>% filter(r_squared < -10)
+```
+
+```{r}
+count_df %>% right_join(neg10_subset_r2_df) %>% ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+
+```{r}
+neg1_10_subset_r2_df <- subset_r2_df %>% select(pipe, biosample_id, feature_id, r_squared) %>% 
+      unique() %>% filter(r_squared > -10, r_squared < -1)
+```
+
+```{r}
+neg1_10_subset_r2_df %>% arrange(r_squared)
+```
+
+```{r}
+count_df %>% right_join(neg1_10_subset_r2_df) %>% 
+      ungroup() %>% mutate(feature_id = fct_reorder(feature_id, r_squared)) %>% 
+      ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+```{r}
+pos_subset_r2_df <- subset_r2_df %>% select(pipe, biosample_id, feature_id, r_squared) %>% 
+      unique() %>% filter(r_squared > 0)
+```
+
+```{r}
+pos_subset_r2_df %>% arrange(r_squared)
+```
+
+```{r}
+count_df %>% right_join(pos_subset_r2_df) %>% 
+      ungroup() %>%  mutate(feature_id = fct_reorder(feature_id, r_squared)) %>%  
+      ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+## Residual Linear Model
+```{r}
+get_fit <- function(count_exp_df){
+      count_exp_df %>% 
+            group_by(pipe, biosample_id, feature_id) %>% 
+            nest() %>% 
+            mutate(fit = map(data,~lm(residual ~ exp_count, data = .)))
+}
+
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::tidy)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            mutate(term = if_else(term == "(Intercept)", "Intercept","Slope"))
+}
+
+get_glance_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::glance)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            select(-statistic, -p.value) 
+}
+
+resid_fit <- get_fit(count_exp_subset)
+# Data frames with fit summary statistics and parameter estimates
+resid_tidy <- get_tidy_fit(resid_fit) %>% group_by(pipe, biosample_id, feature_id) %>% 
+      mutate(euclid_dist = estimate^2 %>% sum() %>% sqrt())
+resid_glance <- get_glance_fit(resid_fit)
+resid_tidy
+```
+
+```{r}
+resid_tidy %>% ungroup() %>% group_by(term) %>%  
+      mutate(feature_id = fct_reorder(feature_id, euclid_dist)) %>% 
+      ggplot() + 
+      # geom_hline(aes(yintercept = -10)) + 
+      #       geom_hline(aes(yintercept = -1)) + 
+      # geom_hline(aes(yintercept = 0)) + 
+      geom_point(aes(x = feature_id, y = estimate)) + facet_wrap(~term, scales = "free_x") + coord_flip() + theme_bw()
+```
+
+```{r}
+ed_quants <- resid_tidy$euclid_dist %>% quantile()
+```
+
+```{r}
+ed_quants
+```
+
+
+```{r}
+firstq <- resid_tidy %>% filter(euclid_dist < ed_quants[2])
+firstq %>% select(pipe, biosample_id, feature_id, term, estimate, euclid_dist) %>% 
+      spread(term, estimate) %>% arrange(euclid_dist)
+```
+
+```{r}
+count_df %>% right_join(firstq) %>% 
+      ungroup() %>%  mutate(feature_id = fct_reorder(feature_id, euclid_dist)) %>%  
+      ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+
+```{r}
+secondq <- resid_tidy %>% filter(euclid_dist > ed_quants[2], euclid_dist < ed_quants[3])
+secondq %>% select(pipe, biosample_id, feature_id, term, estimate, euclid_dist) %>% 
+      spread(term, estimate) %>% arrange(euclid_dist)
+```
+
+```{r}
+count_df %>% right_join(secondq) %>% 
+      ungroup() %>%  mutate(feature_id = fct_reorder(feature_id, euclid_dist)) %>%  
+      ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+```{r}
+ed_quants
+```
+
+
+```{r}
+thirdq <- resid_tidy %>% filter(euclid_dist > ed_quants[3], euclid_dist < ed_quants[4])
+thirdq %>% select(pipe, biosample_id, feature_id, term, estimate, euclid_dist) %>% 
+      spread(term, estimate) %>% arrange(euclid_dist)
+```
+
+
+```{r}
+count_df %>% right_join(thirdq) %>% 
+      ungroup() %>%  mutate(feature_id = fct_reorder(feature_id, euclid_dist)) %>%  
+      ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+```{r}
+fourthq <- resid_tidy %>% filter(euclid_dist > ed_quants[4])
+fourthq %>% select(pipe, biosample_id, feature_id, term, estimate, euclid_dist) %>% 
+      spread(term, estimate) %>% arrange(euclid_dist)
+```
+
+```{r}
+count_df %>% right_join(fourthq) %>% 
+      ungroup() %>%  mutate(feature_id = fct_reorder(feature_id, euclid_dist)) %>%  
+      ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+## Observed - Expected Linear Model
+```{r}
+get_fit <- function(count_exp_df){
+      count_exp_df %>% 
+            group_by(pipe, biosample_id, feature_id) %>% 
+            nest() %>% 
+            mutate(fit = map(data,~lm(obs_count ~ exp_count, data = .)))
+}
+
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::tidy)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            mutate(term = if_else(term == "(Intercept)", "Intercept","Slope"))
+}
+
+get_glance_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::glance)) %>% 
+            select(-data, -fit) %>% unnest() %>% 
+            select(-statistic, -p.value) 
+}
+
+exp_fit <- get_fit(count_exp_subset)
+# Data frames with fit summary statistics and parameter estimates
+exp_tidy <- get_tidy_fit(exp_fit) %>% group_by(pipe, biosample_id, feature_id) 
+exp_glance <- get_glance_fit(exp_fit)
+```
+
+When fitting model to observed and expected counts mix dropout (when post-treatment high and rest are low) perform well. 
+
+```{r}
+exp_tidy %>% select(pipe, biosample_id, feature_id, term, estimate) %>% spread(term, estimate) %>% DT::datatable()
+```
+
+```{r}
+resid_tidy %>% ungroup() %>% group_by(term) %>%  
+      mutate(feature_id = fct_reorder(feature_id, estimate)) %>% 
+      ggplot() + 
+      # geom_hline(aes(yintercept = -10)) + 
+      #       geom_hline(aes(yintercept = -1)) + 
+      # geom_hline(aes(yintercept = 0)) + 
+      geom_point(aes(x = feature_id, y = estimate)) + facet_wrap(~term, scales = "free_x") + coord_flip() + theme_bw()
+```
+
+## Pre - Post Modeling Approach
+```{r}
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp <- get_mrexp(pipeline_dir)
+
+## Extracting a tidy dataframe with count values from MRexpiment objects
+get_count_df <- function(mrobj, agg_genus = FALSE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
+      mrobj <- cumNorm(mrobj, p = 0.75)
+      mrobj %>%
+            # not sure whether or not to normalize counts prior to analysis
+            MRcounts(norm = FALSE, log = FALSE, sl = 1) %>%  
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+} 
+```
+
+
+```{r}
+count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC") %>% 
+      ungroup() %>% 
+      mutate(t_fctr = fct_relevel(t_fctr, c(20, 15, 10, 5, 4, 3, 2, 1, 0)),
+             titration = as.numeric(as.character(t_fctr)), 
+             theta = 2^(-titration),
+             theta = if_else(theta == 2^-20, 0, theta)) %>% 
+      right_join(feature_subset)
+
+## Calculate scaling factor 
+count_df <- count_df %>% group_by(pipe, id) %>% 
+      mutate(total_count = sum(count),
+             scale_factor = total_count/ exp(mean(log(total_count))))
+   
+nested_count_df <- count_df %>% group_by(pipe, biosample_id, feature_id) %>% nest()
+```
+
+```{r}
+fit_df <- nested_count_df %>%
+      mutate(fit = map(data, ~lm(count ~ -1 + theta:t_fctr, offset = scale_factor, data = .)))
+```
+
+```{r}
+nested_count_df
+```
+
+```{r}
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::tidy)) %>% 
+            select(-data, -fit) %>% unnest() #%>% 
+            #mutate(term = if_else(term == "(Intercept)", "Intercept","Slope"))
+}
+
+tidy_fit <- get_tidy_fit(fit_df) %>% filter(term != "theta:t_fctr20")
+```
+
+```{r}
+tidy_fit
+```
+
+```{r}
+fit_summary <- tidy_fit %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(est_cov = sd(estimate)/mean(estimate), error_cov= sd(std.error)/mean(estimate))
+```
+
+```{r}
+fit_summary %>% ungroup() %>%
+      mutate(feature_id = fct_reorder(feature_id, est_cov)) %>% 
+      gather("key", "value", est_cov, error_cov) %>% 
+      ggplot() + 
+      # geom_hline(aes(yintercept = -10)) + 
+      #       geom_hline(aes(yintercept = -1)) + 
+      # geom_hline(aes(yintercept = 0)) + 
+      geom_point(aes(x = feature_id, y = value)) + facet_wrap(~key, scales = "free_x") + coord_flip() + theme_bw()
+```
+
+## Variance Metric
+```{r}
+var_metric <- feature_subset_count %>% 
+      group_by(pipe, feature_id, biosample_id, t_fctr) %>% 
+      summarise(count_cov = sd(count)/mean(count),
+                med_count = median(count)) %>% 
+      group_by(pipe, feature_id, biosample_id) %>% 
+      mutate(mean_count_cov = mean(count_cov, na.rm = TRUE)) %>% 
+      ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, mean_count_cov))
+```
+
+```{r}
+ggplot(var_metric) + 
+      geom_point(aes(x = feature_id, y = count_cov)) + coord_flip() + theme_bw()
+```
+
+
+
+
+```{r}
+var_metric %>% ggplot() +
+      geom_point(aes(y = med_count, x = count_cov, color = biosample_id, shape = pipe)) + 
+      geom_smooth(aes(x = count_cov, y = med_count, color = biosample_id)) +
+      scale_y_log10()
+```
+
+```{r}
+var_metric %>% ggplot() +
+      geom_point(aes(y = med_count+ 1, x = count_cov, color = pipe)) + 
+      geom_smooth(aes(x = count_cov, y = med_count + 1, color = pipe)) +
+      scale_y_log10() + facet_wrap(~biosample_id, scales = "free_y")
+```
+
+
+### Investigating the relationship between Metrics
+
+
+```{r}
+metric_subset_count <- var_metric %>% right_join(subset_r2_df) %>% 
+      select(pipe, feature_id, biosample_id, mean_count_cov, r_squared) %>% 
+      unique() %>% left_join(feature_subset_count) %>% 
+      group_by(pipe, feature_id, biosample_id) %>% 
+      mutate(mean_count = mean(count), sd_count = sd(count))
+
+large_feature_plot_metrics <- metric_subset_count %>% ggplot() +
+      geom_point(aes(x = t_fctr, y = count, shape = cat, color = biosample_id)) + 
+      geom_text(aes(x = "4", y = mean_count, label = round(r_squared,2))) +
+      geom_text(aes(x = "4", y = mean_count - sd_count, label = round(mean_count_cov, 2))) + 
+      theme_bw() +
+      facet_wrap(~feature_id, scales = "free_y")
+
+ggsave(plot = large_feature_plot_metrics,
+       filename = "large_feature_plot_metrics.pdf",
+       width = 24, height = 18)
+```
+
+```{r}
+var_metric %>% right_join(subset_r2_df) %>% filter(r_squared > -3) %>% 
+      ggplot() + geom_point(aes(x = scale(mean_count_cov), y = scale(r_squared)))
+```
+
+```{r}
+var_metric %>% select(pipe, biosample_id, feature_id, mean_count_cov) %>% 
+      unique() %>% right_join(subset_r2_df) %>% select(-ss_total, -ss_res) %>% arrange(desc(r_squared))
+```
+
+
+```{r}
+resid_tidy %>% select(pipe, biosample_id, feature_id,term, estimate,euclid_dist) %>% 
+      spread(term, estimate) %>% right_join(subset_r2_df) %>% DT::datatable()
+```
+
+```{r}
+resid_tidy %>% select(pipe, biosample_id, feature_id,term, estimate,euclid_dist) %>% 
+      spread(term, estimate) %>% right_join(subset_r2_df) %>% ungroup() %>% 
+      select(-feature_id, -pipe,-biosample_id) %>% 
+GGally::ggpairs()
+```
+
+
+
+
+### Conclusions
+R^2 for observd and expected counts is a good metric for bias
+
+
+
+## Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+``` 

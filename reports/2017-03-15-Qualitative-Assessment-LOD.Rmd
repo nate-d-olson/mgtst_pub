@@ -1,0 +1,258 @@
+---
+title: "Qualitative Assessment-LOD"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Clean up analysis - 
+* show how can't fit logistic model to the data
+* median value based lod and box plot 
+* relationship between the proportion of replicates detected and observed count values for post specific features 
+* Comparison as features and aggregating by taxa
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+# library(ProjectTemplate)
+# cwd <- getwd()
+# setwd("../")
+# load.project()
+# setwd(cwd)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(metagenomeSeq)
+library(tidyverse)
+```
+
+```{r echo = FALSE}
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp_files <- list(
+      dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_mrexp.rds")
+)
+mrexp <- mrexp_files %>% map(readRDS)
+```
+
+Rename DADA2 taxonomy colnames to match other pipelines
+```{r}
+colnames(mrexp$dada2@featureData) <- mrexp$mothur@featureData %>% colnames()
+```
+
+```{r}
+get_count_df <- function(mrobj){
+      mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6",norm = FALSE, log = FALSE, sl = 1)
+      mrobj <- cumNorm(mrobj, p = 1)
+      mrobj %>% 
+            # not sure whether or not to normalize counts prior to analysis
+            MRcounts(norm = TRUE, log = TRUE, sl = 1) %>%  
+            #MRcounts(sl = 1) %>% 
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+}
+
+calc_detect <- function(mrobj){
+      count_df <- get_count_df(mrobj) 
+      
+}
+count_df <- mrexp %>% map_df(get_count_df, .id = "pipe")
+```
+
+```{r}
+lod_df <- pData(mrexp$dada2) %>% right_join(count_df) %>% 
+      # filter(biosample_id != "NTC") %>%
+      filter(biosample_id == "E01JH0038") %>% 
+      mutate(detect = if_else(count > 0, 1, 0)) %>%
+      group_by(pipe, biosample_id, titration, feature_id) %>% 
+      summarise(total_detect = sum(detect),
+                n_replicates = n(),
+                med_count = median(count),
+                avg_count = mean(count)) %>%
+      mutate(detect_prop = total_detect/n_replicates)
+```
+
+```{r}
+lod_df %>% filter(avg_count < 1000) %>% ggplot() + 
+      geom_hex(aes(x = avg_count, y = detect_prop)) +
+      geom_smooth(aes(x = avg_count, y = detect_prop), color = "darkorange") +
+      geom_hline(aes(yintercept = 0.5), color = "grey60") + 
+      facet_wrap(~pipe) + scale_x_log10() + 
+      labs(x = "Average Count", 
+           y = "Proportion of Replicates Detected", 
+           fill = "Abundance") +
+      theme_bw() 
+```
+
+
+```{r}
+lod_trim_df <- lod_df %>% mutate(avg_logcount = log10(avg_count + 1)) %>% filter(avg_count < 1000)
+lod_fit <- glm(detect_prop ~ avg_logcount, 
+               data = lod_trim_df %>% filter(pipe == "mothur"),
+               family = binomial(link='logit'))
+```
+
+
+```{r}
+lod_fit
+```
+```{r}
+plot(lod_fit)
+```
+
+Model does not fit the data well at all. 
+
+Try a simplified approach defining the LOD as the median `avg_count` for `detect_prop` of 0.5.
+```{r}
+lod_df <- pData(mrexp$dada2) %>% right_join(count_df) %>% 
+      filter(biosample_id != "NTC") %>%
+      mutate(detect = if_else(count > 0, 1, 0)) %>%
+      group_by(pipe, biosample_id, titration, feature_id) %>% 
+      summarise(total_detect = sum(detect),
+                n_replicates = n(),
+                med_count = median(count),
+                avg_count = mean(count)) %>%
+      mutate(detect_prop = total_detect/n_replicates)
+```
+
+```{r}
+lod_df %>% ggplot() + 
+      geom_boxplot(aes(x = factor(detect_prop), y = avg_count, color = pipe)) + 
+      scale_y_log10() + theme_bw()
+```
+
+<!-- Notes for non-normalized data
+Not sure this is the best approach to determine the LOD. 
+I believe these values do not reflect the LOD but rather the expectation that the median average value for features present in half the replicate samples reflects the sampling procedure (sequencing). 
+The DADA2 results are intersting and likely reflect the higher average feature abundance. 
+-->
+
+```{r}
+lod_df %>% filter(detect_prop == 0.5) %>% group_by(pipe, biosample_id) %>% 
+      summarise(LOD = median(avg_count)) %>% spread(pipe, LOD)
+```
+
+## Feature level Analysis 
+For the mothur pipeline and biological replicate E01JH0004 there are 168 post specific features
+```{r}
+prop_detect_df <- pData(mrexp$dada2) %>% right_join(count_df) %>% 
+      # filter(biosample_id != "NTC") %>%
+      filter(titration %in% c(0,20)) %>% 
+      mutate(detect = if_else(count > 0, 1, 0)) %>%
+      group_by(pipe, biosample_id, titration, t_fctr, feature_id) %>%
+      summarise(total_detect = sum(detect),
+                n_replicates = n(),
+                med_count = median(count),
+                avg_count = mean(count)) %>%
+      mutate(prop_detect = total_detect/n_replicates) #%>%
+```
+
+```{r}
+prop_detect_df
+```
+
+
+```{r}
+post_full <-  prop_detect_df %>% filter(t_fctr == 0, prop_detect == 1) %>% 
+      ungroup() %>% 
+      select(pipe, biosample_id, feature_id, med_count) %>% 
+      dplyr::rename(post_count = med_count)
+pre_neg <- prop_detect_df %>% 
+      ungroup() %>% 
+      filter(t_fctr == 20, prop_detect == 0) %>% 
+      select(pipe, biosample_id, feature_id)
+```
+
+```{r}
+post_full
+```
+
+```{r}
+pre_neg
+```
+
+```{r}
+post_specific_full <- post_full %>% inner_join(pre_neg)
+```
+
+For the mothur pipeline and biological replicate E01JH0004 there are 168 post specific features. 
+Observed value range: 
+
+```{r}
+post_specific_full
+```
+
+Calculating expected values
+```{r}
+titration_list <- data_frame(titration = c(1:5,10,15)) %>% 
+      mutate(post_prop = 2^-titration) %>% list() %>% rep(nrow(post_specific_full))
+
+post_pred <- post_specific_full %>% ungroup() %>% 
+      add_column(titration = titration_list) %>% unnest() %>% 
+      mutate(exp_count = post_count * post_prop)
+```
+
+```{r}
+post_pred
+```
+
+```{r}
+post_pred %>% mutate(count_bin = cut_number(n = 4, post_count)) %>% ggplot() + 
+      geom_path(aes(x = titration, y = exp_count, group = paste(feature_id,biosample_id))) + 
+      facet_wrap(~count_bin, scale = "free_y") + theme_bw()
+```
+
+```{r}
+qual_df <- lod_df %>% 
+      select(-total_detect, -n_replicates) %>% 
+      dplyr::rename(med_obs_count = med_count, avg_obs_count = avg_count) %>% 
+      right_join(post_pred)
+```
+
+```{r}
+qual_df
+```
+
+Overall relationship between the expected and observed counts. 
+The average observed counts for E01JH0038 agree best with expectation. 
+Lots of noise, with an overall positive slope.
+```{r}
+qual_df %>% filter(exp_count !=  0, med_obs_count != 0) %>% 
+      ggplot() + 
+      geom_point(aes(x = med_obs_count, y = exp_count, color = detect_prop), alpha = 0.25) + 
+     geom_smooth(aes(x = med_obs_count, y = exp_count), color = "darkorange") +
+     facet_grid(pipe~biosample_id, scales = "free")+ theme_bw() + scale_y_log10() + scale_x_log10()
+```
+
+The observed count values do not support the observed count values ....
+```{r}
+qual_df %>% filter(post_count > .05) %>% 
+      ggplot() + 
+      geom_point(aes(x = titration, y = med_obs_count, color = detect_prop)) +
+      geom_path(aes(x = titration, y = exp_count, 
+                    group = paste(feature_id,biosample_id))) + 
+      facet_wrap(~feature_id*biosample_id) + scale_y_log10()
+```
+
+These results do not make any sense. The expectation is that the expected counts and detect proportion are positively correlated
+
+```{r}
+qual_df %>% #filter(exp_count != 0) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = factor(detect_prop), y = exp_count)) + 
+      facet_grid(pipe~biosample_id)+ theme_bw() + scale_y_log10() +
+      labs(x = "Proportion of Detected", y = "Expected Counts")
+```
+
+
+
+
+# Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
+

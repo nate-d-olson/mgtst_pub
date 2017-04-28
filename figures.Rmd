@@ -1,0 +1,359 @@
+---
+title: "Annotated Figure List"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(nlme)
+library(tidyverse)
+library(forcats)
+library(ape) 
+library(git2r)
+```
+
+## Objective 
+Help metagenomic method (bioinformatic pipelines) users and developers better understand how their method is performing and what features they should or should not have confidence in.  
+
+These can include;  
+
+* types of features that are not well-behaved relative to our expectations in terms of quantitative and qualitative accuracy,  
+* defining a method limit of detection (based on number of PCR replicates with and without observed counts)  
+    * Approach - Multinomial sampling based approach where proportions are based on pooled replicates
+
+
+# Study Goal
+Evaluate bioinformatic pipeline and feature performance. 
+Need to evaluate in a manner that does not confound experimental artifacts with pipeline/ feature artifacts. 
+Experimental artifacts include, low and no observed counts due to sampling and titrations not mixed according to expectations. 
+
+__Open Questions__  
+
+* Dealing with potentially uninformative features - qualitative analysis 
+* Bias and variance metrics
+* What to do with NTC features (includes Escherichia)
+
+# Sample design 
+```{r experimental_design, echo=FALSE, fig.width = 4, fig.cap="Sample selection and experimental design for two-sample titration 16S rRNA metagenomic sequencing assessment dataset. A) Pre- and post-treatment samples from five participants in a vaccine trial (Harro et al. 2011) were selected based on Escherichia coli abundance measured using qPCR and 454 16S rRNA metagenomics sequencing (454-NGS), data from Pop et al. 2016. Pre- and post-treatment samples are indicated with orange and green data points. Grey indicates other samples from the vaccine trial time series. B) The pre-treatment samples were titrated into post-treatment samples following a $log_2$ dilution series. The NA titration factor represents the unmixed pre-treatment sample. C) The five vaccine trial participants are biological replicates and independent sets of two-sample titrations were mixed for each. The result was a total of 45 samples, 7 titrations + 2 unmixed samples times 5 biological replicates. Four replicate PCRs were performed for each of the 45 samples resulting in 190 PCRs."}
+knitr::include_graphics("img/experimental_design.png")
+```
+
+
+# Titration Validation
+ERCC spike-in qPCR and bacterial DNA qPCR
+See `mixing_and_validating_titrations.pdf` in artifacts
+
+Bacterial DNA qPCR quantification ...
+
+# Using mixtures - use E. coli as example 
+Include equations, relationship between expected 
+
+Diagram with scatter plot of observed counts and titrations, then observed and expected with colored titrations, shapes for pcr reps.  
+Residual lines???  
+
+
+## Seq QA
+See `seq-qa.pdf` in artifacts.
+
+## Pipeline Characterization
+see `pipeline_characterization.pdf` in artifacts 
+
+# Feature categories
+Objective of this categorization is to identify a set of features we would expect to be well behaved based on presence/ absence data alone. 
+Informative features will be used for quantitative analysis and uninformative features qualitative analysis.  
+Uninformative features are potential indicators of an artifact of feature inference (clustering) are features where non-detected PCR replicates and samples cannot be explained by random sampling alone  given the observed count values. 
+
+Excluding features observed in no template controls, unable to differentiate between count values due to reagent contaminants or thoes from the biological samples. 
+
+__Informative Feature Categories__   
+
+* Full - present in all samples and at least 3 of 4 PCR replicates  
+* Pre  - present in all samples and all replicates, excluding post  
+* Post - present in all samples and all replicates, excluding pre   
+
+__Uninformative Feature Categories__   
+
+* Mix - not present in any unmixed pre- or post-treatment PCR replicates and at least 4 PCR replicates for one of the titrations  
+
+__Potentially Informative Feature Categories__  
+
+* None -  Features not assigned to any of the other categories  
+
+
+__Notes__  
+Most of the features are not assigned to a category. 
+Of the unassigned features, #### are present in only one PCR replicate of one sample for a biological replicate, see `2017-04-10-Feature-Cat-Informative-Uninformative.Rmd` for breakdown of uncategorized features.  
+Most of the uncategorized features are present in at least one of the no template control samples. 
+
+__Key Points__  
+
+* Will use the informative features for quantitative analysis.    
+* Can look into the uncategorized features for additional features to include in the quantitative analysis if deemed necessary.   
+* Mix specific features that cannot be explained by random sampling are likely artifacts of feature inference.  
+
+
+```{r}
+ntc_features <- readRDS("data/ntc_features.rds")
+feature_cat <- readRDS("data/feature_categories_df.rds") %>% 
+      anti_join(ntc_features) %>% ungroup() %>% 
+      filter(biosample_id != "NTC", !is.na(biosample_id))
+```
+
+```{r warning=FALSE}
+feature_cat %>% filter(cat != "cat_null") %>% 
+    mutate(cat = gsub(pattern = "cat_", replacement = "", cat),
+           cat = if_else(cat == "near_full", "full",cat),
+           cat = fct_relevel(cat, c("full","post","pre","mix","none"))) %>% 
+      ggplot() + geom_bar(aes(x = cat)) + 
+      facet_grid(.~pipe, scales = "free_y") + 
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) + 
+    scale_y_log10()
+```
+
+
+# Non-informative features - relating biological and experimental
+Dropout features - only pre or only post and present in all 4 PCR replicates
+Mix only features present in multiple titrations 
+
+Feature dropout as artifact of:  
+
+- clustering - distance to neighboring cluster center  
+- phylogenetic signal - proxy for sequence context and primer binding   
+- Biosample effect - same feature dropout for multiple samples  
+
+# Biosample and pipeline general evaluation - bias and variance
+
+```{r}
+count_exp_df <- readRDS("data/expected_count_values_feature_df.rds") 
+feature_cat <- readRDS("data/feature_categories_df.rds")
+ntc_features <- readRDS("data/ntc_features.rds")
+count_exp_df <- left_join(count_exp_df, feature_cat) %>% 
+      anti_join(ntc_features) %>% 
+      filter(cat %in% c("cat_full", "cat_pre", "cat_post"), id != "1-F9")  
+
+genus_exp_df <- readRDS("data/expected_count_values_genus_df.rds") 
+genus_cat <- readRDS("data/genus_categories_df.rds")
+genus_ntc <- readRDS("data/ntc_genus.rds")
+genus_exp_df <- left_join(genus_exp_df, genus_cat) %>% 
+      anti_join(genus_ntc) %>% 
+      filter(cat %in% c("cat_full", "cat_pre", "cat_post"), id != "1-F9") 
+exp_df <- bind_rows(feature = count_exp_df, genus = genus_exp_df, .id = "fLvl")
+```
+
+Overall relationship between the observed and expected values by pipeline and biological replicate. 
+Red and teal fitted smoothing function (loess, local polynomial regression) to highlight the relationship between the observed and expected counts, for feature level and genus level count values. 
+Excluding features observed in any no template control. 
+These include some of the _Escherichia_ features, may want to figure out a better filtering approach. 
+
+```{r message=FALSE}
+exp_df %>% ggplot() + 
+      geom_smooth(aes(x = obs_count + 1, y = exp_count + 1, color = fLvl)) + 
+      geom_abline(aes(intercept = 0, slope = 1), color = "grey60") + 
+      facet_grid(pipe~biosample_id)+ theme_bw() + 
+      labs(y = "Expected Count", x = "Observed Count", fill = "Abundance") + 
+      scale_y_continuous(trans = "log2") + 
+      scale_x_continuous(trans = "log2") + 
+      theme(axis.text.x = element_text(angle = 270)) 
+```
+
+
+# Bias - Biological Replicate 
+A number of features have negative $R^2$ values, indicating that the relationship between the observed and expected counts has greater variablitity than the variability in the observed counts alone.  
+Looking at individual features, the negative $R^2$ values are associated with features where the observed counts for the unmixed features is higher or lower than the observed counts for the mixed samples. 
+Features with very negative $R^2$ values are likely artifacts of the feature inference process. 
+
+
+```{r}
+feature_r2_df <- count_exp_df %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(ss_total = sum((obs_count - mean(obs_count))^2),
+                ss_res = sum(residual^2)) %>% 
+      mutate(r_squared = 1 - ss_res/ss_total)
+
+genus_r2_df <- genus_exp_df %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(ss_total = sum((obs_count - mean(obs_count))^2),
+                ss_res = sum(residual^2)) %>% 
+      mutate(r_squared = 1 - ss_res/ss_total)
+r2_df <- bind_rows(feature = feature_r2_df, genus = genus_r2_df, .id = "fLvl")
+```
+
+```{r}
+r2_df %>% mutate(r2 = if_else(r_squared > 0, "pos","neg")) %>% 
+    ggplot() + geom_bar(aes(x = fLvl, fill = r2), position = "fill") + 
+    facet_grid(pipe~biosample_id) +
+    labs(x = "Biological Replicate", y = "Proportion", fill = "R Squared") + 
+    theme_bw() + theme(axis.text.x = element_text(angle = 90))
+```
+
+
+Features with non-negative $R^2$ values 
+
+__Key Points__  
+
+* Does aggregating at features to the genus level improve the quantitative accuracy of the data? 
+* Can test to see if aggregating the the genus level improves $R^2$, is this effect just due to higher counts as a result of aggregating counts.  
+
+
+```{r}
+r2_df %>% filter(r_squared > 0) %>% 
+    ggplot() + 
+    geom_boxplot(aes(x = biosample_id, y = r_squared, color = pipe)) +
+    theme_bw() + facet_grid(~fLvl) +
+    theme(axis.text.x = element_text(angle = 90)) +
+    labs(x = "Biological Replicate", y = "R Squared")
+```
+
+```{r}
+fit <- lm(r_squared ~ fLvl + biosample_id*pipe, data = r2_df %>% filter(r_squared > 0))
+```
+
+Aggregating to the genus level increases the overall $R^2$ values. Potentially an artifact of the increases counts obtained when aggregating to the genus level. 
+There is also a biological replicate affect which is potentially due to titrations not formulated as expected or due to interactions between sequences (DNA molecules) in the pre- and post-treatment unmixed samples. 
+
+```{r}
+aov(fit) %>% broom::tidy() %>% knitr::kable()
+```
+
+```{r}
+aov(fit) %>% TukeyHSD() %>% broom::tidy() %>% 
+      filter(adj.p.value < 0.05) %>% knitr::kable()
+```
+
+ 
+# Count Variance - Biosample~Pipeline 
+Use the feature level coefficient of variation for the replicate counts as the variance metric. 
+
+```{r}
+## will want to update to include unmixed counts as well
+feature_var_metric <- count_exp_df %>% 
+    dplyr::rename(count = obs_count) %>% 
+    group_by(pipe, feature_id, biosample_id, t_fctr) %>% 
+    
+    summarise(count_cov = sd(count)/mean(count),
+              med_count = median(count)) %>% 
+    group_by(pipe, feature_id, biosample_id) %>% 
+    mutate(mean_count_cov = mean(count_cov, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, mean_count_cov)) 
+
+genus_var_metric <- genus_exp_df %>% 
+    dplyr::rename(count = obs_count) %>% 
+    group_by(pipe, feature_id, biosample_id, t_fctr) %>% 
+    
+    summarise(count_cov = sd(count)/mean(count),
+              med_count = median(count)) %>% 
+    group_by(pipe, feature_id, biosample_id) %>% 
+    mutate(mean_count_cov = mean(count_cov, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, mean_count_cov)) 
+
+var_metric <- bind_rows(feature = feature_var_metric, 
+                           genus = genus_var_metric, .id = "fLvl")
+```
+
+
+
+
+Count COV by biosample and pipeline. 
+Unlike the bias metric, the bioinformatic pipeline used to process the sequence data contributes more to the total variability than the biological replicate, though most of the variability is between a set of features for a biological replicate and pipeline. 
+
+```{r}
+var_metric %>% ggplot() +
+    geom_boxplot(aes(x = biosample_id, y = mean_count_cov, color = pipe)) +
+    theme_bw() + facet_grid(~fLvl) +
+    theme(axis.text.x = element_text(angle = 90)) +
+    labs(x = "Biological Replicate", y = "Coefficient of Variation")
+```
+
+```{r}
+fit <- lm(mean_count_cov ~ fLvl + biosample_id + pipe, data = var_metric)
+```
+
+```{r}
+plot(fit)
+```
+
+
+```{r}
+aov(fit) %>% broom::tidy() %>% knitr::kable()
+```
+DADA2 has the lowest coefficient of variation
+```{r}
+aov(fit) %>% TukeyHSD() %>% broom::tidy() %>% 
+      filter(adj.p.value < 0.05) %>% knitr::kable()
+```
+
+
+# Feature level analysis - bias and variance
+
+__Relationship between count COV and median count__  
+The feature level COV is higher for low abundance features then flattens out to ~0.25.  
+
+```{r}
+var_metric %>% ggplot() +
+    geom_point(aes(x = med_count, y = count_cov, 
+                   color = biosample_id, shape = pipe), 
+               alpha = 0.25) + 
+    geom_smooth(aes(x = med_count, y = count_cov, color = biosample_id)) +
+    scale_x_log10() +
+    theme_bw() + 
+      facet_wrap(~fLvl) + 
+    labs(x = "Median Count", y = "Coefficient of Variation")
+```
+
+__Relationship between $R^2$ and median count__  
+Only looking at features with positive $R^2$ values
+```{r}
+r2_df %>% left_join(var_metric) %>% filter(r_squared > 0) %>% 
+    ggplot() +
+    geom_smooth(aes(x = med_count, y = r_squared, color = pipe, linetype = fLvl)) +
+    scale_x_log10() + 
+    theme_bw() + 
+    labs(x = "Median Count", y = "R Squared")
+```
+
+```{r}
+r2_df %>% left_join(var_metric) %>% filter(r_squared < 0) %>% 
+    ggplot() +
+    geom_smooth(aes(x = med_count, y = -r_squared + 1, color = pipe, linetype = fLvl)) +
+    scale_x_log10() + scale_y_log10() + 
+    theme_bw() + 
+    labs(x = "Median Count", y = "- R Squared + 1")
+```
+
+* Types of outlier features - __TODO__ Identification of outlier features
+
+
+# Relating types of outlier features with biological and experimental factors
+* biological taxonomy/ phylogenetic signal
+* experimental - sampling based approach 
+
+# Session information 
+
+## Git repo commit information
+```{r}
+repo <- repository(path = ".")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
