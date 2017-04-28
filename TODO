@@ -1,44 +1,58 @@
-## Artifacts
-* sample selection/ experimental design
-* wetlab qa and titration validation
-* seq data qa
-* pipeline results characterization
-* count table value analysis - bias-variance and feature exploration
-* log fold-change analysis - bias-variance and feature exploration
+Next Steps
+* draft EO metric section
+      - test for EO metric by biosample and pipeline
+      - binomial test for proportion - 0 observed counts, and 0 expected counts 
+      
+* draft theta:t_fctr bias and variance section 
+      - model demonstration/ validation  
+
+* seq qa figure 
+      - merge into single figure    
+      
+* metric methods section  
+      - EO metric
+      - binomial test 
+            - EO -1  
+
+* phylogenetic signal analysis
+      - review literature
+      - phylogenetic trees
+      - phylogenetic analysis  
+
+* workout story  
+* outline discussion  
+* outline introduction  
 
 
-## Analysis
-* Standardize pData for MRexperiments (see 2017-02-01-log-fold-change-df.Rmd for code)
-* Move mrexp to ProjectTemplate
-* Move permutation code to ProjectTemplate
-* Dilution permutations
-* Move differential abundance calcs to ProjectTemplate - code to src, and tidy tables to data cache
-* Look into titration comparisons where MgSeq failed (see 2017-02-01-log-fold-change-df.Rmd)
-* Plot coefficient of variation to explore measurement assessment variation 
-* Check if `round(0)` is needed for `mgseq_to_deseq2`
-* Check if edgeR `x <- x +1` is needed 
-* MA plots   
-      - Subject   
-      - consistency for unique OTUs - check for expected values - plot all in light grey then color unique features, using means for log-fold change
-      - looking at both OTUs and taxonomy
-* Look into low dsq and dsqlog count cv.
+## Call follow-up
+* Use a monte-carlo distribution to look at EO metric values of -1, where the expected count values are 0.  
+      * bayesian assume different prior between some value and 0 to get a likelihood, then test likelihood....
+* Use a linear model to estimate theta for a titration 
+* Look into outlier features more, specifically E. coli biological replicate 38 
+* Mean est - cov est plot - faceted volcano plot, interested in deviation from 0  
+* Want a wat to connect lines in estimate plot with feature level bias and variance  
+
+NOTES
+* Libraries no longer automatically loaded with project template - DESeq, DESeq2, edgeR, phyloseq, Rqc, savR, vegan, sads
 
 
-## Writing
-1. Review current draft
-2. Revise methods sections
-3. Storyify artifacts
-4. Differential abundance analysis
-5. Revise preliminary analysis
-6. Introduction
-7. Discussion
-8. Supplemental Material
-      1. Draft wet lab QA methods and results
-      2. Draft seq QA methods and results
-      3. Draft pipeline QA results section
+Note from chat with Hector
+look at est_div_theta as input proportion of the feature 
+use variance of estimates for comparison
 
-## Other
-- Cleaning up metadata and variable name consistency
-      - Incorporate meta_dat from normalization artifact into projectTemplate
-      - Add mrexp to projectTemplate
-      - standardize sample metadata for mrexperiments
+var b1/theta != var(b1)/theta^2
+dont have same variance
+ 
+normalize by z-score, to remove theta
+
+
+T-value
+b1/sb(b1)
+
+
+Only look at higher theta titrations
+
+b1/theta = post - pre
+expectation same Z-score for non-intercept (T20) estimates
+For simulated data - sanity check 
+Plot (post-pre) * theta vs. b1 form count ~ TF
