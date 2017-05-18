@@ -1,0 +1,162 @@
+---
+title: "Theta Estimate Results"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+  html_document: default
+---
+
+
+Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
+The unmixed pre and post counts calculated using the count proportion for a feature calculated using weighted feature proportion estimates and the total abundance for sample $j$.  
+
+$$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}$$ 
+
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(tidyverse)
+library(modelr)
+```
+
+```{r loadData, warning=FALSE, message=FALSE, echo = FALSE}
+## Extracting a tidy dataframe with count values from MRexpiment objects
+get_count_df <- function(mrobj, agg_genus = FALSE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
+      mrobj <- cumNorm(mrobj, p = 0.75)
+      mrobj %>%
+            # not sure whether or not to normalize counts prior to analysis
+            MRcounts(norm = TRUE, log = TRUE, sl = 1000) %>%  
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+} 
+
+count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC") %>% 
+      ungroup() %>% 
+      mutate(t_fctr = fct_relevel(t_fctr, c(0:5, 10, 15, 20)),
+             titration = as.numeric(as.character(t_fctr)), 
+             theta = 2^(-titration),
+             theta = if_else(theta == 2^-20, 0, theta))  %>% 
+      filter(t_fctr %in% c(0:4,20))
+
+
+pre_post_count <- count_df %>% filter(t_fctr %in% c(0,20)) %>% 
+    dplyr::select(pipe, biosample_id, feature_id, t_fctr, count) %>% 
+    mutate(t_fctr = if_else(t_fctr == 0, "count_post","count_pre")) #%>% 
+    # spread(t_fctr, count)
+
+count_df <- count_df %>% left_join(pre_post_count)
+
+## Excluding features with median EO metric of 1 or -1 and logFC between pre and post < 1
+## %%TODO%% replace with heuristic filter > 14 of the PCR replicates have observed counts, and only features with observed counts for unmixed samples.  
+count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds") 
+
+good_eo <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) != 1)
+
+good_logfc <- readRDS("../data/pre_post_deseq_logFC.RDS") %>% 
+    filter(abs(log2FoldChange) > 1, pvalue < 0.05) 
+
+
+good_features <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) != 1)
+
+count_good <- count_df %>% right_join(good_features)
+```
+
+```{r}
+count_good
+```
+
+
+```{r fitModel, warning=FALSE, message=FALSE, echo = FALSE}
+count_nest <- count_good %>% 
+      group_by(pipe, biosample_id, t_fctr) %>% nest()
+
+fit_df <- count_nest %>% 
+      mutate(fit = map(data, ~lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = .)),
+             fit_tidy = map(fit, broom::tidy),
+             fit_glance = map(fit, broom::glance))
+```
+
+
+```{r fitSummary, warning=FALSE, message=FALSE, echo = FALSE}
+fit_est <- fit_df %>% dplyr::select(pipe, biosample_id, t_fctr, fit_tidy) %>% unnest() %>% 
+    mutate(theta = 2^-as.numeric(t_fctr), t_fctr = factor(t_fctr, levels = c(1:5,10,15))) 
+
+fit_glance <- fit_df %>% dplyr::select(pipe, biosample_id, t_fctr, fit_glance) %>% unnest()
+```
+
+
+Consistent deviation across pipeline and titration from the expected $\theta$ values indicates our assumptions regarding the composition of the mixtures are not valid (Fig. \@ref(fig:thetaHat)). 
+Our assumptions are that the DNA from the pre- and post-treatment samples were titrated following a log2 dilution series and that the pre- and post-treatment samples contained similar proportions of bacterial DNA. 
+The qPCR spike-in results indicate that the unmixed pre- and post-treatment samples were mixed volumetrically according to our expectations. 
+Based on the qPCR bacterial DNA concentration assays, the pre-treatment E01JH0038 sample had the lowest concentration of bacterial DNA between the five biological replicates and the bacterial DNA concentration was higher in the pre-treatment sample compared to the post-treatment sample for only E01JH0017 (`In mixing_and_validating_titrations` artifact).
+
+Another potential cause for the deviations in $\theta$ from our expectation is poor model fit. 
+Biological replicate E01JH0038 and E01JH0017 had the largest deviation from the expected values of the five replicates. 
+E01JH0038 and E01JH0017 had consistently high R2 values compared to the other biological replicates (Table \@ref(tab:thetaR2)).
+These results indicate the poor model fit cannot account for the biological replicate specific differences in theta estimates from our expectations. 
+
+
+```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. Points indicates theta estimate and vertical lines plus-minus 2 X standard deviation. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
+ggplot(fit_est) + 
+      geom_point(aes(x = t_fctr, y = estimate, color = pipe, shape = pipe)) + 
+      geom_errorbar(aes(x = t_fctr, ymax = estimate + 2*std.error, 
+                        ymin = estimate - 2 * std.error, color = pipe), width = 0) + 
+      geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
+      facet_grid(. ~ biosample_id, scales = "free_y") + theme_bw() +
+    labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
+    theme(legend.position = "bottom")
+```
+
+
+```{r thetaR2, echo = FALSE}
+fit_glance %>% group_by(biosample_id) %>% 
+    summarise(`Min.` = min(adj.r.squared),  
+              `Median` = median(adj.r.squared), 
+              `Max.` = max(adj.r.squared)) %>% 
+    knitr::kable(caption = "Adjusted R2 values for model used to estimate theta.", digits = 3)
+    
+```
+
+```{r}
+saveRDS(fit_est, "../data/theta_estimates.RDS")
+```
+
+
+# Session information 
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
