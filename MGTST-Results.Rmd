@@ -1,0 +1,651 @@
+---
+title: "MGTST-Results"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+```{r echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(ProjectTemplate)
+load.project()
+library(modelr) 
+project_dir <- "../16S_etec_mix_study/"
+pipeline_dir <- "../mgtst_pipelines"
+mrexp <- get_mrexp(pipeline_dir)
+```
+
+## Results
+
+### Titration Series Validation 
+In order to use information from the unmixed samples to obtain expected count values for the titrations we need to evaluate two assumptions about the mixed samples; 
+1. that the samples were mixed volumetrically in a log2 dilution series, 
+and 2. the unmixed pre and post exposure samples have the same proportion of bacterial DNA. 
+Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to expectations. 
+Total bacterial DNA in the unmixed samples was quantified using a qPCR assay targeting the 16S rRNA. 
+
+#### Validating Volumetric Mixing  
+```{r echo=FALSE, message=FALSE}
+ercc_std <- qpcrERCC %>% filter(sample_type == "std", !grepl("NTC",sampleID)) %>% 
+      mutate(sampleID = gsub("\\(.*","",sampleID), 
+             Ct = as.numeric(Ct), 
+             quat = as.numeric(quant),
+             log_quant = log10(quant))
+
+fit_mod <- ercc_std %>% mutate(ercc = as.numeric(ercc)) %>% 
+      group_by(ercc) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~log_quant, data = . )))  
+fit_list <- fit_mod$fit %>% set_names(fit_mod$ercc)
+
+fit_coefs <-fit_list %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat) 
+
+std_fit <- fit_list %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(fit_coefs) %>% 
+      mutate(amplification_factor = 10^(-1/slope), 
+             efficiency = (amplification_factor - 1) * 100) 
+
+ercc_meta <- erccMeta %>% select(ercc_id, biosample_id, treatment) %>%
+    mutate(ercc = str_replace(ercc_id,"ERCC-",""),  
+           ercc = as.numeric(ercc) %>% as.character())
+
+post_assays <- c(108,12, 157, 2, 35)
+ercc_sam <- qpcrERCC %>% filter(sample_type == "sam") %>% 
+      mutate(Ct = as.numeric(Ct), 
+             quant = as.numeric(quant), 
+             ercc = as.numeric(ercc), 
+             titration = gsub("._M","",sampleID),
+             titration = gsub(".*\\(Pre\\)","20", titration),
+             titration = gsub(".*\\(Post\\)","0", titration),
+             titration = as.numeric(titration),
+             pre_prop = (1 - (2^-titration)),
+             assay_type = if_else(ercc %in% post_assays, "Post","Pre"))
+
+post_fit_mod <- ercc_sam %>% filter(assay_type == "Post") %>% 
+      group_by(ercc,assay_type) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+post_fit_list <- post_fit_mod$fit %>% set_names(post_fit_mod$ercc)
+
+# Extract fit parameters and calculate efficiency
+post_fit_coefs <- post_fit_list %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+post_fit <- post_fit_list %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(post_fit_coefs) %>% 
+      mutate(amplification_factor = 10^(-1/slope), 
+             efficiency = (amplification_factor - 1) * 100) 
+
+## Pre-treatment sample fit
+pre_fit_mod <- ercc_sam %>% filter(assay_type == "Pre") %>%
+      group_by(ercc,assay_type) %>% nest() %>%
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+pre_fit_list <- pre_fit_mod$fit %>% set_names(pre_fit_mod$ercc)
+
+# Extract fit parameters and calculate efficiency
+pre_fit_coefs <- pre_fit_list %>% map_df(coefficients) %>%
+      add_column(coefs = c("intercept","slope")) %>%
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+pre_fit <- pre_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
+      select(ercc, adj.r.squared) %>%
+      left_join(pre_fit_coefs) %>%
+      mutate(amplification_factor = 10^(-1/slope),
+             efficiency = (amplification_factor - 1) * 100) 
+
+post_fit_mod14 <- ercc_sam %>% filter(assay_type == "Post", titration %in% 1:4) %>% 
+      group_by(ercc,assay_type) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+post_fit_list14 <- post_fit_mod14$fit %>% set_names(post_fit_mod14$ercc)
+
+# Extract fit parameters and calculate efficiency
+post_fit_coefs14 <- post_fit_list14 %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+post_fit14 <- post_fit_list14 %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(post_fit_coefs14) %>% mutate(fit = "1:4")
+
+post_fit_mod05 <- ercc_sam %>% filter(assay_type == "Post", titration %!in% 1:4) %>% 
+      group_by(ercc,assay_type) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+
+post_fit_list05 <- post_fit_mod05$fit %>% set_names(post_fit_mod05$ercc)
+
+# Extract fit parameters and calculate efficiency
+post_fit_coefs05 <- post_fit_list05 %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+
+post_fit05 <- post_fit_list05 %>% map_df(broom::glance, .id = "ercc") %>% 
+      select(ercc, adj.r.squared) %>%
+      left_join(post_fit_coefs05) %>% 
+      mutate(fit = "0,5,10,15")
+```
+
+__TODO__: Combine the two tables  
+
+- The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 for all standard curves (Table \@ref(tab:erccStdCurve)).  
+- The amplification efficiency was outside of the ideal range (0.9 - 1.1), but within the acceptable range (0.8-1.2).  
+    - Ideal and acceptable ranges based on rule of thumb community accepted guidelines.  
+
+- The post treatment qPCR assays had good $R^2$ and slope values (Table \@ref(tab:erccTitrationCurve)). The expected slope is 1, for a doubling every cycle.  
+    - The 1-4 titration factor samples had Ct values consistently above the regression line (Figure \@ref(fig:erccPlot)).  
+- For the pre-treatment samples, should be 1 Ct difference between the unmixed post and titration factor 1 and 0.5 Ct between titration factor 1 and 2.  
+    - For the other titration factors the expected difference is to small to detect using qPCR (< 0.5 Ct).  
+
+
+
+```{r erccStdCurve, echo=FALSE, message=FALSE}
+ercc_meta %>% 
+    right_join(std_fit) %>% 
+    select(biosample_id, treatment, adj.r.squared, efficiency) %>% 
+    mutate(adj.r.squared = round(adj.r.squared,4), efficiency = round(efficiency, 2)) %>%
+    knitr::kable(caption = "ERCC Spike-in qPCR standard curve summary metrics.", booktabs = TRUE)
+```
+
+```{r erccTitrationCurve, echo=FALSE, message=FALSE}
+bind_rows(post_fit, pre_fit) %>% left_join(ercc_meta) %>% 
+    select(biosample_id, treatment, adj.r.squared, slope) %>% 
+    mutate(adj.r.squared = round(adj.r.squared, 2),
+           slope = round(slope, 2)) %>% 
+    knitr::kable(caption = "ERCC qPCR titration validation assays",  booktabs = TRUE)
+```
+
+```{r erccPlot, fig.cap = "qPCR ERCC spike-in titration validation results.", echo=FALSE, message=FALSE}
+ercc_sam <- ercc_sam %>% mutate(ercc = as.character(ercc)) %>% left_join(ercc_meta) 
+bind_rows(pre_fit,post_fit) %>% left_join(ercc_meta) %>% ggplot() +
+      geom_abline(aes(intercept = intercept, slope = slope)) +
+      geom_point(data = ercc_sam,aes(x = titration, y = Ct)) +
+      facet_grid(treatment~biosample_id) +
+      theme_bw() + labs(x = "Titration Factor", y = "Ct")
+```
+   
+
+
+#### Bacterial Concentration qPCR
+
+```{r echo=FALSE, message=FALSE}
+fit_mod <- qpcrBacStd %>% 
+      filter(!is.na(Ct)) %>% 
+      mutate(log_conc = log10(conc), date != "2016-09-19", conc > 0.002) %>% 
+      ## excluding standard curve outlier
+      filter(std != "zymo" | date != "2016-12-09" | conc != 0.00002 | plate != "plate3") %>%
+      group_by(date, std) %>% nest() %>%
+      mutate(fit = map(data, .f=~lm(Ct~log_conc ,data = .)))
+
+fit_list <- fit_mod$fit %>% set_names(paste(fit_mod$date, fit_mod$std))
+
+fit_coefs <-fit_list %>% map_df(coefficients) %>% 
+      add_column(coefs = c("intercept","slope")) %>% 
+      gather("std","stat",-coefs) %>% spread(coefs, stat)
+
+std_fit <- fit_list %>% map_df(broom::glance, .id = "std") %>% 
+      select(std, adj.r.squared) %>% left_join(fit_coefs) %>% 
+      separate(std, c("date","std","mod"), sep = " ") %>% 
+      mutate(amplification_factor = 10^(-1/slope), 
+             efficiency = (amplification_factor - 1) * 100) 
+
+mod <- qpcrBacStd %>% 
+      filter(std == "shan", conc >= 0.2) %>% mutate(log_conc = log10(conc)) %>% 
+      {lm(log_conc~Ct, data = .)}
+
+bac_abu <- qpcrBacAbu %>% filter(!is.na(Ct), std == "shan") %>% add_predictions(mod) %>% 
+      mutate(quant = 10^pred) %>% group_by(sample_name) %>% 
+      mutate(quant_min = min(quant), quant_max = max(quant))
+
+bac_nest <- bac_abu %>% filter(sam_type == "titration", std == "shan") %>%  
+    ## excluding outlier Ct value
+    filter(Ct < 27) %>% 
+    separate(sample_name, c("biosample","titration"), sep = "_") %>% 
+    group_by(biosample) %>% nest()
+
+# lme does not seem to work with mutate map, use lm, note not accounting for plates as a fixed effect
+bac_fit <- bac_nest %>% 
+    mutate(fit = map(data, ~lm(quant~titration, data = .)),
+           fit_aov = map(fit, aov),
+           fit_tukey = map(fit_aov, TukeyHSD)) 
+```  
+
+__TODO__ qPCR assay MIQE data
+
+- The concentation of bacterial DNA is greater in the post-treatment samples than the pre-treatment samples for all biological replicates excluding 4 __TODO-Use JH- ID system__ (Fig. \@ref(fig:bacPrePost)).   
+- The post-treatment DNA concentration estimates are greater than the expected value of 12.5 ng/ul and outside of the standard curve for all but sample 4 __TODO-Use JH- ID system__ (Fig. \@ref(fig:bacPrePost)).  
+    - The unmixed sample concentrations were diluted to 12.5 ng/ul prior to making the titrations therefore all samples are expected to have concentrations less than 12.5ng/ul.  
+
+```{r bacPrePost, fig.cap = "Predicted mixture study sample concentrations. Dashed line indicates the expected max concentration of 12.5 ng/ul.", echo=FALSE, message=FALSE}
+bac_abu %>% 
+    filter(sample_name != "NTC") %>% ungroup() %>% 
+    mutate(sample_name = gsub(" ","_", sample_name)) %>% 
+    separate(sample_name, c("bio_rep","titration"), sep = "_") %>% 
+    filter(titration %in% c("Pre","Post")) %>% 
+      mutate(titration = fct_relevel(titration, c("Post",paste0("M",c(1,2,3,4,5,10,15)),"Pre"))) %>% 
+      ggplot() + 
+            geom_hline(aes(yintercept = 12.5), linetype = 2) +
+            geom_linerange(aes(x = titration,ymin = quant_min, ymax = quant_max), color = "grey60") +
+            geom_point(aes(y = quant, x = titration, color = plate, shape = plate)) +
+            facet_wrap(~bio_rep, nrow = 1) +
+            theme_bw() + labs(x = "Sample Names", y = "DNA concentration (ng/ul)")
+```
+
+  
+
+
+### Sequencing Dataset QA  
+
+```{r seqQA, message = FALSE, warning = FALSE} 
+library(Rqc)
+fastq_dir <- file.path(project_dir, "data/")
+dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
+                           recursive = TRUE, full.names = TRUE)
+seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
+    grep(pattern = "fastq.gz", .,value = TRUE) %>%
+    str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
+    str_replace("-",".")
+names(dat_files) <- seq_ds_id
+
+# from script but not saved
+read_groups <- rep(NA,length(dat_files))
+read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
+read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
+read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
+read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
+
+qa_list <- readRDS("data/rqcQA_list.rds")
+
+# Tidy data
+
+## Run 
+grp_df <- data_frame(read_group = read_groups, 
+                     seq_ds_id, 
+                     filename = basename(dat_files)) %>%
+    separate(read_group,c("plate","Read")) %>% 
+    mutate(ill_id = str_replace(filename, "_.*",""))
+
+## read count data 
+qa_file_info <- perFileInformation(qa_list) %>% 
+    select(-format,-path)
+
+## study metadata
+meta_df <- sampleSheet %>% 
+    mutate(pos_ns = str_replace(pos, "_",""),
+           ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
+    filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
+    mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
+    left_join(grp_df) %>% left_join(qa_file_info)
+
+## amplicon position __Cycle Level Metrics__
+amp_pos_df <- data_frame(cycle = rep(1:300, 2), 
+                         Read = rep(c("R1","R2"), each = 300),
+                         amp_pos = c(1:300,c(460 - 1:300)))
+
+qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>% 
+    as_data_frame() %>% 
+    mutate(cycle = as.numeric(as.character(cycle))) %>% 
+    filter(count != 0) %>% # not sure if this impacts the smoothing function ...
+    left_join(meta_df) %>% left_join(amp_pos_df)
+```
+
+Quality assessment of sequencing run summarizing the PhiX error rate, number of reads per sample, and quality score distributions over the length of the reads. 
+Differences in the number of reads per sample are important for normalization and quality score distribution over read length is relevant to merging forward and reverse reads as well as the quality of the sequencing data in the middle of the amplicon.
+  
+Two barcoded experimental samples have less than 50,000 reads \@ref(fig:readCount). The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). Sample E01JH0016 titration 5 position F9 of plate 1 initial 16S PCR failed.  
+Excluding the one failed reaction the total range in the observed number of sequences per sample is approximately 40,000 to 150,000 reads.  
+
+__TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normalization data. 
+__TODO__ Comparison to differences in number of reads per sample observed in other studies. 
+
+```{r tableCount, message=FALSE, warning = FALSE}
+meta_df %>% mutate(exp_ntc = ifelse(biosample_id == "NTC", "NTC","EXP")) %>% 
+    filter(Read == "R1", ill_id != "1-F9") %>% 
+    group_by(exp_ntc, plate) %>% 
+    summarise(mean_lib_size = mean(reads),
+              min_lib_size = min(reads),
+              median = median(reads),
+              max_lib_size = max(reads)) %>% 
+    kable(caption = "Summary statistics for experimental and no template control samples by PCR plate and read.")
+```
+
+
+```{r readCount, message = FALSE, warning = FALSE, fig.cap="Number of reads per barcoded sample (Library Size), by read direction (X-facet) and replicate 16S PCR plate (Y-facet). Vertical line indicates 50,000 reads per barcoded sample.", fig.lp = "fig:"}
+meta_df %>% # filter(Read == "R1") %>%
+    ggplot() + 
+        geom_histogram(aes(x = reads), position = "dodge") + 
+        facet_grid(plate~.) + scale_x_log10() + 
+        geom_rug(aes(x = reads, color = biosample_id)) +
+        geom_vline(aes(xintercept = 50000), color = "grey80") +
+        theme_bw() + labs(x = "Library Size (log10)", 
+                          y = "Count", color = "Sample ID") +
+        theme(legend.position = "bottom")
+```
+
+
+Cycle base quality score is more homogeneous from PCR plate 2 samples than plate 1 \@ref(fig:lowcycleq). For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read. 
+The sample with a lower base quality score is titration 4 of biological replicate E01JH0017 (sample 1-F4).  
+
+```{r lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads. This is not a read level analysis but average quality score for individual barcoded datasets.", fig.lp="fig:"}
+qa_cycle_q_df %>% filter(biosample_id != "NTC", ill_id != "1-F9") %>% ggplot(aes(x = amp_pos, y = score)) + 
+    geom_vline(aes(xintercept = 300), color = "grey60") +
+    geom_vline(aes(xintercept = 160), color = "grey60") +
+    geom_smooth(aes(weight = count, color = biosample_id, group = filename)) + 
+    geom_vline(aes(xintercept = 280), color = "grey40", linetype = 2) +
+    facet_grid(plate~.) + theme_bw() + 
+    scale_x_continuous(breaks = c(0,150,300, 450)) +
+    labs(x = "Amplicon Position", 
+         y = "Base Quality Score", color = "Biological Replicate") + 
+    theme(legend.position = "bottom")
+```
+
+
+
+### Bioinformatic Pipelines QA
+```{r bioPipeQA, echo = FALSE}
+pipeline_dir <- "../mgtst_pipelines"
+mrexp_files <- list(
+      dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_mrexp.rds")
+)
+mrexp <- mrexp_files %>% map(readRDS)  
+
+## Loading seq count data
+fastq_dir <- file.path(pipeline_dir, "data")
+dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
+                           recursive = TRUE, full.names = TRUE)
+seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
+    grep(pattern = "fastq.gz", .,value = TRUE) %>%
+    str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
+    str_replace("-",".")
+names(dat_files) <- seq_ds_id 
+
+# from script but not saved
+read_groups <- rep(NA,length(dat_files))
+read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
+read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
+read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
+read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
+
+qa_list <- readRDS("data/rqcQA_list.rds") 
+
+## Run 
+grp_df <- data_frame(read_group = read_groups, 
+                     seq_ds_id, 
+                     filename = basename(dat_files)) %>%
+    separate(read_group,c("plate","Read")) %>% 
+    mutate(ill_id = str_replace(filename, "_.*",""))
+
+## read count data 
+qa_file_info <- perFileInformation(qa_list) %>% 
+    select(-format,-path)
+
+## study metadata
+meta_df <- sampleSheet %>% 
+    mutate(pos_ns = str_replace(pos, "_",""),
+           ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
+    filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
+    mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
+    left_join(grp_df) %>% left_join(qa_file_info) 
+
+##### Count table characteristics
+## number of OTUs
+features <- mrexp %>% map_dbl(NROW)
+
+## spareseness
+extract_samples <- function(mrobj){
+      sam_names <- pData(mrobj) %>% rownames_to_column() %>% 
+            filter(biosample_id != "NTC") %>% .$rowname
+      mrobj[,colnames(mrobj) %in% sam_names]
+}
+
+calc_sparsity <- function(mat){
+      nentry <- length(mat)
+      nzero <- sum(mat == 0)
+      ## calculate sparsity 
+      nzero/nentry
+}
+
+sparsity <- mrexp %>% map(extract_samples) %>% map(MRcounts, sl = 1) %>% map_dbl(calc_sparsity)   
+
+## Read loss / Filter rate 
+count_df <- mrexp %>% map(extract_samples) %>% 
+      map(MRcounts,sl = 1) %>% 
+      map(colSums) %>% map(as.data.frame) %>% 
+      map_df(rownames_to_column, var = "id", .id = "pipe") %>% 
+      dplyr::rename(counts = `.x[[i]]`)
+
+count_summary <- count_df %>% group_by(pipe) %>% 
+      summarise(count_med = median(counts) %>% round(0),
+                count_min = min(counts) %>% round(0),
+                count_max = max(counts) %>% round(0)) %>% 
+      mutate(`Sample Coverage` = paste0(count_med, " (", count_min, "-", count_max,")")) %>% 
+      select(pipe, `Sample Coverage`)
+
+reads_df <- meta_df %>% filter(Read == "R1") %>% 
+      select(ill_id, reads, group) %>% dplyr::rename(id = ill_id) 
+
+filter_rate_df <- count_df %>% left_join(reads_df) %>%
+      mutate(filter_rate = 1 - counts/reads) 
+
+filter_rate_summary <- filter_rate_df %>% group_by(pipe) %>% 
+      summarise(filt_med = median(filter_rate) %>% round(2),
+                filt_min = min(filter_rate) %>% round(2),
+                filt_max = max(filter_rate) %>% round(2)) %>% 
+      mutate(`Filter Rate` = paste0(filt_med, " (", filt_min, "-", filt_max,")")) %>% 
+      select(pipe, `Filter Rate`)
+```
+
+The sequencing dataset was processed using three bioinformatic pipelines. 
+The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA)).
+The expectation is that this mixture dataset will be more sparse relative to other datasets due to the redundant nature of the samples where 35 of the 45 samples are derived directly from the other 10 samples and that there are four PCR replicates for each sample. 
+Sparsity was lower for De-novo clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
+Different pipelines have different approaches for handling low quality reads. 
+See individual pipeline reports for which steps reads are excluded from the datasets. 
+QIIME pipeline has the highest filter rate while the highest number of features per sample. 
+
+```{r pipeQA, echo = FALSE, message = FALSE, warning = FALSE}
+data_frame(pipe = names(mrexp), 
+           Features = features, 
+           Sparsity = round(sparsity,2)) %>% 
+      left_join(count_summary) %>% left_join(filter_rate_summary) %>% 
+      dplyr::rename(Pipelines = pipe) %>% 
+      knitr::kable(caption = "Summary statistics for the different bioinformatic pipeliens. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total feature abundance. Filter rate is the proportion of reads that were removed while processing the sequencing data for each bioinformatic pipeline.")
+```
+
+
+  
+  
+### Measurement Assessment  
+Next we assessed the 16S rRNA measurement processing using our mixture dataset. 
+We evaluated the quanitative performance of the measurement method both at the microbiome scale and at the feature level.  
+Additionally we were interested in the qualitative performance of the measurement method.  
+
+#### Microbiome-Scale Measurement Assessment  
+For our global measurement assessment we used our observed count values for the unmixed pre- and post-exposure samples to estimate the proportion of post-exposure sample in individual titrations. 
+
+```{r thetaEst, child="artifacts/theta_estimates.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+#### Feature-Level Measurement Assessment  
+
+##### Qualitative Analysis   
+```{r qualMA, echo = FALSE, message = FALSE, warning = FALSE}
+feature_exp_df <- readRDS("data/nb_expected_eo_metric_feature_df.rds") 
+```
+
+For the qualitative component of the measurement assessment we evaluated the individual PCR replicate count values for  features either only observed in the unmixed pre- and post-exposure samples for a biological replicate or in a titration (Fig. \@ref(fig:mixUnmixSpecific)). 
+Features can be specific to the titrations for one of two reasons, due to differences in sampling depth (number of sequences) between the unmixed samples and titrations, or an artifact of the feature inference process. 
+We tested whether sampling alone could explain feature specificity ..... __TODO__
+
+```{r mixUnmixSpecific, fig.cap = "Distribution of expected count values for features with no observed counts for a PCR replicate. The horizontal black line indicates an expected count value of 1.", echo = FALSE, message = FALSE}
+feature_exp_df %>% 
+    filter(count == 0 | exp_count == 0) %>% 
+    mutate(feat_spec = if_else(count == 0 & exp_count != 0, "Unmix","Titration")) %>% 
+    mutate(plot_count = if_else(count == 0 & exp_count != 0,exp_count,count)) %>% 
+      ggplot() +
+      geom_boxplot(aes(x = pipe, y = plot_count + 1, fill = biosample_id), alpha = 0.25) + 
+      geom_hline(aes(yintercept = 1 + 1)) + 
+      scale_y_log10() + theme_bw() + 
+      labs(x = "Pipeline", y = "Count Values", fill = "Biological Replicate") +
+    facet_wrap(~feat_spec) + 
+    theme(legend.position = "bottom")
+```
+
+
+
+##### Quantitative Analysis  
+
+```{r}
+## Extracting a tidy dataframe with count values from MRexpiment objects
+get_count_df <- function(mrobj, agg_genus = FALSE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
+      mrobj <- cumNorm(mrobj, p = 0.75)
+      mrobj %>%
+            # not sure whether or not to normalize counts prior to analysis
+            MRcounts(norm = FALSE, log = FALSE, sl = 1) %>%  
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+} 
+
+count_df <- mrexp %>% map_df(get_count_df, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC") %>% 
+      ungroup() %>% 
+      mutate(t_fctr = fct_relevel(t_fctr, c(0:5, 10, 15, 20)),
+             titration = as.numeric(as.character(t_fctr)), 
+             theta = 2^(-titration),
+             theta = if_else(theta == 2^-20, 0, theta))  %>% 
+      filter(t_fctr %in% c(0:4,20))
+
+## Calculate scaling factor 
+count_df <- count_df %>% group_by(pipe, id) %>% 
+      mutate(total_count = sum(count),
+             scale_factor = total_count/ exp(mean(log(total_count))),
+             norm_count = count/scale_factor)
+
+## Excluding features with median EO metric of 1 or -1 and logFC between pre and post < 1
+## %%TODO%% replace with heuristic filter > 14 of the PCR replicates have observed counts, and only features with observed counts for unmixed samples.  
+count_nb <- readRDS("data/nb_expected_eo_metric_feature_df.rds") %>% 
+      mutate(count_post = post * total_abu, count_pre = pre * total_abu)
+
+good_eo <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) != 1)
+
+good_logfc <- readRDS("data/pre_post_deseq_logFC.RDS") %>% 
+    filter(abs(log2FoldChange) > 3) 
+
+
+good_features <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) != 1)
+
+count_full_df <- count_df %>% right_join(good_features)
+
+### Fitting data to model
+nested_count_df <- count_full_df %>% group_by(pipe, biosample_id, feature_id) %>% nest()
+
+fit_df <- nested_count_df %>%
+      mutate(fit = map(data, ~lm(norm_count ~ theta:t_fctr, data = .)))
+
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::tidy)) %>% 
+            select(-data, -fit) %>% unnest()
+}
+
+tidy_fit <- get_tidy_fit(fit_df) 
+
+
+feature_metrics <- tidy_fit %>% 
+      mutate(term = factor(term, levels = c( paste0("theta:t_fctr",c(15,10,5:0)), "(Intercept)"))) %>%
+      filter(term != "theta:t_fctr20", term != "(Intercept)") %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+    mutate(min_est = min(estimate), max_est =  max(estimate), mean_est = mean(estimate)) %>% 
+      summarise(mean_est = mean(estimate), cov_est = sd(estimate)/mean(estimate))
+
+get_glance_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit, broom::glance)) %>% 
+            select(-data, -fit) %>% unnest()
+}
+
+glance_fit <- get_glance_fit(fit_df)
+
+
+fit_summary <- glance_fit %>% select(pipe, biosample_id, feature_id, sigma) %>% left_join(feature_metrics) %>% 
+      mutate(cov_sigma = sigma/mean_est)
+```
+
+Bias and variance metrics were obtained using linear model was used to estimate the difference in the pre- and post-exposure samples. 
+Feature level bias was measured as the coefficienct of variation for the different titration estimates. 
+Feature level variance was measured as the coefficient of variation of the model variance. 
+The estimated differences for pre- and post-exposure samples is shown for a \textit{Escherichia coli} feature in the DADA2 dataset (Fig. \@ref(fig:ecoliFit)). 
+
+```{r ecoliFit, fig.cap = "Pre- and Post-exposure estimated count differences for E. coli DADA2 feature. Error bars are 2 times the standard error. The expectation is that the estimates are consistent between titrations."}
+fit_df %>% filter(feature_id == "SV1") %>% 
+      mutate(fit_tidy = map(fit, broom::tidy)) %>% 
+      select(-fit,-data) %>% unnest() %>% 
+      mutate(term = factor(term, 
+                           levels = c( paste0("theta:t_fctr",c(15,10,5:0)),
+                                       "(Intercept)"))) %>% 
+      filter(term != "(Intercept)") %>% 
+      ggplot() + 
+      geom_point(aes(x = term, y = estimate)) +
+      geom_errorbar(aes(x = term, ymin = estimate - std.error, ymax = estimate + std.error)) +
+      #scale_y_log10() +
+      facet_wrap(~biosample_id, scales = "free_y") + theme_bw() +
+      theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+
+Bias and Variance metrics 
+
+
+```{r biasVarScatter, fig.cap = "Relationship between the bias and variance metrics by pipeline and biological replicate.", message = FALSE, echo = FALSE, warning = FALSE} 
+fit_summary %>% 
+    filter(abs(mean_est) > 1) %>% 
+    select(pipe, biosample_id, feature_id, mean_est, cov_est, cov_sigma) %>% 
+    ggplot() + 
+      geom_point(aes(x = cov_est, y = cov_sigma, color = biosample_id, shape = pipe)) + theme_bw() +
+    facet_grid(pipe~biosample_id, scales = "free")
+```
+
+# Session information 
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = ".")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
