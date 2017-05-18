@@ -1,0 +1,180 @@
+---
+title: "Feature Filter Data Frame Metrics"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: default
+  html_document: default
+---
+
+```{r echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(DESeq2)
+library(phyloseq)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+pipeline_dir <- "../../mgtst_pipelines"
+ps <- get_phyloseq(pipeline_dir)
+```
+
+##  Objective 
+Generate a dataframe with metrics for use in filtering features
+Metrics - Median EO, log2FC pre-post, pre-post abundance estimates
+
+```{r}
+calc_logfc_deseq <- function(ps_obj){
+    ## convert to DESeq object
+    dsq <- phyloseq_to_deseq2(ps_obj, ~ t_fctr) 
+    
+    ## calculate logFC estimates
+    DESeq(dsq, test="Wald", fitType="parametric") 
+}
+
+tidy_deseq_res <- function(dsq_logfc, biosample_id){
+    results(dsq_logfc, cooksCutoff = FALSE) %>% 
+        as.data.frame() %>% 
+        rownames_to_column(var = "feature_id") %>% 
+        add_column(biosample_id = biosample_id)
+}
+
+# get_prepost_logfc <- function(ps_obj){
+#     logfc_df <- data_frame()
+#     
+#     biosample_ids <- sample_data(ps_obj)$biosample_id %>% 
+#           unique() %>% {.[. != "NTC"]}
+#     print(biosample_ids)
+#     for(i in biosample_ids){
+#             # ps_unmix <- subset_samples(ps_obj, t_fctr %in% c(0,20) & biosample_id == i)
+#             # deseq_logfc <- calc_logfc_deseq(ps_unmix)
+#             # logfc_df <- tidy_deseq_res(deseq_logfc, i) %>%
+#             #     bind_rows(logfc_df)
+#     }
+# 
+#     logfc_df
+# }
+
+```
+
+```{r}
+get_prepost_logfc <- function(ps_obj){
+      logfc_df <- data_frame()
+      
+      biosample_ids <- sample_data(ps_obj)$biosample_id %>% 
+            unique() %>% {.[. != "NTC"]}
+      for(i in biosample_ids){
+            biosams <- as.character(get_variable(ps_obj, "biosample_id")) == i
+            ps_unmix <- prune_samples(biosams, ps_obj) 
+            ps_unmix <- subset_samples(ps_unmix, t_fctr %in% c(0,20))
+            deseq_logfc <- calc_logfc_deseq(ps_unmix)
+            logfc_df <- tidy_deseq_res(deseq_logfc, i) %>%
+                  bind_rows(logfc_df)
+      }
+      
+      logfc_df
+}
+
+logfc_df <- ps %>% map_df(get_prepost_logfc,.id = "pipe")
+```
+
+Sanity Checks
+```{r}
+logfc_df %>% group_by(biosample_id, pipe) %>% summarise(count = n()) %>% 
+      spread(biosample_id, count) %>% knitr::kable()
+```
+
+```{r}
+logfc_df %>% filter(abs(log2FoldChange) > 1, pvalue < 0.05) %>% 
+      group_by(biosample_id, pipe) %>% summarise(count = n()) %>% 
+      spread(biosample_id, count) %>% knitr::kable()
+```
+
+Will want to look into features in U shape and outliers
+```{r}
+logfc_df %>% ggplot() + geom_point(aes(x = baseMean + 1, y = log2FoldChange), alpha = 0.25) + 
+    facet_grid(pipe~biosample_id) + scale_x_continuous(trans = "log2")
+```
+
+
+```{r}
+logfc_df %>% saveRDS("../data/pre_post_deseq_logFC.RDS")
+```
+
+Investigating features in U shape - features in U are pre- and post-specific. 
+```{r}
+top_features <- logfc_df %>% filter(baseMean > 100, baseMean < 200) %>% 
+      group_by(biosample_id, pipe) %>% top_n(5, wt = abs(log2FoldChange))
+```
+
+```{r}
+logfc_df %>% ggplot() + 
+      geom_point(aes(x = baseMean + 1, y = log2FoldChange), color = "grey60", alpha = 0.25) + 
+      geom_point(data = top_features, aes(x = baseMean + 1, y = log2FoldChange), color = "darkorange") + 
+    facet_grid(pipe~biosample_id) + scale_x_continuous(trans = "log2")
+```
+
+
+```{r}
+# count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds")
+# top_features %>% select(pipe, feature_id, biosample_id) %>% 
+#       left_join(count_nb)
+```
+
+Investigating Outlier features - no counts for both unmixed pre and post
+```{r}
+outlier_fc <- logfc_df %>% filter(abs(log2FoldChange) > 18)
+```
+
+```{r}
+logfc_df %>% ggplot() + 
+      geom_point(aes(x = baseMean + 1, y = log2FoldChange), color = "grey60", alpha = 0.25) + 
+      geom_point(data = outlier_fc, aes(x = baseMean + 1, y = log2FoldChange), color = "darkorange") + 
+    facet_grid(pipe~biosample_id) + scale_x_continuous(trans = "log2")
+```
+
+```{r}
+# count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds")
+# outlier_fc %>% select(pipe, feature_id, biosample_id) %>%
+#       left_join(count_nb)
+```
+
+Updated MA plot
+```{r}
+count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds")
+count_nb %>% filter(pre != 0, post != 0) %>% 
+      select(pipe, biosample_id, feature_id) %>% unique() %>% 
+      {semi_join(logfc_df, .)} %>% 
+      ggplot() + 
+      geom_point(aes(x = baseMean + 1, y = log2FoldChange), alpha = 0.25) + 
+    facet_grid(pipe~biosample_id) + scale_x_continuous(trans = "log2") + 
+      theme_bw()
+```
+
+
+
+# Session information 
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
