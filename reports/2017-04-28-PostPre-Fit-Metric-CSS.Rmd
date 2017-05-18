@@ -31,7 +31,7 @@ get_count_df <- function(mrobj, agg_genus = FALSE){
       mrobj <- cumNorm(mrobj, p = 0.75)
       mrobj %>%
             # not sure whether or not to normalize counts prior to analysis
-            MRcounts(norm = FALSE, log = FALSE, sl = 1) %>%  
+            MRcounts(norm = TRUE, log = FALSE, sl = 1000) %>%  
             as.data.frame() %>% 
             rownames_to_column(var = "feature_id") %>% 
             gather("id","count", -feature_id)
@@ -115,21 +115,6 @@ dat %>% ggplot() +
       theme(axis.text.x = element_text(angle = 90))
 ```
 
-```{r}
-# outlier_estimates <- dat %>% select(pipe, biosample_id, feature_id, term, estimate) %>% 
-#       spread(term, estimate) %>% arrange(`theta:t_fctr4`) %>% 
-#       mutate(est_slope = (`theta:t_fctr4` - `theta:t_fctr0`)/`theta:t_fctr0`) %>% 
-#       filter(abs(est_slope) > 100) %>% 
-#       select(pipe, biosample_id, feature_id)
-```
-
-```{r}
-# dat %>% right_join(outlier_estimates) %>% ggplot() +
-#       geom_path(aes(x = term, y = estimate, group = feature_id), alpha = 0.25) +
-#       facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw() +
-#       theme(axis.text.x = element_text(angle = 90))
-```
-
 
 ### Model Diagnostics for Example Features
 ```{r}
@@ -145,7 +130,7 @@ The E. coli feature for the mothur and DADA2 pipeline look very similar but the 
 ```{r}
 sv1_tidy_df <- fit_df %>% filter(feature_id == "SV1") %>% 
       mutate(fit_tidy = map(fit, broom::tidy)) %>% 
-      select(-fit,-data) %>% unnest()
+      dplyr::select(-fit,-fit_thetahat, -data) %>% unnest()
 
 sv1_tidy_df %>% 
       mutate(term = factor(term, 
@@ -169,7 +154,7 @@ fit_df %>% filter(feature_id == "SV1") %>% .$fit %>% map(summary)
 ```{r}
 otu1_tidy_df <- fit_df %>% filter(feature_id == "Otu00001") %>% 
       mutate(fit_tidy = map(fit, broom::tidy)) %>% 
-      select(-fit,-data) %>% unnest()
+      dplyr::select(-fit,-fit_thetahat, -data) %>% unnest()
 
 otu1_tidy_df %>% 
       mutate(term = factor(term, levels = c( paste0("theta:t_fctr",c(15,10,5:0)), "(Intercept)"))) %>%
@@ -207,7 +192,7 @@ fit_summary %>%
       geom_point(aes(x = cov_est, 
                      y = cov_sigma)) + 
       theme_bw() +
-    labs(x = "COV(Beta1)", y = "COV(sigma)", subtitle = "Raw Counts Bias-Variance Metrics") 
+    labs(x = "COV(Beta1)", y = "COV(sigma)", subtitle = "CSS Normalized Counts Bias-Variance Metrics") 
 ```
 
 ```{r}
@@ -216,28 +201,34 @@ fit_summary %>% filter(abs(mean_est) > 1) %>%
       geom_point(aes(x = abs(cov_est), 
                      y = abs(cov_sigma))) + 
       theme_bw() +
-    labs(x = "|COV(Beta1)|", y = "|COV(sigma)|", subtitle = "Raw Counts Bias-Variance Metrics: mean Beta1 > 1") 
+    labs(x = "|COV(Beta1)|", y = "|COV(sigma)|", subtitle = "CSS Normalized Counts Bias-Variance Metrics: mean Beta1 > 1") 
 ```
 
 ```{r}
-fit_summary %>% filter(abs(mean_est) > 1, abs(cov_sigma) < 50) %>% 
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
       ggplot() + 
       geom_point(aes(x = abs(cov_est), 
-                     y = abs(cov_sigma), 
-                     color = biosample_id, shape = pipe)) + 
-      theme_bw() + facet_wrap(~pipe) + 
-    labs(x = "COV(Beta1)", y = "COV(sigma)", subtitle = "Raw Counts Bias-Variance Metrics: mean Beta1 > 1") 
-```
-
-```{r}
-fit_summary %>% filter(abs(mean_est) > 1, abs(cov_sigma) < 50) %>% 
-      ggplot() + 
-      geom_point(aes(x = abs(cov_est), 
-                     y = abs(cov_sigma), 
-                     color = pipe)) + 
+                     y = abs(cov_sigma), color = pipe), alpha = 0.25) + 
       theme_bw() + facet_wrap(~biosample_id, nrow = 1) + 
-    labs(x = "|COV(Beta1)|", y = "|COV(sigma)|", 
-         subtitle = "Raw Counts Bias-Variance Metrics: mean(Beta1) > 1, |COV(sigma)| < 50") 
+    labs(x = "COV(Beta1)", y = "COV(sigma)", subtitle = "CSS Normalized Counts Bias-Variance Metrics: mean Beta1 > 1") 
+```
+
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
+    ggplot() + geom_boxplot(aes(x = pipe, y = abs(cov_est))) 
+```
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
+    ggplot() + geom_boxplot(aes(x = biosample_id, y = abs(cov_est), color = pipe)) +
+    labs(x = "Biological Replicate", y = "|COV(Beta1)|", color = "Pipeline") + theme_bw()
+```
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
+    ggplot() + geom_boxplot(aes(x = biosample_id, y = abs(cov_sigma), color = pipe)) +
+    labs(x = "Biological Replicate", y = "|COV(sigma)|", color = "Pipeline") + theme_bw()
 ```
 
 
@@ -249,17 +240,18 @@ fit_summary %>% filter(abs(mean_est) > 1) %>%
                      y = abs(cov_sigma), 
                      color = biosample_id, shape = pipe)) + 
       scale_x_continuous(trans = "log2") + 
-      theme_bw() + facet_grid(biosample_id~pipe, scales = "free_y")
+      theme_bw() + facet_grid(biosample_id~pipe, scales = "free_y") + 
+    labs(x = "|mean(Beta1)|", y = "|COV(sigma)|")
+    
 ```
 
 ```{r}
-fit_summary %>% filter(abs(mean_est) > 1, abs(cov_sigma) < 50) %>% 
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
       ggplot() + 
       geom_point(aes(x = abs(mean_est) + 1, 
-                     y = cov_est, 
-                     color = biosample_id, shape = pipe)) + 
-      scale_x_continuous(trans = "log2") + 
-      theme_bw() + facet_grid(biosample_id ~ pipe, scales = "free")
+                     y = abs(cov_est))) + 
+    geom_smooth(aes(x = abs(mean_est) + 1, y = abs(cov_est))) +
+      theme_bw() + facet_grid(biosample_id~pipe, )  + scale_x_continuous(trans = "log2") 
 ```
 
 
@@ -276,116 +268,6 @@ fit_summary %>% filter(abs(cov_sigma) < 50) %>%
            y = "Absolute Value COV Sigma", 
            color = "COV Sigma Sign") +
       facet_grid(biosample_id~pipe)
-```
-
-
-```{r}
-outlier_est_metrics <- fit_summary %>% right_join(outlier_estimates) %>% 
-      mutate(abs_cov_est = if_else(cov_est < 0, -log2(abs(cov_est)), log2(cov_est)))
-```
-
-Outlier estimate feature are not necessarily features with outlier metrics. 
-Features with outlier estimates are defined as features where, $|(T0 - T4)/T0 | > 100$.
-
-```{r}
-fit_summary %>% filter(abs(cov_sigma) < 10000) %>% 
-      mutate(cov_est = if_else(cov_est < 0, -log2(abs(cov_est)), log2(cov_est)),
-             cov_sig_sign = if_else(cov_sigma < 0, "neg","pos")) %>% 
-      ggplot() + 
-      geom_point(aes(x = cov_est, y = abs(cov_sigma), color = cov_sig_sign), alpha = 0.25) + 
-      geom_point(data = outlier_est_metrics, 
-                 aes(x = abs_cov_est, y = abs(cov_sigma))) + 
-      theme_bw() + scale_y_continuous(trans = "log2") + 
-      labs(x = "log2[COV(Post - Pre)]", 
-           y = "Absolute Value COV Sigma", 
-           color = "COV Sigma Sign") +
-      facet_grid(biosample_id~pipe)
-```
-
-
-Plot of observed count values for a subset of 10 outlier estimate features. 
-Features with outlier estimates, may tend to have larger count variability. 
-This variability 
-```{r}
-set.seed <- 1
-outlier_estimate_counts <- outlier_estimates %>% ungroup() %>% sample_n(10) %>% left_join(count_df)
-```
-
-
-```{r}
-outlier_estimate_counts %>% 
-      filter(t_fctr %in% (1:5)) %>% 
-      mutate(t_fctr = factor(t_fctr, levels = c(1:5))) %>% 
-ggplot() + 
-      geom_point(aes(x = t_fctr, y = count, color = biosample_id)) + 
-      facet_wrap(~feature_id, scales = "free")
-```
-
-Based on the R^2 values there are two populations of the outlier estimate features, thoes with low R2 values and high R2 values.  
-
-```{r}
-outlier_estimates %>% mutate(est = "outlier") %>% 
-      right_join(glance_fit) %>% ggplot() + 
-      geom_density(aes(x = adj.r.squared, color = est))
-```
-
-
-```{r}
-outlier_metrics <- fit_summary %>% filter(mean_est > 1, abs(cov_sigma) > 15) 
-outlier_metric_counts <- outlier_metrics %>% left_join(count_df)
-```
-
-
-```{r}
-outlier_metric_counts %>% 
-      filter(t_fctr %in% (1:5)) %>% 
-      mutate(t_fctr = factor(t_fctr, levels = c(1:5))) %>% 
-ggplot() + 
-      geom_point(aes(x = t_fctr, y = count, color = biosample_id)) + 
-      facet_wrap(~feature_id, scales = "free")
-```
-
-```{r}
-outlier_metrics %>% mutate(est = "outlier") %>% 
-      right_join(glance_fit) %>% ggplot() + 
-      geom_density(aes(x = adj.r.squared, color = est))
-```
-
-
-```{r}
-dat %>% right_join(outlier_metrics) %>% ggplot() +
-      geom_path(aes(x = term, y = estimate, group = feature_id), alpha = 0.25) +
-      facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw() +
-      theme(axis.text.x = element_text(angle = 90))
-```
-
-
-
-Looking for specific taxonomic groups more frequently found with the outlier features.
-```{r}
-tax_info <- get_taxa(mrexp)
-```
-
-```{r}
-outlier_metrics %>% left_join(tax_info) %>% select(feature_id, Rank5, Rank6)
-```
-
-```{r}
-outlier_estimates %>% ungroup() %>% left_join(tax_info) %>% 
-      select(feature_id, Rank5, Rank6) %>% arrange(Rank5)
-```
-
-
-```{r}
-feature_metrics <- fit_summary %>% filter(abs(mean_est) > 1) %>% 
-      select(pipe, biosample_id, feature_id, mean_est, cov_est, cov_sigma) #%>% 
-      # left_join(eo_metric_feature)
-```
-
-
-```{r}
-feature_metrics %>% filter(abs(mean_est) > 1, abs(cov_sigma) < 10) %>% ggplot() + 
-      geom_point(aes(x = cov_est, y = cov_sigma, color = biosample_id, shape = pipe)) + theme_bw()
 ```
 
 
@@ -409,6 +291,14 @@ Two potential reasons;
 2. assumptions about how the samples were mixed is not valid. 
 
 ```{r}
+get_tidy_fit <- function(count_fit){
+      count_fit %>% 
+            mutate(fit_summary = map(fit_thetahat, broom::tidy)) %>% 
+            dplyr::select(-data, -fit, -fit_thetahat) %>% unnest()
+}
+
+tidy_fit <- get_tidy_fit(fit_df)
+
 dat <- tidy_fit %>% 
       mutate(term = factor(term, levels = c( paste0("theta_estimate:t_fctr",c(15,10,5:0)), "(Intercept)"))) %>%
       filter(term != "theta_estimate:t_fctr20", term != "(Intercept)") %>% 
@@ -421,30 +311,48 @@ dat %>% ggplot() +
 ```
 
 ### Theta Hat Bias Variance Estimates
-```{r}
+```{r} 
 fit_summary <- dat %>% group_by(pipe, biosample_id, feature_id) %>% 
       summarise(mean_est = mean(estimate), cov_est = sd(estimate)/mean(estimate))
 
 get_glance_fit <- function(count_fit){
       count_fit %>% 
-            mutate(fit_summary = map(fit_thetahat, broom::glance)) %>% 
+            mutate(fit_summary = map(fit, broom::glance)) %>% 
             dplyr::select(-data, -fit, -fit_thetahat) %>% unnest()
 }
 
 glance_fit <- get_glance_fit(fit_df)
 
 fit_summary <- glance_fit %>% 
-    dplyr::select(pipe, biosample_id, feature_id, sigma) %>% left_join(fit_summary) %>% 
+    dplyr::select(pipe, biosample_id, feature_id, sigma) %>% 
+    left_join(fit_summary) %>% 
       mutate(cov_sigma = sigma/mean_est)
 
 ``` 
 
 ```{r}
-fit_summary %>% filter(abs(mean_est) > 1, abs(cov_sigma) < 50) %>% 
+fit_summary %>% 
       ggplot() + 
-      geom_point(aes(x = abs(mean_est) + 1, 
-                     y = abs(cov_sigma), 
-                     color = biosample_id, shape = pipe)) + 
-      scale_x_continuous(trans = "log2") + 
-      theme_bw() + facet_grid(biosample_id~pipe, scales = "free_y")
+      geom_point(aes(x = cov_est, 
+                     y = cov_sigma)) + 
+      theme_bw() +
+    labs(x = "COV(Beta1)", y = "COV(sigma)", subtitle = "CSS Normalized Counts Bias-Variance Metrics") 
+```
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
+      ggplot() + 
+      geom_point(aes(x = abs(cov_est), 
+                     y = abs(cov_sigma))) + 
+      theme_bw() +
+    labs(x = "|COV(Beta1)|", y = "|COV(sigma)|", subtitle = "CSS Normalized Counts Bias-Variance Metrics: mean Beta1 > 1") 
+```
+
+```{r}
+fit_summary %>% filter(abs(mean_est) > 1) %>% 
+      ggplot() + 
+      geom_point(aes(x = abs(cov_est), 
+                     y = abs(cov_sigma), color = pipe), alpha = 0.25) + 
+      theme_bw() + facet_wrap(~biosample_id, nrow = 1) + 
+    labs(x = "COV(Beta1)", y = "COV(sigma)", subtitle = "CSS Normalized Counts Bias-Variance Metrics: mean Beta1 > 1") 
 ```

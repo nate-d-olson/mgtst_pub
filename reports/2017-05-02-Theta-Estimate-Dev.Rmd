@@ -1,0 +1,282 @@
+---
+title: "Theta Estimate Development"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(ggfortify)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd)
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp <- get_mrexp(pipeline_dir)
+```
+
+## Objective 
+Develop a linear model to estimate theta for a biological replicate and pipeline. 
+
+
+## Approach 
+1. Load count data
+2. Estimate Pre and Post proportions using negative binomial
+3. Estimate Pre and Post for a samples total abundance
+4. Apply model to estimate theta for a mixture
+
+## Model
+Estimating $\theta$, where $C_{obs_j}$ observed counts for a mixture $C_j$, counts for unmixed $pre$ and $post$ based on the negative binomial and observed counts.  
+
+$$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + E_{pre_j}$$ 
+
+Also look into estimating $T$ the titration factor 
+$$log_2\left(\frac{C_{post_j}-C_{pre_j}}{C_j - C_{pre_j}}\right) = T$$  
+
+## Loading Data 
+```{r}
+count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds") %>% 
+      mutate(count_post = post * total_abu, count_pre = pre * total_abu) 
+```
+
+```{r}
+good_eo <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) < 1)
+
+good_logfc <- readRDS("../data/pre_post_deseq_logFC.RDS") %>% 
+    filter(abs(log2FoldChange) > 1, pvalue < 0.05) 
+
+good_features <- good_eo %>% 
+    select(pipe, biosample_id, feature_id) %>% 
+    inner_join(good_logfc) %>% 
+    select(pipe, biosample_id, feature_id)
+```
+
+```{r}
+count_nb_good <- count_nb %>% right_join(good_features) 
+```
+
+
+```{r}
+# good_logfc %>% group_by(pipe, biosample_id,feature_id) 
+good_logfc %>% select(pipe, biosample_id,feature_id, log2FoldChange) %>% spread(biosample_id, log2FoldChange)
+# %>% summarise(count = n()) %>% spread(biosample_id, count)
+```
+
+
+```{r}
+dada_11_T1 <- count_nb_good %>% filter(t_fctr == "1", pipe == "dada2", biosample_id == "E01JH0011")
+fit <- lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = dada_11_T1)
+autoplot(fit)
+```
+
+```{r}
+summary(fit)
+```
+
+
+```{r}
+modelr::add_predictions(dada_11_T1, fit) %>% 
+      ggplot() + geom_point(aes(x = count, y = pred))
+```
+
+
+```{r}
+modelr::add_residuals(dada_11_T1, fit) %>% 
+      ggplot() + geom_point(aes(x = count, y = resid))
+```
+
+```{r}
+dada_11_T1 <- count_nb_good %>% filter(t_fctr == "1", pipe == "dada2", biosample_id == "E01JH0011")
+fit3 <- lm(log2(count + 1) ~ -1 + I(log2(count_post + 1) - log2(count_pre + 1)), offset = log2(count_pre  +1) , 
+           data = dada_11_T1)
+autoplot(fit3)
+```
+
+```{r}
+summary(fit3)
+```
+
+
+```{r}
+modelr::add_predictions(dada_11_T1, fit3) %>% 
+      ggplot() + geom_point(aes(x = log2(count), y = pred))
+```
+
+
+```{r}
+modelr::add_residuals(dada_11_T1, fit3) %>% 
+      ggplot() + geom_point(aes(x = log2(count), y = resid))
+```
+
+```{r}
+fit4 <- lm(I(log2((count_post - count_pre + 1)/(count - count_pre + 1)))~ 1, data = dada_11_T1)
+```
+
+```{r}
+summary(fit4)
+```
+
+```{r}
+autoplot(fit4)
+```
+
+
+```{r} 
+dada_04_T1 <- count_nb_good %>% filter(t_fctr == "1", pipe == "dada2", biosample_id == "E01JH0004")
+fit4 <- lm(I(log2((count - count_pre + 1)/(count_post - count_pre + 1)))~ 1, data = dada_04_T1)
+```
+
+
+```{r}
+summary(fit4)
+```
+
+```{r}
+autoplot(fit4)
+```
+
+
+
+```{r}
+count_nest <- count_nb_good %>%
+      group_by(pipe, biosample_id, t_fctr) %>% nest()
+```
+
+```{r}
+fit_df <- count_nest %>% 
+      mutate(fit = map(data, ~lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = .)),
+             fit_tidy = map(fit, broom::tidy),
+             fit_glance = map(fit, broom::glance))
+```
+
+```{r}
+fit_est <- fit_df %>% select(pipe, biosample_id, t_fctr, fit_tidy) %>% unnest()
+```
+
+
+```{r}
+fit_est %>% mutate(theta = 2^-as.numeric(t_fctr), 
+                   t_fctr = factor(t_fctr, levels = c(1:5,10,15))) %>%  
+ggplot() + 
+      geom_point(aes(x = t_fctr, y = estimate)) + 
+      geom_errorbar(aes(x = t_fctr, ymax = estimate + 2*std.error, ymin = estimate - 2 * std.error)) + 
+      geom_line(aes(x = as.numeric(t_fctr), y =  theta), color = "darkorange") + 
+      facet_grid(biosample_id ~ pipe)
+```
+
+```{r}
+dada_04_T1
+```
+
+```{r}
+dada_04_T1_hat <- dada_04_T1 %>% mutate(theta_hat = (count - count_pre)/(count_post - count_pre)) 
+dada_04_T1_hat %>% 
+    ggplot() + geom_density(aes(theta_hat))
+```
+
+```{r}
+dada_04_T1_hat %>% filter(theta_hat > 0, theta_hat < 1) %>% .$theta_hat %>% summary()
+```
+
+Lack of fit skews confidence intervals in linear model estimates. 
+Estimating theta from the counts for each feature then manually trimming the tails, theta estimates outside the expected range of 0 and 1. 
+Can use raw counts to get uncertainty ranges  
+
+```{r}
+theta_hat_df <- count_nb_good %>% 
+    mutate(theta_hat = (count - count_pre)/(count_post - count_pre)) # %>% 
+    #filter(theta_hat > -1, theta_hat < 2)
+```
+
+```{r}
+theta_hat_df %>% filter(t_fctr %in% 1:5) %>% 
+    ggplot() + geom_boxplot(aes(y = theta_hat, x = t_fctr, color = pipe)) + 
+    facet_grid(~biosample_id) + theme_bw() + 
+    labs(x = "Titration Factor", y = expression(theta), color = "Pipeline")
+```
+
+Theta estimates greater than 
+```{r}
+theta_hat_df %>% filter(t_fctr %in% 1:5) %>% 
+    mutate(theta = 2^-as.numeric(t_fctr), 
+           t_fctr = factor(t_fctr, levels = c(1:5,10,15))) %>%
+    ggplot() + geom_boxplot(aes(y = theta_hat, x = t_fctr)) + 
+    geom_line(aes(x = as.numeric(t_fctr), y =  theta), color = "darkorange") + 
+    facet_grid(~biosample_id) + theme_bw() + 
+    labs(x = "Titration Factor", y = expression(theta))
+```
+
+```{r}
+theta_hat_outlier_df <- count_nb_good %>% 
+    mutate(theta_hat = (count - count_pre)/(count_post - count_pre)) %>% 
+    filter(theta_hat < -1 | theta_hat > 2)
+```
+
+```{r}
+library(boot)
+hat_median <- function(data, i) {
+    theta_hat <- data %>% filter(biosample_id == "E01JH0016") %>% .$theta_hat
+  return(summary(theta_hat))
+} 
+# bootstrapping with 1000 replications 
+dat <- theta_hat_df %>% filter(biosample_id == "E01JH0016", t_fctr == 1)
+results <- boot(data = dat, statistic = hat_median, R = 1000, i = "E01JH0016")
+```
+
+```{r}
+boot_dat <- modelr::bootstrap(dat,1000) %>%
+    mutate(fit = map(strap, ~lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = .)))
+boot_dat  %>% mutate(theta_hat = map_dbl(fit, coef))  %>% .$theta_hat %>% summary()
+```
+
+
+```{r}
+count_boot <- count_nb_good %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5,10,15)),
+             theta = 2^-as.numeric(t_fctr)) %>% 
+    group_by(pipe, biosample_id, theta, t_fctr) %>% 
+    nest() %>% 
+    mutate(boot_dat = map(data, modelr::bootstrap, 1000)) #%>% 
+
+boot_fit <- count_boot %>% select(-data) %>% unnest() %>% 
+      mutate(fit = map(strap, ~lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = .)))
+
+boot_theta_hat <- boot_fit %>% mutate(theta_hat = map_dbl(fit, coef)) %>% 
+      select(-fit,-strap) %>% 
+      group_by(pipe, biosample_id, theta, t_fctr) %>% 
+      summarise(theta_hat_mean = mean(theta_hat),
+                theta_hat_lci = quantile(theta_hat, probs = 0.025),
+                theta_hat_uci = quantile(theta_hat, probs = 0.975))
+```
+
+```{r}
+ggplot(boot_theta_hat) + 
+      geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
+      geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, ymax = theta_hat_uci, color = pipe), width = 0.2) + 
+      geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
+      facet_grid(.~biosample_id) + theme_bw() +
+    labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
+    theme(legend.position = "bottom")
+```
+
+
+```{r}
+ggsave("~/Desktop/theta_estimates.png")
+```
+
+```{r}
+fit_df %>% filter(pipe == "dada2", biosample_id == "E01JH0038") %>% .$fit %>% map(summary)
+```
+
+
+```{r}
+fit_df %>% filter(pipe == "dada2", biosample_id == "E01JH0038") %>% .$fit %>% map(autoplot)
+```
+
+
