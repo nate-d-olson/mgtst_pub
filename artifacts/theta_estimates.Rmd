@@ -1,0 +1,108 @@
+---
+title: "Theta Estimate Results"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+  html_document: default
+---
+
+
+
+
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(tidyverse)
+library(modelr)
+```
+
+```{r loadData, warning=FALSE, message=FALSE, echo = FALSE}
+## Raw count data with pre and post negative binomial count proportions
+count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds") %>% 
+      mutate(count_post = post * total_abu, count_pre = pre * total_abu)
+
+
+## Excluding features with median EO metric of 1 or -1 and logFC between pre and post < 1
+## %%TODO%% replace with heuristic filter > 14 of the PCR replicates have observed counts, and only features with observed counts for unmixed samples.  
+good_eo <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) != 1)
+
+good_logfc <- readRDS("../data/pre_post_deseq_logFC.RDS") %>% 
+    filter(abs(log2FoldChange) > 1, pvalue < 0.05) 
+
+
+good_features <- good_eo %>% semi_join(good_logfc)
+
+count_nb_good <- count_nb %>% right_join(good_features)
+```
+
+Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
+The unmixed pre and post counts calculated using the weighted feature count proportion estimates and the total abundance for sample $j$.  
+
+$$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}$$  
+16S sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
+Generalized linear models provide an alternative to standard least-squares regression however, the above model is not valid in log-space. 
+To address this issue we fit the model using a standard least-squares regression then obtained non-parametric confidence intervals for the $\theta$ estimates by bootstraping with 1000 replicates.
+
+```{r fitModel, warning=FALSE, message=FALSE, echo = FALSE}
+count_boot <- count_nb_good %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5,10,15)),
+             theta = 2^-as.numeric(t_fctr)) %>% 
+    group_by(pipe, biosample_id, theta, t_fctr) %>% 
+    nest() %>% 
+    mutate(boot_dat = map(data, modelr::bootstrap, 1000)) #%>% 
+
+boot_fit <- count_boot %>% select(-data) %>% unnest() %>% 
+      mutate(fit = map(strap, ~lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = .)))
+
+boot_theta_hat <- boot_fit %>% mutate(theta_hat = map_dbl(fit, coef)) %>% 
+      select(-fit,-strap) %>% 
+      group_by(pipe, biosample_id, theta, t_fctr) %>% 
+      summarise(theta_hat_mean = mean(theta_hat),
+                theta_hat_lci = quantile(theta_hat, probs = 0.025),
+                theta_hat_uci = quantile(theta_hat, probs = 0.975))
+```
+
+
+Consistent deviation across pipeline and titration from the expected $\theta$ values indicates our assumptions regarding the composition of the mixtures are not valid (Fig. \@ref(fig:thetaHat)). 
+Our assumptions are that the DNA from the pre- and post-treatment samples were titrated following a log2 dilution series and that the pre- and post-treatment samples contained similar proportions of bacterial DNA. 
+The qPCR spike-in results indicate that the unmixed pre- and post-treatment samples were mixed volumetrically according to our expectations. 
+Based on the qPCR bacterial DNA concentration assays, the pre-treatment E01JH0038 sample had the lowest concentration of bacterial DNA between the five biological replicates and the bacterial DNA concentration was higher in the pre-treatment sample compared to the post-treatment sample for only E01JH0017 (`In mixing_and_validating_titrations` artifact).
+
+```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
+ggplot(boot_theta_hat) + 
+      geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
+      geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, ymax = theta_hat_uci, color = pipe), width = 0.2) + 
+      geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
+      facet_grid(.~biosample_id) + theme_bw() +
+    labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
+    theme(legend.position = "bottom")
+```
+
+# Session information 
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
