@@ -43,8 +43,9 @@ Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts f
 The unmixed pre and post counts calculated using the weighted feature count proportion estimates and the total abundance for sample $j$.  
 
 $$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}$$  
+
 16S sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
-Generalized linear models provide an alternative to standard least-squares regression however, the above model is not valid in log-space. 
+Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly estimate $\theta_j$ in log-space . 
 To address this issue we fit the model using a standard least-squares regression then obtained non-parametric confidence intervals for the $\theta$ estimates by bootstraping with 1000 replicates.
 
 ```{r fitModel, warning=FALSE, message=FALSE, echo = FALSE}
@@ -53,6 +54,7 @@ count_boot <- count_nb_good %>%
              theta = 2^-as.numeric(t_fctr)) %>% 
     group_by(pipe, biosample_id, theta, t_fctr) %>% 
     nest() %>% 
+ ## Check what is being bootstrapped - feature by PCR rep needs to be resampled
     mutate(boot_dat = map(data, modelr::bootstrap, 1000)) #%>% 
 
 boot_fit <- count_boot %>% select(-data) %>% unnest() %>% 
@@ -81,6 +83,48 @@ ggplot(boot_theta_hat) +
     labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
     theme(legend.position = "bottom")
 ```
+
+```{r}
+dat <- count_nb_good %>% filter(pipe == "mothur", biosample_id == "E01JH0016", t_fctr == 1) 
+dat
+lm(count ~ count_post + count_pre - 1, data = dat)
+```
+```{r}
+nested_count_df <- count_nb_good %>% 
+    group_by(pipe, biosample_id, t_fctr) %>% nest()
+```
+
+```{r}
+fit_df <- nested_count_df %>% 
+    mutate(fit = map(data, ~lm(count ~ -1 + count_post + count_pre, data = .)),
+        tidy = map(fit, broom::tidy))
+```
+
+
+```{r}
+tidy_fit_df <- fit_df %>% 
+      select(-data, -fit) %>% 
+      unnest() %>% 
+      select(pipe, biosample_id, t_fctr, term, estimate) %>% 
+      spread(term, estimate) %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5,10,15)),
+             theta_post = 2^-as.numeric(t_fctr),
+             theta_pre = 1- theta_post)
+```
+
+```{r}
+tidy_fit_df %>% 
+      ggplot() + 
+      geom_line(aes(x = theta_post, y = theta_pre)) +
+      geom_point(aes(x = count_post, 
+                                y = count_pre, 
+                                color = t_fctr)) +
+      facet_grid(pipe~biosample_id) +
+      theme_bw() + 
+      labs(x = "Theta", y = "1-Theta", color = "Titration") +
+      coord_fixed()
+```
+
 
 # Session information 
 
