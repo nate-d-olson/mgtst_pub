@@ -122,7 +122,7 @@ count_df <- mrexp %>% map_df(get_count_df, css = FALSE, .id = "pipe") %>%
       filter(biosample_id != "NTC") %>% 
       select(pipe, biosample_id, id, pcr_rep, feature_id, t_fctr, count) 
 
-count_df <- count_df %>% group_by(id) %>% mutate(total_abu = sum(count)) 
+count_df <- count_df %>% group_by(biosample_id, pipe, id) %>% mutate(total_abu = sum(count)) 
 
 
 eo_exp_count_df <- count_df %>% 
@@ -131,16 +131,16 @@ eo_exp_count_df <- count_df %>%
       calc_expected_count(count_df) %>% 
       calc_eo_metric()
 
-eo_exp_count_df %>% saveRDS("../data/nb_expected_eo_metric_feature_df.rds") 
+eo_exp_count_df %>% saveRDS("../data/nb_expected_eo_metric_feature_update_df.rds") 
 
 ``` 
 
 Sanity Check Plot - Relationship between the observed and expected values
 ```{r}
 eo_exp_count_df %>% ggplot() + 
-      geom_point(aes(x = count, y = exp_count)) +
+      geom_point(aes(x = count, y = exp_count, color = biosample_id)) +
       geom_smooth(aes(x = count, y = exp_count, color = biosample_id)) +
-      facet_wrap(~pipe, scales = "free") + theme_bw()
+      facet_wrap(biosample_id~pipe, scales = "free") + theme_bw()
 ```
 
 
