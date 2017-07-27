@@ -1,0 +1,181 @@
+---
+title: "Microbiome-Scale Mixture Use Demonstration"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+bibliography: [mgtst.bib, packages.bib]
+---
+
+<!-- 
+BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
+-->
+
+## Introduction
+16S metagenomics is a complex measurement process requiring a number of molecular laboratory and computation steps. 
+There are numerous sources of bias in the measurement process, wetlab includes PCR and sequencing, ect. and computational includes pre-processing the feature inference or clustering. 
+- Compositional nature of data 
+- Differences in clutering methods
+
+- Previous work characterizing the measurement process  
+      + Evaluate a measurement process you need a dataset with an expected value. 
+      + Mock communities consisting of mixtures of cells or DNA from individual organisms and simulated data have been previously used to evaluate different  aspects of the measurement process.
+      + Limitations to using mock communities and simulated data 
+      + Alternative using mixtures of environmental samples  
+
+- Using mixtures of unknown samples  
+      + Analytical chemistry history  
+      + Use in microarrays and RNAseq
+
+- Application to 16S  
+      + We generated a data set using mixtures of extracted DNA from human stool samples for assessing the 16S metagenomic measurement process. 
+      + Processed the resulting dataset with three bioinformatic pipelines
+microbiome scale quantitative and qualitative measurement assessment  
+      + Results indicate that the qualitative performance varied by bioinformatic pipeline whereas the quantitative performance varied by biological replicate. 
+
+## Methods  
++ Making the dataset
++ Validating/ Characterizing the dataset
++ Bioinformatic pipelines
+
+### Feature Presence/Absence Analysis 
+For the qualitative component of our measurement assessment we evaluated features only observed in either the unmixed pre- and post-exposure samples, unmixed-specific, or the titrations, titration-specific, for each biological replicate. 
+Features are unmixed- or titration-specific due to differences in sampling depth (number of sequences) between the unmixed samples and titrations or an artifact of the feature inference process. 
+We tested if sampling alone could explain feature specificity. For unmixed-specific features we used a Binomial test and for titration-specific features we used Monte-Carlo simulation and a Bayesian hypothesis test. 
+For both test p-values were adjusted for multiple comparisons using the Benjamini & Hochberg method [@benjamini1995controlling]. 
+
+To determine if sampling alone can explain unmixed-specific features the binomial test was used to test the following hypothesis;   
+
+$H_0$ - Given no observed counts and the total abundance for a titration the true proportion of a feature is equal to the expected proportion.   
+
+$H_1$ - Given no observed counts and the total abundance for a titration the true proportion of a feature is less than the expected proportion.   
+
+
+To test if titration-specific features could be explained by sampling alone we used Monte-Carlo simulation and a Bayesian hypothesis test. 
+For the simulation we assumed a binomial distribution given the observed total abundance and a uniform distribution of proportions, 0 to the minimum expected proportion. 
+The minimum expected proportion, $\pi_{min_{exp}}$, is calculated using the mixture equation ( __TODO__ Eq.1) and the minimum observed feature proportion for unmixed pre-exposure, $\pi_{min_{pre}}$, and post-exposure $\pi_{min_{post}}$ samples for each biological replicate and pipeline. 
+For features not present in unmixed samples the assumption is that the feature proportion is less than $\pi_{{min}_{exp}}$. 
+
+We formulated our null and alternative hypothesis for the Bayesian test as follows,  
+
+$H_0$ - Given the total abundance for a sample and minimum expected proportion the true proportion of a feature is __less than__ the minimum expected observed proportion.   
+$H_1$ - Given the total abundance for a sample and minimum expected proportion the true proportion of a feature is __greater than or equal to__ the minimum expected proportion.  
+
+The following equations were used to calculate the p-value for the Bayesian hypothesis test assuming equal priors, i.e. $P(\pi < \pi_{min_{exp}})=P(\pi \geq \pi_{min_{exp}})$.  
+
+$$p =P(\pi < \pi_{min_{exp}} | C \geq C_{obs}) = \frac{P(C \geq C_{obs}| \pi < \pi_{min_{exp}})P(\pi < \pi_{min_{exp}})}{P(C \geq C_{obs})}$$  
+
+$$P(C \geq C_{obs}) = P(C \geq C_{obs}| \pi < \pi_{min_{exp}})P(\pi < \pi_{min_{exp}}) + P(C \geq C_{obs}| \pi \geq \pi_{min_{exp}})P(\pi \geq \pi_{min_{exp}})$$ 
+
+__NOTE__ 
+Not sure this is appropriate due to the difference in the range of $\pi$ used for the null and alternative hypothetis. May also want to consider a different alternative hypothesis $\pi$ upper limit, potentially using the $\pi_{min_{pre}}$, and post treatment $\pi_{min_{post}}$ to calculate a more realistic upper limit._ 
+
+
+
+### Microbiome-Scale Theta Estimates
+Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
+The unmixed pre and post counts calculated using the weighted feature count proportion estimates and the total abundance for sample $j$.  
+
+$$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}$$  
+
+16S rRNA sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
+Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly estimate $\theta_j$ in log-space . 
+To address this issue we fit the model using a standard least-squares regression then obtained non-parametric confidence intervals for the $\theta$ estimates by bootstraping with 1000 replicates. 
+To limit the impact of uninformative and low abundance features a subset of features were used to estimate $\theta$ (Table \@ref(tab:thetaFeatures)). 
+Features used were biolgical replicate specific.
+To be included in the following analysis a feature was observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations) and greater than 1 log2 change between the unmixed pre and post samples.
+
+
+## Results
+### Titration Series Validation 
+In order to use information from the unmixed samples to obtain expected count values for the titrations we need to evaluate two assumptions about the mixed samples; 
+1. that the samples were mixed volumetrically in a log2 dilution series, 
+and 2. the unmixed pre and post exposure samples have the same proportion of bacterial DNA. 
+Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to expectations. 
+Total bacterial DNA in the unmixed samples was quantified using a qPCR assay targeting the 16S rRNA. 
+
+
+#### Spike-in qPCR results   
+
+```{r ercc, child="ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+#### Bacterial DNA Concentration 
+
+
+
+#### Dataset characteristics  
+- General summary statistics: number of reads per sample, read length, failed PCR/ bad samples 
+
+```{r seqChar, child="seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+### Bioinformatic Pipeline Characteristics
+
+```{r pipeChar, child="pipeline_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+### Measurement Assessment  
+Next we assessed the 16S rRNA measurement processing using our mixture dataset. 
+We evaluated the quanitative performance of the measurement method both at the microbiome scale and at the feature level.  
+Additionally we were interested in the qualitative performance of the measurement method. 
+
+#### Qualitative Assessment
+
+<!--
+Proportion of titration and endpoint specific features that could not be explained by sampling alone. 
+-->
+
+```{r qualAnalysis, child="qualitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+#### Quantitative Assessment
+
+<!--
+Relationship between theta estimates - biological replicates - and bioinformatic pipeline
+-->
+
+For our global measurement assessment we used our observed count values for the unmixed pre- and post-exposure samples to estimate the proportion of post-exposure sample in individual titrations. 
+
+```{r thetaEst, child="theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+## Discussion
+
+* Sample experimental design  
+* Pipeline characterization differences  
+* Why qualitative analysis is pipeline dependent?  
+      - What dependency means for 16S gene surveys  
+* Why quantitative analysis is biological replicate dependent?  
+      - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?S
+* Relationship between factors impacting quant and qual analysis  
+* How this dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.  
+
+## Conclusions
+
+# Session information 
+
+## Git repo commit information
+```{r}
+library(tidyverse)
+library(git2r)
+repo <- repository(path = ".")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name`  branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit  message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r session_info, warning=FALSE, message=FALSE, echo = FALSE}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>%
+      knitr::kable()
+```
