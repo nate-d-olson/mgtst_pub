@@ -1,43 +1,38 @@
 Next Steps
-* draft EO metric section
-      - test for EO metric by biosample and pipeline
-      - binomial test for proportion - 0 observed counts, and 0 expected counts 
-      
+==========
+
+* workout story  
+
+* outline discussion  
+
+* outline introduction  
+
+* qualitative analysis
+      - monte-carlo bayesian sampling analysis for mix and unmixed specific features, Use a monte-carlo distribution to look at EO metric values of -1, where the expected count values are 0. bayesian assume different prior between some value and 0 to get a likelihood, then test likelihood....
+
+* Revise feature selection for quantitative analysis  
+    - subset features with > log2 fold change between pre and post  
+    - MA plots by pipeline and biological replicate
+
 * draft theta:t_fctr bias and variance section 
       - model demonstration/ validation  
 
-* seq qa figure 
-      - merge into single figure    
-      
-* metric methods section  
-      - EO metric
-      - binomial test 
-            - EO -1  
+* PrePost Bias Variance results
+      - volcano plot - Mean est - cov est plot - faceted volcano plot, interested in deviation from 0 
+      - outlier features, specifically E. coli biological replicate 38, Want a wat to connect lines in estimate plot with feature level bias and variance 
+      - Correlate bias and variance metric with log2 fold-change  
 
-* phylogenetic signal analysis
-      - review literature
-      - phylogenetic trees
-      - phylogenetic analysis  
-
-* workout story  
-* outline discussion  
-* outline introduction  
-
-
-## Call follow-up
-* Use a monte-carlo distribution to look at EO metric values of -1, where the expected count values are 0.  
-      * bayesian assume different prior between some value and 0 to get a likelihood, then test likelihood....
-* Use a linear model to estimate theta for a titration 
-* Look into outlier features more, specifically E. coli biological replicate 38 
-* Mean est - cov est plot - faceted volcano plot, interested in deviation from 0  
-* Want a wat to connect lines in estimate plot with feature level bias and variance  
+* Submit data to SRA
 
 NOTES
 * Libraries no longer automatically loaded with project template - DESeq, DESeq2, edgeR, phyloseq, Rqc, savR, vegan, sads
 
 
 Note from chat with Hector
-look at est_div_theta as input proportion of the feature 
+look at est_div_theta as input proportion of the feature  
+
+
+
 use variance of estimates for comparison
 
 var b1/theta != var(b1)/theta^2
