@@ -9,11 +9,13 @@ output:
 ---
 
 ```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+library(Rqc)
 library(ProjectTemplate)
 cwd <- getwd()
 setwd("../")
 load.project()
 setwd(cwd)
+
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
