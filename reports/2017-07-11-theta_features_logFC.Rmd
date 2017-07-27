@@ -1,0 +1,400 @@
+---
+title: "Theta Estimate Features log fold change"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+__Look into edgeR for logFC calc__  
+__Calc logFC and take ratio - directly calculate logFC__
+__Change order for filtering features__ 
+
+
+```{r theta_logFC_setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(metagenomeSeq)
+library(tidyverse)
+library(stringr)
+library(modelr)
+```
+
+```{r loadData, warning=FALSE, message=FALSE, echo = FALSE}
+
+### ---- Good Features
+## Raw count data with pre and post negative binomial count proportions
+count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds") %>% 
+      mutate(count_post = post * total_abu, count_pre = pre * total_abu)
+
+
+## Excluding features with median EO metric of 1 or -1 and logFC between pre and post < 1
+## %%TODO%% replace with heuristic filter > 14 of the PCR replicates have observed counts, and only features with observed counts for unmixed samples.  
+good_eo <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) != 1)
+
+good_logfc <- readRDS("../data/pre_post_deseq_logFC.RDS") %>% 
+    filter(abs(log2FoldChange) > 1, pvalue < 0.05) 
+
+
+good_features <- good_eo %>% semi_join(good_logfc)
+
+count_nb_good <- count_nb %>% right_join(good_features)
+
+### logFC estimates
+# logFC_MgSeq <- readRDS("../data/logFC_MgSeq_df.rds")
+# logFC_edge <- readRDS("../data/logFC_edgeR_df.rds")
+
+## Only looking at biological replicate with best theta estimates
+# subset logFC with good features 
+```
+
+```{r}
+logFC_edge <- readRDS("../data/logFC_edgeR_df.rds")
+```
+
+```{r}
+logFC_edge %>% group_by(pipe, sampleID,OTUname) %>% 
+      summarise(mean_logFC = mean(logFC), var_logFC = var(logFC)) %>% 
+      ggplot() + geom_point(aes(x = mean_logFC, y = var_logFC))
+```
+
+```{r}
+logFC_edge %>% group_by(pipe, sampleID,OTUname) %>% 
+      summarise(mean_logFC = mean(logFC), var_logFC = var(logFC)) %>% 
+      filter(var_logFC == 0)
+```
+
+
+We used the theta estimate analysis to characterize pipeline quantitative performance on the microbiome-scale for a subset of features. 
+We want to evaluate pipeline quantitative performance on the feature-level. 
+To do this we compared the logFC difference between titrations for the subset of features used in the theta analysis for the biological replicate with theta estimates that were most consistent with our expectation.  
+Based on the experimental design features that are specific to the unmixed post-exposure samples the difference in logFC between sequential titrations is 1. 
+
+
+Need to figure out how to get post specific features. 
+
+```{r}
+post_features <- count_nb %>% ungroup() %>% 
+      filter(pre == 0) %>% select(pipe, biosample_id, feature_id, pre, post) %>% unique()
+```
+
+
+```{r}
+# good_logFC <- logFC_MgSeq %>% rename(biosample_id = sampleID) %>% 
+#       right_join(good_features) %>% #filter(!is.na(logFC)) %>% 
+#       right_join(post_features)
+good_logFC <- logFC_edge %>% 
+      rename(biosample_id = sampleID, feature_id = OTUname) %>%
+      mutate(feature_id = str_replace(feature_id, "Seq","SV")) %>% 
+      right_join(good_features) %>% #filter(!is.na(logFC)) %>%
+      right_join(post_features)
+
+```
+```{r}
+good_logFC11 <- good_logFC %>% 
+      filter(biosample_id == "E01JH0011") 
+```
+
+```{r}
+good_logFC11 %>% 
+      filter(T1 > 0, T2 != 0) %>% 
+      mutate(t_diff = abs(T1 - T2)) %>% 
+      ggplot() + geom_point(aes(x = t_diff, y = logFC)) + 
+      # geom_line(aes(x = t_diff, y = logFC, group = feature_id)) + 
+      facet_wrap(~pipe)
+```
+
+```{r}
+good_logFC %>% 
+      filter(T1 == 1, T2 == 2) %>% 
+      mutate(t_diff = abs(T1 - T2)) %>% 
+      ggplot() + geom_point(aes(x = pipe, y = logFC)) + facet_wrap(~biosample_id)
+```
+
+Excluding low abundance features
+```{r}
+post_summary <- count_nb_good %>% ungroup() %>% 
+      select(pipe, biosample_id,feature_id, pre, post) %>% 
+      unique() %>% filter(pre == 0) %>% group_by(pipe, biosample_id) %>% 
+      mutate(mean_post = mean(post),
+                med_post = median(post)) %>% 
+      filter(post > mean_post)
+```
+
+
+```{r}
+good_logFC %>% right_join(post_summary) %>% filter(!is.na(logFC)) %>% 
+      filter(T1 == 1, T2 == 2) %>%
+      mutate(t_diff = abs(T1 - T2)) %>%
+      ggplot() + geom_point(aes(x = pipe, y = logFC)) + facet_wrap(~biosample_id)
+```
+
+The lack of difference in the logFC between titrations is troublesome. Need to revisit code used to calculate logFC to see if there is a bug....
+```{r}
+good_features
+```
+
+```{r}
+logFC_edge
+```
+
+
+```{r}
+good_logFC %>% filter(!is.na(logFC))
+#%>% left_join(post_features) %>% select(pipe, biosample_id, )
+```
+
+
+```{r}
+count_prepost <- count_nb %>% ungroup() %>% 
+      select(pipe, biosample_id, post, pre)
+logFC_edge %>% 
+      rename(biosample_id = sampleID, feature_id = OTUname) %>%
+      mutate(feature_id = str_replace(feature_id, "Seq","SV")) %>% 
+      select(pipe, biosample_id, T1, T2, feature_id, logFC, PValue) %>% 
+      left_join(count_prepost)
+      
+```
+
+Issue logFC results are not close to expectation with difference if 1 between subsequent titrtations. 
+* Two approaches to validate methods 
+1. Generate simulated count data to validate code 
+2. Look at results for a subset of samples - one biological replicate and two titrations.
+
+### logFC for Mothur  Biosample ID E01JH0011
+E01JH0011 had the theta estimates that were in the best agreement with the expected theta values. 
+
+Looking at logFC between the unmixed post-exposure sample and the first titration. 
+```{r}
+mothur_mrexp <- readRDS("../../mgtst_pipelines/mothur/mothur_mrexp.rds")
+
+## Only looking at 
+mothur_11 <- mothur_mrexp[,which(pData(mothur_mrexp)$biosample_id == "E01JH0011")]
+mothur_11 <- mothur_11[,which(pData(mothur_11)$titration %in% c(20,1))]
+mothur_11 <- mothur_11[rowSums(mothur_11) > 0,]
+mothur_11 <- filterData(mothur_11, present = 8, depth = 1)
+mothur_11 <- cumNorm(mothur_11, p = 0.75)
+pd <- pData(mothur_11)
+mod <- model.matrix(~1 + t_fctr, data = pd)
+mothur_res1 <- fitFeatureModel(mothur_11, mod)
+mothur_logFC <- MRcoefs(mothur_res1, number = 195) %>% as.data.frame() %>% 
+      rownames_to_column(var = "feature_id")
+mothur_prepost <- count_nb %>% ungroup() %>% 
+      filter(pipe == "mothur", biosample_id == "E01JH0011") %>%
+      select(feature_id, pre, post) %>% unique()
+mothur_logFC <- mothur_logFC %>% 
+      left_join(mothur_prepost) %>% #filter(!is.na(post)) %>% 
+      mutate(feat_spec = case_when(.$pre != 0 & .$post != 0 ~ "non",
+                                   .$pre == 0 & .$post != 0 ~ "post",
+                                   .$post ==0 & .$pre != 0 ~ "pre"))
+```
+
+```{r}
+mothur_logFC %>% ggplot() + 
+      geom_histogram(aes(x = logFC, fill = feat_spec)) + 
+      geom_vline(aes(xintercept = 1)) +
+      geom_vline(aes(xintercept = -1)) +
+      theme_bw()
+```
+
+Looking for a feature abundance effect
+```{r}
+mothur_logFC %>% 
+      ggplot() + 
+      geom_density2d(aes(x = post*100000, y = logFC, color = feat_spec)) +
+      geom_point(aes(x = post*100000, y = logFC, color = feat_spec)) + 
+      scale_x_log10() + facet_wrap(~feat_spec)
+``` 
+
+
+The expected behavior is not observed for most features
+* check e. coli
+
+```{r}
+# mothur_mrexp <- readRDS("../../mgtst_pipelines/mothur/mothur_mrexp.rds")
+
+## Only looking at 
+mothur_11 <- mothur_mrexp[,which(pData(mothur_mrexp)$biosample_id == "E01JH0011")]
+mothur_11 <- mothur_11[,which(pData(mothur_11)$titration %in% c(0,1))]
+mothur_11 <- mothur_11[rowSums(mothur_11) > 0,]
+mothur_11 <- filterData(mothur_11, present = 8, depth = 1)
+mothur_11 <- cumNorm(mothur_11, p = 0.75)
+pd <- pData(mothur_11)
+mod <- model.matrix(~1 + t_fctr, data = pd)
+mothur_res1 <- fitFeatureModel(mothur_11, mod)
+mothur_logFC <- MRcoefs(mothur_res1, number = 195) %>% as.data.frame() %>% 
+      rownames_to_column(var = "feature_id")
+mothur_prepost <- count_nb %>% ungroup() %>% 
+      filter(pipe == "mothur", biosample_id == "E01JH0011") %>%
+      select(feature_id, pre, post) %>% unique()
+mothur_logFC <- mothur_logFC %>% 
+      left_join(mothur_prepost) %>% #filter(!is.na(post)) %>% 
+      mutate(feat_spec = case_when(.$pre != 0 & .$post != 0 ~ "non",
+                                   .$pre == 0 & .$post != 0 ~ "post",
+                                   .$post ==0 & .$pre != 0 ~ "pre"))
+            # post_feat = if_else(pre == 0, "Post","Not-Post"))
+```
+
+```{r}
+mothur_logFC %>% ggplot() + 
+      geom_histogram(aes(x = logFC, fill = feat_spec)) + 
+      geom_vline(aes(xintercept = 1)) +
+      geom_vline(aes(xintercept = -1)) +
+      theme_bw()
+```
+
+Looking for a feature abundance effect
+```{r}
+mothur_logFC %>% 
+      ggplot() + 
+      geom_density2d(aes(x = pre*100000, y = logFC, color = feat_spec)) +
+      geom_point(aes(x = pre*100000, y = logFC, color = feat_spec)) + 
+      scale_x_log10() + facet_wrap(~feat_spec)
+``` 
+
+
+```{r}
+# mothur_mrexp <- readRDS("../../mgtst_pipelines/mothur/mothur_mrexp.rds")
+
+## Only looking at 
+mothur_11 <- mothur_mrexp[,which(pData(mothur_mrexp)$biosample_id == "E01JH0011")]
+mothur_11 <- mothur_11[,which(pData(mothur_11)$titration %in% c(1,2))]
+#mothur_11 <- mothur_11[rowSums(mothur_11) > 0,]
+mothur_11 <- cumNorm(mothur_11, p = 0.75)
+mothur_11 <- filterData(mothur_11, present = 8, depth = 10)
+pd <- pData(mothur_11)
+mod <- model.matrix(~1 + t_fctr, data = pd)
+mothur_res1 <- fitFeatureModel(mothur_11, mod)
+mothur_logFC <- MRcoefs(mothur_res1, number = 1000000) %>% 
+      as.data.frame() %>% 
+      rownames_to_column(var = "feature_id")
+mothur_prepost <- count_nb %>% ungroup() %>% 
+      filter(pipe == "mothur", biosample_id == "E01JH0011") %>%
+      select(feature_id, pre, post) %>% unique()
+mothur_logFC <- mothur_logFC %>% 
+      #left_join(mothur_prepost) %>% #filter(!is.na(post)) %>% 
+      mutate(feat_spec = case_when(.$pre == 0 & .$post == 0 ~ "mix",
+                                   .$pre != 0 & .$post != 0 ~ "non",
+                                   .$pre == 0 & .$post != 0 ~ "post",
+                                   .$post ==0 & .$pre != 0 ~ "pre"))
+            # post_feat = if_else(pre == 0, "Post","Not-Post"))
+```
+```{r}
+rm(mothur_logFC)
+```
+
+
+```{r}
+mothur_logFC %>% ggplot() + 
+      geom_histogram(aes(x = logFC)) + 
+      geom_vline(aes(xintercept = 1)) +
+      geom_vline(aes(xintercept = -1)) +
+      theme_bw()# +
+      #facet_wrap(~feat_spec)
+```
+
+Looking for a feature abundance effect
+```{r}
+mothur_logFC %>% 
+      ggplot() + 
+      geom_density2d(aes(x = pre*100000, y = logFC, color = feat_spec)) +
+      geom_point(aes(x = pre*100000, y = logFC, color = feat_spec)) + 
+      scale_x_log10() + facet_wrap(~feat_spec)
+``` 
+
+```{r}
+mothur_logFC %>% 
+      ggplot() + 
+      geom_density2d(aes(x = post*100000, y = logFC, color = feat_spec)) +
+      geom_point(aes(x = post*100000, y = logFC, color = feat_spec)) + 
+      scale_x_log10() + facet_wrap(~feat_spec)
+```
+
+## logFC DADA2
+```{r}
+dada_mrexp <- readRDS("../../mgtst_pipelines/dada2/dada_mrexp.rds")
+
+## Only looking at 
+dada_11 <- dada_mrexp[,which(pData(dada_mrexp)$biosample_id == "E01JH0011")]
+dada_11 <- dada_11[,which(pData(dada_11)$titration %in% c(20,1))]
+dada_11 <- dada_11[rowSums(dada_11) > 0,]
+dada_11 <- filterData(dada_11, present = 8, depth = 1)
+dada_11 <- cumNorm(dada_11, p = 0.75)
+pd <- pData(dada_11)
+mod <- model.matrix(~1 + t_fctr, data = pd)
+dada_res1 <- fitFeatureModel(dada_11, mod)
+dada_logFC <- MRcoefs(dada_res1, number = 10000) %>% as.data.frame() %>% 
+      rownames_to_column(var = "feature_id")
+dada_prepost <- count_nb %>% ungroup() %>% 
+      filter(pipe == "dada2", biosample_id == "E01JH0011") %>%
+      select(feature_id, pre, post) %>% unique()
+dada_logFC <- dada_logFC %>% 
+      left_join(dada_prepost) %>% #filter(!is.na(post)) %>% 
+      mutate(feat_spec = case_when(.$pre != 0 & .$post != 0 ~ "non",
+                                   .$pre == 0 & .$post != 0 ~ "post",
+                                   .$post ==0 & .$pre != 0 ~ "pre"))
+```
+
+
+```{r}
+dada_logFC %>% ggplot() + 
+      geom_histogram(aes(x = logFC, fill = feat_spec)) + 
+      geom_vline(aes(xintercept = 1)) +
+      geom_vline(aes(xintercept = -1)) +
+      theme_bw()
+```
+
+Looking for a feature abundance effect
+```{r}
+dada_logFC %>% 
+      ggplot() + 
+      #geom_density2d(aes(x = post*100000, y = logFC, color = feat_spec)) +
+      geom_point(aes(x = post*100000, y = logFC, color = feat_spec)) + 
+      scale_x_log10() + facet_wrap(~feat_spec)
+``` 
+
+
+## logFC QIIME
+```{r}
+dada_mrexp <- readRDS("../../mgtst_pipelines/qiime/qiime_mrexp.rds")
+
+## Only looking at 
+dada_11 <- dada_mrexp[,which(pData(dada_mrexp)$biosample_id == "E01JH0011")]
+dada_11 <- dada_11[,which(pData(dada_11)$titration %in% c(20,1))]
+dada_11 <- dada_11[rowSums(dada_11) > 0,]
+dada_11 <- filterData(dada_11, present = 8, depth = 1)
+dada_11 <- cumNorm(dada_11, p = 0.75)
+pd <- pData(dada_11)
+mod <- model.matrix(~1 + t_fctr, data = pd)
+dada_res1 <- fitFeatureModel(dada_11, mod)
+dada_logFC <- MRcoefs(dada_res1, number = 100000) %>% as.data.frame() %>% 
+      rownames_to_column(var = "feature_id")
+dada_prepost <- count_nb %>% ungroup() %>% 
+      filter(pipe == "qiime", biosample_id == "E01JH0011") %>%
+      select(feature_id, pre, post) %>% unique()
+dada_logFC <- dada_logFC %>% 
+      left_join(dada_prepost) %>% #filter(!is.na(post)) %>% 
+      mutate(feat_spec = case_when(.$pre != 0 & .$post != 0 ~ "non",
+                                   .$pre == 0 & .$post != 0 ~ "post",
+                                   .$post ==0 & .$pre != 0 ~ "pre"))
+```
+
+
+```{r}
+dada_logFC %>% ggplot() + 
+      geom_histogram(aes(x = logFC, fill = feat_spec)) + 
+      geom_vline(aes(xintercept = 1)) +
+      geom_vline(aes(xintercept = -1)) +
+      theme_bw()
+```
+
+Looking for a feature abundance effect
+```{r}
+dada_logFC %>% 
+      ggplot() + 
+      #geom_density2d(aes(x = post*100000, y = logFC, color = feat_spec)) +
+      geom_point(aes(x = post*100000, y = logFC, color = feat_spec)) + 
+      scale_x_log10() + facet_wrap(~feat_spec)
+``` 

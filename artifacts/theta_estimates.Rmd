@@ -5,12 +5,7 @@ date: '`r Sys.Date()`'
 output:
   bookdown::pdf_document2: 
     toc: FALSE
-  html_document: default
 ---
-
-
-
-
 
 ```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 

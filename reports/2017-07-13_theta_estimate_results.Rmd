@@ -1,0 +1,286 @@
+---
+title: "Microbiome Scale Theta Estimate Results"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+```{r theta_setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(tidyverse)
+library(stringr)
+library(modelr)
+```
+
+```{r loadData, warning=FALSE, message=FALSE, echo = FALSE}
+## Raw count data with pre and post negative binomial count proportions
+count_nb <- readRDS("data/nb_expected_eo_metric_feature_df.rds") %>% 
+      mutate(count_post = post * total_abu, count_pre = pre * total_abu)
+
+
+## Excluding features with median EO metric of 1 or -1 and logFC between pre and post < 1
+## %%TODO%% replace with heuristic filter > 14 of the PCR replicates have observed counts, and only features with observed counts for unmixed samples.  
+good_eo <- count_nb %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(med_eo = median(eo_metric)) %>% 
+      filter(abs(med_eo) != 1)
+
+good_logfc <- readRDS("data/pre_post_deseq_logFC.RDS") %>% 
+    filter(abs(log2FoldChange) > 1, pvalue < 0.05) 
+
+
+good_features <- good_eo %>% semi_join(good_logfc)
+
+count_nb_good <- count_nb %>% right_join(good_features)
+```
+
+Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
+The unmixed pre and post counts calculated using the weighted feature count proportion estimates and the total abundance for sample $j$.  
+
+$$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}$$  
+
+16S sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
+Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly estimate $\theta_j$ in log-space . 
+To address this issue we fit the model using a standard least-squares regression then obtained non-parametric confidence intervals for the $\theta$ estimates by bootstraping with 1000 replicates.
+
+A subset of features were used for this analysis (Table \@ref(tab:thetaFeatures)). 
+Features used were biolgical replicate specific.
+To be included in the following analysis a feature was observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations) and greater than 1 log2 change between the unmixed pre and post samples.
+
+```{r thetaFeatures, warning=FALSE, message=FALSE, echo = FALSE}
+count_nb_good %>% ungroup() %>% 
+      select(pipe, biosample_id, feature_id) %>% unique() %>% 
+      group_by(pipe, biosample_id) %>% summarise(count = n()) %>% 
+      spread(biosample_id, count) %>% 
+      knitr::kable(booktab = TRUE, caption = "Number of features used to estimate theta by biological replicate and pipeline.")
+```
+
+
+```{r fitModel, warning=FALSE, message=FALSE, echo = FALSE}
+## Initial bootstrap code
+# count_boot <- count_nb_good %>% 
+#       mutate(t_fctr = factor(t_fctr, levels = c(1:5,10,15)),
+#              theta = 2^-as.numeric(t_fctr)) %>% 
+#     group_by(pipe, biosample_id, theta, t_fctr) %>% 
+#     nest() %>% 
+#  ## Check what is being bootstrapped - feature by PCR rep needs to be resampled
+#     mutate(boot_dat = map(data, modelr::bootstrap, 1000)) #%>% 
+# 
+# boot_fit <- count_boot %>% select(-data) %>% unnest() %>% 
+#       mutate(fit = map(strap, ~lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = .)))
+# 
+# boot_theta_hat <- boot_fit %>% mutate(theta_hat = map_dbl(fit, coef)) %>% 
+#       select(-fit,-strap) %>% 
+#       group_by(pipe, biosample_id, theta, t_fctr) %>% 
+#       summarise(theta_hat_mean = mean(theta_hat),
+#                 theta_hat_lci = quantile(theta_hat, probs = 0.025),
+#                 theta_hat_uci = quantile(theta_hat, probs = 0.975),
+#                 theta_var = var(theta_hat)) %>% 
+#       mutate(theta_bias = theta_hat_mean - theta)
+
+count_boot <- count_nb_good %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5,10,15)),
+             theta = 2^-as.numeric(t_fctr),
+             pcr_rep = paste0("pcr_",str_replace(pcr_rep, ":", "_"))) %>% 
+      ungroup() %>% 
+      select(pipe, biosample_id, theta, t_fctr, feature_id, pcr_rep, count, count_post, count_pre, total_abu) %>% 
+      gather("count_type","count_val", -pipe, -biosample_id, -theta, -t_fctr, -feature_id, -pcr_rep) %>% 
+      mutate(pcr_count = paste(pcr_rep, count_type, sep = "::")) %>%
+      select(-pcr_rep, -count_type) %>% 
+      spread(pcr_count, count_val) %>%
+      group_by(pipe, biosample_id, theta, t_fctr) %>%
+      nest() %>%
+      mutate(boot_dat = map(data, modelr::bootstrap, 1000))
+
+munge_strap <- function(data){
+      data %>% as.data.frame() %>% 
+            add_column(boot_id = 1:nrow(.)) %>% 
+            gather("pcr_count","count_val", -boot_id, -feature_id) %>% 
+            separate(pcr_count, c("pcr_rep","count_type"), sep = "::") %>% 
+            spread(count_type, count_val)
+}
+
+boot_fit <- count_boot %>% select(-data) %>% unnest() %>% 
+      mutate(strap_pcr = map(strap, munge_strap)) %>% 
+      # mutate(fit = map(strap_pcr, ~lm(count ~ -1 + I(count_post - count_pre), offset = count_pre, data = .))) %>%
+      ## VOOM version - fit model error versus mean 
+      ## use residuals vs. mean and estimate smooth function 
+      # use function as weight sigma vs. mean plot 
+      mutate(fit = map(strap_pcr, ~lm(count ~ -1 + I(count_post - count_pre),
+                                      # weights = total_abu, 
+                                      offset = count_pre, data = .)))
+
+
+## For non-weighted analysis
+# boot_feat_theta_hat <- boot_feat %>% mutate(theta_hat = map_dbl(fit, coef)) %>% 
+#       select(-fit,-strap) %>% 
+#       group_by(pipe, biosample_id, theta, t_fctr) %>% 
+#       summarise(theta_hat_mean = mean(theta_hat),
+#                 theta_hat_lci = quantile(theta_hat, probs = 0.025),
+#                 theta_hat_uci = quantile(theta_hat, probs = 0.975),
+#                 theta_var = var(theta_hat)) %>% 
+#       mutate(theta_bias = theta_hat_mean - theta)
+# 
+# ggplot(boot_feat_theta_hat) + 
+#       geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
+#       geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, ymax = theta_hat_uci, color = pipe), width = 0.2) + 
+#       geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
+#       facet_grid(.~biosample_id) + theme_bw() +
+#     labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
+#     theme(legend.position = "bottom")
+
+boot_theta_hat <- boot_fit %>% 
+      mutate(theta_hat = map_dbl(fit, coef)) %>% 
+      select(-fit,-strap) %>% 
+      group_by(pipe, biosample_id, theta, t_fctr) %>% 
+      summarise(theta_hat_mean = mean(theta_hat),
+                theta_hat_lci = quantile(theta_hat, probs = 0.025),
+                theta_hat_uci = quantile(theta_hat, probs = 0.975),
+                theta_var = var(theta_hat)) %>% 
+      mutate(theta_bias = theta_hat_mean - theta)
+# ggplot(boot_featw_theta_hat) + 
+#       geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
+#       geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, ymax = theta_hat_uci, color = pipe), width = 0.2) + 
+#       geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
+#       facet_grid(.~biosample_id) + theme_bw() +
+#     labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
+#     theme(legend.position = "bottom")
+```
+
+
+
+Consistent deviation across pipeline and titration from the expected $\theta$ values indicates our assumptions regarding the composition of the mixtures are not valid (Fig. \@ref(fig:thetaHat)). 
+Our assumptions are that the DNA from the pre- and post-treatment samples were titrated following a log2 dilution series and that the pre- and post-treatment samples contained similar proportions of bacterial DNA. 
+The qPCR spike-in results indicate that the unmixed pre- and post-treatment samples were mixed volumetrically according to our expectations. 
+Based on the qPCR bacterial DNA concentration assays, the pre-treatment E01JH0038 sample had the lowest concentration of bacterial DNA between the five biological replicates and the bacterial DNA concentration was higher in the pre-treatment sample compared to the post-treatment sample for only E01JH0017 (Fig __qPCR Bacterial Concentration__).
+
+```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
+ggplot(boot_theta_hat) + 
+      geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
+      geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, ymax = theta_hat_uci, color = pipe), width = 0.2) + 
+      geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
+      facet_grid(biosample_id~pipe, scale = "free_y") + theme_bw() +
+    labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
+    theme(legend.position = "bottom")
+```
+
+
+## Microbiome-Scale Theta Estimate Bias-Variance Plot
+__Replot with just data points__
+No consistent difference in the bias-variance for the theta estimates between pipelines. 
+Maybe use a mixed effect model to tease apart pipeline and biological replicate effects. 
+
+```{r}
+ggplot(boot_theta_hat) + geom_boxplot(aes(x = biosample_id, y = theta_var, color = pipe)) + theme_bw()
+```
+
+```{r}
+ggplot(boot_theta_hat) + geom_boxplot(aes(x = biosample_id, y = abs(theta_bias), color = pipe)) + theme_bw()
+```
+
+Looking at normalized bias-variance. Normalized bias is presented as error = (theta_hat - theta)/theta, normalized variance is the coefficient of variation for the theta variance estimate = theta_var/mean(theta_hat).
+
+```{r}
+ggplot(boot_theta_hat) + 
+      geom_boxplot(aes(x = biosample_id, y= abs(theta_bias)/theta, color = pipe))
+```
+
+```{r}
+boot_theta_hat %>% mutate(theta_cov = theta_var/abs(theta_hat_mean)) %>% 
+ggplot() + 
+      geom_boxplot(aes(x = pipe, y= theta_cov, color = pipe))
+```
+
+Vooming in on theta COV values less than 0.25.
+```{r}
+boot_theta_hat %>% mutate(theta_cov = theta_var/abs(theta_hat_mean)) %>% 
+ggplot() + 
+      geom_boxplot(aes(x = pipe, y= theta_cov, color = pipe)) +
+      ylim(0,0.25)
+```
+
+
+## Feature-level Theta Estimates 
+__Fit model to get estimate across replicates - using a constrained linear model, e.g. Beta positive, use some version of log or ... of total abundance as offset__
+To evaluate the internal consistency of the observed counts for a titration and the titration end-points we calculated theta at the feature level. 
+
+Theta was estimated using the following equation:
+$$\theta_j = \frac{C_{obs_j} - C_{pre_j}}{C_{post_j} - C_{pre_j}}$$ 
+```{r}
+feat_theta <- count_nb_good %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5,10,15)),
+             theta = 2^-as.numeric(t_fctr)) %>% 
+      mutate(theta_hat = (count - count_pre)/(count_post - count_pre))
+```
+
+For all three bioinformatic pipelines their was a wide distribution of theta estimates, with DADA2 having the narrowest range of feature-level theta estimates.  
+```{r}
+feat_theta %>% 
+      ggplot() + geom_histogram(aes(x = theta_hat)) + 
+      facet_wrap(~pipe, scales = "free_x") + 
+      scale_y_log10()
+```
+
+Taking the median theta estimates for the four PCR replicates removes some but not all of the extreme theta estimates.
+```{r}
+feat_theta_med <- feat_theta %>% 
+      group_by(pipe, biosample_id, feature_id, t_fctr, theta) %>% 
+      summarise(theta_med = median(theta_hat),
+                count_med = median(count),
+                count_pre_med = median(count_pre),
+                count_post_med = median(count_post))
+
+feat_theta_med %>% 
+      ggplot() + geom_histogram(aes(x = theta_med)) + 
+      facet_wrap(~pipe, scales = "free_x") + 
+      scale_y_log10()
+```
+
+A majority of the theta estimates were outside the expected range (0, 1). 
+```{r}
+feat_theta %>% mutate(outlier_est = if_else(theta_hat <= 1 & theta_hat >= 0, "outlier","reasonable")) %>% 
+      ggplot() + geom_bar(aes(x = pipe, fill = outlier_est), position = "fill")
+```
+
+Observed counts and weighted proportion of a feature for unmixed pre and post samples can be attributed to more extreme theta estimates. 
+ 
+```{r}
+feat_theta %>% ggplot() + 
+      geom_point(aes(x = count, y = theta_hat, color = biosample_id)) + scale_x_log10() + 
+      facet_wrap(~pipe, scales = "free_y")
+```
+
+However, extreme theta estimates were observed for counts > 10 for the mixed sample and the titration end-points (weighted feature proportion * total abundance for sample of interest).
+
+```{r}
+feat_theta %>% filter(count > 10, count_pre > 10, count_post > 10) %>% 
+      ggplot() + geom_histogram(aes(x = theta_hat)) + facet_wrap(~pipe) + scale_y_log10()
+```
+
+
+Excluding biological replicate 4 for features with theta estimates within the expected range the distribution of theta estimates is similar to the microbiome-scale theta estimates. 
+
+```{r}
+feat_theta %>% filter(theta_hat <= 1 & theta_hat >= 0) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = t_fctr, y = theta_hat)) +
+      geom_line(aes(x = as.numeric(t_fctr), y =  theta), color = "darkorange") + 
+      facet_grid(biosample_id~pipe)
+```
+
+Using median (of four PCR replicates) theta estimates. 
+```{r}
+feat_theta_med %>% filter(theta_med <= 1 & theta_med >= 0) %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = t_fctr, y = theta_med)) +
+      geom_line(aes(x = as.numeric(t_fctr), y =  theta), color = "darkorange") + 
+      facet_grid(biosample_id~pipe)
+```
+
+
+
+### Revisiting logFC
+
+
+

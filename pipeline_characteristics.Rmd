@@ -1,0 +1,129 @@
+---
+title: "Bioinformatic Pipeline Characterization Results"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+      bookdown::pdf_document2: 
+      toc: FALSE
+--- 
+
+```{r pipe_setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(ProjectTemplate)
+load.project()
+library(Rqc)
+```
+
+```{r bioPipeQA, echo = FALSE}
+pipeline_dir <- "../mgtst_pipelines"
+mrexp_files <- list(
+      dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_mrexp.rds")
+)
+mrexp <- mrexp_files %>% map(readRDS)  
+
+## Loading seq count data
+fastq_dir <- file.path(pipeline_dir, "data")
+dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
+                        recursive = TRUE, full.names = TRUE)
+seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
+      grep(pattern = "fastq.gz", .,value = TRUE) %>%
+      str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
+      str_replace("-",".")
+names(dat_files) <- seq_ds_id 
+
+# from script but not saved
+read_groups <- rep(NA,length(dat_files))
+read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
+read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
+read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
+read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
+
+qa_list <- readRDS("data/rqcQA_list.rds") 
+
+## Run 
+grp_df <- data_frame(read_group = read_groups, 
+                     seq_ds_id, 
+                     filename = basename(dat_files)) %>%
+      separate(read_group,c("plate","Read")) %>% 
+      mutate(ill_id = str_replace(filename, "_.*",""))
+
+## read count data 
+qa_file_info <- perFileInformation(qa_list) %>% 
+      select(-format,-path) %>% 
+      mutate(filename = as.character(filename))
+
+## study metadata
+meta_df <- sampleSheet %>% 
+      mutate(pos_ns = str_replace(pos, "_",""),
+             ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
+      filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
+      mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
+      left_join(grp_df) %>% 
+      left_join(qa_file_info) 
+
+##### Count table characteristics
+## number of OTUs
+features <- mrexp %>% map_dbl(NROW)
+
+## spareseness
+extract_samples <- function(mrobj){
+      sam_names <- pData(mrobj) %>% rownames_to_column() %>% 
+            filter(biosample_id != "NTC") %>% .$rowname
+      mrobj[,colnames(mrobj) %in% sam_names]
+}
+
+calc_sparsity <- function(mat){
+      nentry <- length(mat)
+      nzero <- sum(mat == 0)
+      ## calculate sparsity 
+      nzero/nentry
+}
+
+sparsity <- mrexp %>% map(extract_samples) %>% map(MRcounts, sl = 1) %>% map_dbl(calc_sparsity)   
+
+## Read loss / Filter rate 
+count_df <- mrexp %>% map(extract_samples) %>% 
+      map(MRcounts,sl = 1) %>% 
+      map(colSums) %>% map(as.data.frame) %>% 
+      map_df(rownames_to_column, var = "id", .id = "pipe") %>% 
+      dplyr::rename(counts = `.x[[i]]`)
+
+count_summary <- count_df %>% group_by(pipe) %>% 
+      summarise(count_med = median(counts) %>% round(0),
+                count_min = min(counts) %>% round(0),
+                count_max = max(counts) %>% round(0)) %>% 
+      mutate(`Sample Coverage` = paste0(count_med, " (", count_min, "-", count_max,")")) %>% 
+      select(pipe, `Sample Coverage`)
+
+reads_df <- meta_df %>% filter(Read == "R1") %>% 
+      select(ill_id, reads, group) %>% dplyr::rename(id = ill_id) 
+
+filter_rate_df <- count_df %>% left_join(reads_df) %>%
+      mutate(filter_rate = 1 - counts/reads) 
+
+filter_rate_summary <- filter_rate_df %>% group_by(pipe) %>% 
+      summarise(filt_med = median(filter_rate) %>% round(2),
+                filt_min = min(filter_rate) %>% round(2),
+                filt_max = max(filter_rate) %>% round(2)) %>% 
+      mutate(`Filter Rate` = paste0(filt_med, " (", filt_min, "-", filt_max,")")) %>% 
+      select(pipe, `Filter Rate`)
+```
+
+The sequencing dataset was processed using three bioinformatic pipelines. 
+The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA)).
+The expectation is that this mixture dataset will be more sparse relative to other datasets due to the redundant nature of the samples where 35 of the 45 samples are derived directly from the other 10 samples and that there are four PCR replicates for each sample. 
+Sparsity was lower for De-novo clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
+Different pipelines have different approaches for handling low quality reads. 
+See individual pipeline reports for which steps reads are excluded from the datasets. 
+QIIME pipeline has the highest filter rate while the highest number of features per sample. 
+
+```{r pipeQA, echo = FALSE, message = FALSE, warning = FALSE}
+data_frame(pipe = names(mrexp), 
+           Features = features, 
+           Sparsity = round(sparsity,2)) %>% 
+      left_join(count_summary) %>% left_join(filter_rate_summary) %>% 
+      dplyr::rename(Pipelines = pipe) %>% 
+      knitr::kable(caption = "Summary statistics for the different bioinformatic pipeliens. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total feature abundance. Filter rate is the proportion of reads that were removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
+```

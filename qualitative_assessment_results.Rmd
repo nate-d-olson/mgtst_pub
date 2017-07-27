@@ -1,0 +1,335 @@
+---
+title: "Microbiome Scale Qualitative Assessment Results"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+bibliography: [mgtst.bib, packages.bib]
+---
+
+```{r qual_setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+feature_exp_df <- readRDS("data/nb_expected_eo_metric_feature_df.rds") 
+```
+
+
+There are a number of unmixed- and titration-specific features with a range of count values, expected counts for unmixed specific features and observed count values for titration-specific features (Fig. \@ref(fig:mixUnmixSpecific)).
+
+```{r mixUnmixSpecific, fig.cap = "Distribution of observed count values for titration-specific features and expected count values for unmixed-specific features. The horizontal dashed line indicates a count value of 1.", echo = FALSE, message = FALSE}
+feature_exp_df %>% 
+    filter(count == 0 | exp_count == 0) %>% 
+    mutate(feat_spec = if_else(count == 0 & exp_count != 0, "Unmixed-Specific","Titration-Specific")) %>% 
+    mutate(plot_count = if_else(count == 0 & exp_count != 0,exp_count,count)) %>% 
+      ggplot() +
+      geom_boxplot(aes(x = pipe, y = plot_count + 1, fill = biosample_id, color = biosample_id), alpha = 0.25) + 
+      geom_hline(aes(yintercept = 1 + 1), linetype = 2) + 
+      scale_y_log10() + theme_bw() + 
+      labs(x = "Pipeline", y = "Count Values", 
+           fill = "Biological Replicate", color = "Biological Replicate") +
+      facet_wrap(~feat_spec) + 
+      theme(legend.position = "bottom")
+``` 
+
+```{r}
+feature_spec_df <- feature_exp_df %>% 
+      ungroup() %>% 
+      filter(count != 0 | exp_count != 0) %>% 
+      mutate(feat_spec = case_when(
+            .$count != 0 & .$exp_count != 0 ~ "Expected Behavior",
+            .$count == 0 & .$exp_count != 0 ~ "Unmixed-Specific",
+            .$count != 0 & .$exp_count == 0 ~ "Titration-Specific"))
+feature_spec_prop <- feature_spec_df %>% 
+      group_by(pipe, biosample_id) %>% 
+      mutate(total_feat = n()) %>% 
+      group_by(pipe, biosample_id, feat_spec) %>% 
+      summarise(feat_prop = n()/median(total_feat)) 
+
+feature_spec_prop %>% ungroup() %>% 
+      mutate(pipe = factor(pipe)) %>% 
+      ggplot() + 
+      geom_point(aes(x = pipe, y = feat_prop, color = biosample_id)) + 
+      geom_line(aes(x = as.numeric(pipe), y = feat_prop, color = biosample_id)) +
+      facet_wrap(~feat_spec, ncol = 1) + theme_bw() + 
+      labs(x = "Bioinformatic Pipeline", y = "Proportion of Features")
+```
+
+```{r}
+feature_spec_prop %>% ggplot() + 
+      geom_point(aes(x = pipe, y = feat_prop, color = biosample_id)) + 
+      facet_wrap(~feat_spec, ncol = 1) + theme_bw() + 
+      labs(x = "Bioinformatic Pipeline", y = "Proportion of Features")
+```
+
+```{r}
+feature_spec_df <- feature_exp_df %>% 
+      ungroup() %>% 
+      filter(count != 0 | exp_count != 0) %>% 
+      mutate(feat_spec = case_when(
+            .$count != 0 & .$exp_count != 0 ~ "Expected Behavior",
+            .$count == 0 & .$exp_count != 0 ~ "Unmixed-Specific",
+            .$count != 0 & .$exp_count == 0 ~ "Titration-Specific"))
+feature_spec_df %>% group_by(pipe, feature_id, feat_spec) %>% 
+      summarise(count = n()) %>% 
+      ggplot() + geom_density(aes(x = count, fill = feat_spec)) + facet_wrap(feat_spec~pipe, scales = "free")
+```
+
+```{r}
+feature_spec_df %>% group_by(pipe, feature_id, feat_spec) %>% summarise(count = n()) %>% 
+      filter(feat_spec != "Expected Behavior") %>% arrange(-count)
+```
+
+
+There were umixed-specific features with expected proportions that could not be explained by sampling alone for all biological replicates and bioinformatic pipelines (Fig. \@ref(fig:binomTestUnmix)). 
+However, the proportion of unmixed-specific features that could not be explained by sampling alone varied by bioinformatic pipeline with over half of the DADA2 unmixed-specific features could not be explained by sampling alone whereas QIIME had the lowest rate of features with 0 observed counts that could not be explained by sampling alone. 
+__TODO__ Relate the number of features, diversity of features with 0 observed counts. 
+
+Consistent with the distribution of observed counts for titration-specific features more of the DADA2 features could not be explained by sampling alone compared to the other pipelines (Fig. \@ref(fig:mcBayes)).  
+
+```{r message = FALSE, warning = FALSE, echo = FALSE}
+eo_neg1 <- feature_exp_df  %>% filter(eo_metric == -1)
+
+eo_binom_test <- eo_neg1 %>% 
+      group_by(pipe, biosample_id, id, feature_id, t_fctr) %>% 
+      nest() %>% 
+      mutate(binom_test = map(data, ~with(., binom.test(x = 0, 
+                                                        n = total_abu, 
+                                                        exp_prop, 
+                                                        alternative = "less"))),
+             binom_tidy = map(binom_test, broom::tidy))
+
+eo_binom_tidy <- eo_binom_test %>% 
+      select(pipe, biosample_id, id, feature_id, t_fctr, binom_tidy) %>% 
+      unnest() 
+
+eo_binom_tidy$adj.pvalue <- p.adjust(eo_binom_tidy$p.value, method = "BH") 
+
+plot_dat <- feature_exp_df %>% right_join(eo_binom_tidy) %>% 
+    filter(count == 0 | exp_count == 0) %>% 
+    mutate(feat_spec = if_else(count == 0 & exp_count != 0, "Unmix","Titration")) %>% 
+    mutate(plot_count = if_else(count == 0 & exp_count != 0,exp_count,count))
+```
+
+```{r binomTestUnmix, fig.cap = "Proportion of unmix specific features with an adjusted p-value < 0.05 for the binomial test by biological replicate and pipeline. We fail to accept the null hypothesis when the p-value < 0.05, indicating that for these features the discrepancy between the feature not being observed in the titration and present in the unmixed samples cannot be explained by sampling alone.", message = FALSE, echo = FALSE}
+plot_dat %>% mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05")) %>% 
+      ggplot() + geom_bar(aes(x = biosample_id, fill = pval_cat), position = "fill") + 
+      facet_wrap(~pipe) +
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+      labs(x = "Biological Replicate", y = "Proprtion of Features", fill = "Adjusted p-value")
+```
+
+```{r message = FALSE, warning = FALSE, echo = FALSE}
+min_prop <- feature_exp_df %>% filter(pre != 0, post != 0) %>% 
+      group_by(pipe, biosample_id, t_fctr) %>% 
+      summarise(min_pre = min(pre),
+                min_post = min(post)) %>% 
+      mutate(theta = 2^-as.numeric(t_fctr),
+            min_exp_prop = min_post*theta + min_pre * (1-0))
+
+eo_pos1 <- feature_exp_df  %>% filter(eo_metric == 1) %>% left_join(min_prop)
+
+# mc_sim <- function(max_prop, total_abundance, obs_count){
+#       sim_prob <- runif(1000, min = 0, max = max_prop)
+#       sim_count <- sapply(X = sim_prob, FUN = rbinom, n = 1000, size = total_abundance)
+#       sum(sim_count >= obs_count)/ length(sim_count)
+# }
+# titration_mc <- eo_pos1 %>% 
+#       group_by(pipe, biosample_id, id, feature_id, t_fctr) %>% 
+#       nest() %>% 
+#       mutate(mc_prop = map(data, ~with(., mc_sim(max_prop = min_exp_prop, 
+#                                                     total_abundance = total_abu, 
+#                                                     obs_count = count))))
+# saveRDS(titration_mc,"~/Desktop/monte-carlo-titration.RDS")
+#titration_mc <- readRDS("~/Desktop/monte-carlo-titration.RDS")
+#```
+
+#```{r mcProp, fig.cap = "Distribution of titration specifc features PCR replicate titrations Monte Carlo count simulations with equal to or more extreme counts than the observed counts.", message = FALSE, echo = FALSE}
+# titration_mc %>% unnest() %>% 
+#       ggplot() + geom_density(aes(x = mc_prop, fill = biosample_id), alpha = 0.25) + 
+#       facet_wrap(~pipe, scales = "free_y", ncol = 1) + theme_bw() + 
+#       labs(x = "Proportion of Counts >= Observed Counts")
+```
+
+```{r message = FALSE, warning = FALSE, echo = FALSE}
+# titration_mc %>% unnest() %>% 
+#       mutate(prop_cat = if_else(mc_prop < 0.05, "<0.05", ">=0.05")) %>% 
+#       ggplot() + geom_bar(aes(x = biosample_id, fill = prop_cat), position = "fill") +
+#       facet_wrap(~pipe) +
+#       theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+#       labs(x = "Biological Replicate", y = "Proprtion of Features", fill = "Probability")
+```
+
+```{r message = FALSE, warning = FALSE, echo = FALSE}
+# library(MonteCarlo)
+# 
+# calc_bayes_mc <- function(max_prop, total_abu, obs_count = count){
+#       ## simulating binomial counts from uniform distribution
+#     sim_count <- function(min_prop, max_prop, total_abundance){
+#       sim_prob <- runif(1, min = min_prop, max = max_prop)
+#       sim_count <- rbinom(n = 1, size = total_abundance, prob = sim_prob)
+#       list(sim_count = sim_count)
+#     }  
+#     
+#     ## sim distribution for P(Pi > max_prop)
+#     param_list=list("min_prop" = max_prop, "max_prop" = 1, "total_abundance" = total_abu)
+#     mc_gt_max <-MonteCarlo(func=sim_count, nrep=10000, param_list=param_list)
+#     mc_gt_count <- mc_gt_max$results$sim_count
+#     p_gt_max <- sum(mc_gt_count >= obs_count)/length(mc_gt_count)
+# 
+#     ## sim distribution for P(Pi <= max_prop)
+#     param_list=list("min_prop" = 0, "max_prop" = max_prop, "total_abundance" = total_abu)
+#     mc_lt_max <- MonteCarlo(func=sim_count, nrep=10000, param_list=param_list)
+#     mc_lt_count <- mc_lt_max$results$sim_count
+#     p_lt_max <- sum(mc_lt_count >= obs_count)/length(mc_lt_count)
+#     
+#     ## Bayesian Hypothesis test 
+#     (p_lt_max * 0.5)/sum((p_lt_max * 0.5), (p_gt_max * 0.5))
+# }
+# 
+# 
+# eo_pos1 <- feature_exp_df  %>% filter(eo_metric == 1) %>% left_join(min_prop)
+# 
+# unmix_binom_test <- eo_pos1 %>% 
+#       rowwise() %>% 
+#       mutate(bayes_test = calc_bayes_mc(max_prop = min_exp_prop, total_abu = total_abu, obs_count = count))
+# 
+# saveRDS(unmix_binom_test,"~/Desktop/monte-carlo-unmix_binom_test.RDS")
+unmix_binom_test <- readRDS("data/monte-carlo-unmix_binom_test.RDS")
+unmix_binom_test$adj.pvalue <- p.adjust(unmix_binom_test$bayes_test, method = "BH") 
+```
+
+```{r mcBayes, fig.cap = "Proportion of titration specific features with adjusted p-values <=0.05.", message = FALSE, echo = FALSE}
+unmix_binom_test %>% mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05")) %>% 
+      ggplot() + geom_bar(aes(x = biosample_id, fill = pval_cat), position = "fill") + 
+      facet_wrap(~pipe) +
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+      labs(x = "Biological Replicate", y = "Proprtion of Features", fill = "Adjusted p-value")
+```
+
+
+```{r}
+unmix_spec_test <- eo_binom_tidy %>% select(-estimate, -statistic, -p.value, -parameter, 
+                                         -conf.low, -conf.high, -method, -alternative) %>% 
+      mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05"))
+
+unmix_spec_test <-  feature_spec_df %>% 
+      filter(feat_spec == "Unmixed-Specific") %>% 
+      left_join(unmix_spec_test)
+```
+
+
+```{r}
+titration_spec_test <- unmix_binom_test %>% 
+      mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05")) %>% 
+      select(-min_pre, -min_post, -theta, -min_exp_prop, -bayes_test)
+
+titration_spec_test <- feature_spec_df %>% 
+      filter(feat_spec == "Titration-Specific") %>% 
+      left_join(titration_spec_test)
+```
+
+```{r}
+titration_spec_test
+```
+
+
+```{r}
+feature_spec_test <- feature_spec_df %>% 
+      filter(feat_spec == "Expected Behavior") %>% 
+      mutate(adj.pvalue = NA, pval_cat = NA) %>% 
+      bind_rows(titration_spec_test) %>% 
+      bind_rows(unmix_spec_test)
+```
+
+```{r}
+feature_spec_test
+```
+
+```{r}
+feature_spec_test %>% group_by(feat_spec) %>% summarise(count = n())
+```
+
+
+```{r}
+feature_spec_test %>% 
+      ggplot() + geom_bar(aes(x = biosample_id, fill = pval_cat)) + facet_grid(pipe~feat_spec) 
+```
+
+```{r}
+feature_spec_test %>% filter(pval_cat == "p < 0.05") %>% 
+      ggplot() + 
+      geom_bar(aes(x = biosample_id, fill = pval_cat)) + 
+      facet_wrap(~pipe) 
+```
+
+
+```{r}
+feature_spec_test %>% ggplot() + 
+      geom_bar(aes(x = biosample_id, fill = pval_cat), position = "fill") + 
+      facet_wrap(~pipe) 
+```
+
+```{r}
+feature_spec_count <- feature_spec_test %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      mutate(total_obs = n()) %>% 
+      group_by(pipe, biosample_id, feature_id, feat_spec, total_obs) %>% 
+      mutate(spec_count = n()) %>% 
+      mutate(spec_prop = spec_count/ total_obs) %>% 
+      group_by(pipe, biosample_id, feature_id, feat_spec, total_obs, spec_count, spec_prop, pval_cat) %>% 
+      summarise(pval_count = n()) %>% 
+      mutate(pval_prop = pval_count/spec_count)
+```
+
+```{r}
+feature_spec_count
+```
+
+```{r}
+feature_spec_count %>% ggplot() + geom_histogram(aes(x = total_obs))
+```
+
+```{r}
+feature_spec_count %>% ggplot() + 
+      geom_histogram(aes(x = spec_prop)) + 
+      facet_wrap(~feat_spec)
+```
+
+```{r}
+feature_spec_count %>% filter(total_obs == 1) %>% 
+      ggplot() + 
+      geom_histogram(aes(x = spec_prop)) + 
+      facet_wrap(~feat_spec)
+```
+
+```{r}
+feature_spec_count %>% filter(total_obs != 1) %>% 
+      ggplot() + 
+      geom_histogram(aes(x = spec_prop)) + 
+      facet_wrap(~feat_spec)
+```
+
+```{r}
+feature_spec_count %>% filter(feat_spec == "Titration-Specific") %>% 
+      ggplot() + geom_histogram(aes(x = pval_count, fill = pval_cat)) + scale_y_log10()
+```
+
+```{r}
+feature_spec_count %>% 
+      ggplot() + geom_histogram(aes(x = pval_count, fill = pval_cat)) + scale_y_log10() +
+      facet_grid(pipe~feat_spec)
+```
+
+```{r}
+feature_spec_count %>% filter(pval_cat == "p < 0.05") %>% 
+      ggplot() + geom_histogram(aes(x = pval_prop)) + scale_y_log10() +
+      facet_grid(pipe~feat_spec)
+```
+
+```{r}
+feature_spec_count %>% filter(pval_cat == "p < 0.05") %>% 
+      ggplot() + geom_point(aes(y = pval_prop, x = total_obs)) +
+      facet_grid(pipe~feat_spec)
+```
+
