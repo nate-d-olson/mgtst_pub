@@ -1,0 +1,423 @@
+---
+title: "logFC with Inferred theta"
+date: '`r Sys.Date()`'
+output: bookdown::pdf_document2
+---
+
+
+```{r theta_logFC_setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(metagenomeSeq)
+library(tidyverse)
+library(stringr)
+library(forcats)
+count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds")
+mothur_mrexp <- readRDS("../../mgtst_pipelines/mothur/mothur_mrexp.rds")
+dada_mrexp <- readRDS("../../mgtst_pipelines/dada2/dada_mrexp.rds")
+qiime_mrexp <- readRDS("../../mgtst_pipelines/qiime/qiime_mrexp.rds")
+theta_est <- readRDS("../data/bootstrap_theta_estimates.rds")
+```
+
+## Expected logFC
+The expected logFC was calculated using the inferred theta values.
+
+To avoid issue with titrations having inferred theta < 0; excluding titrations with titration factors > 4 and replacing negative estimates with 0.
+
+Using upper and lower confidence intervals for theta estimates to calculate the expected logFC confidence intervals.  
+```{r}
+logFC_exp <- theta_est %>% ungroup() %>% 
+      # mutate(t_fctr = paste0("T", t_fctr)) %>% 
+      # filter(t_fctr %in% paste0("T",1:4)) %>% 
+      filter(t_fctr %in% 1:4) %>% 
+      dplyr::select(pipe, biosample_id, t_fctr, theta_hat_mean, theta_hat_uci, theta_hat_lci) %>% 
+      mutate(theta_hat_mean = if_else(theta_hat_mean < 0, 0, theta_hat_mean),
+             theta_hat_uci = if_else(theta_hat_uci < 0, 0, theta_hat_uci),
+             theta_hat_lci = if_else(theta_hat_lci < 0, 0, theta_hat_lci)) %>% 
+      group_by(pipe, biosample_id) %>%
+      mutate(hat_lead = lead(theta_hat_mean),
+             hat_lead = if_else(is.na(hat_lead), theta_hat_mean, hat_lead),
+             uci_lead = lead(theta_hat_uci),
+             uci_lead = if_else(is.na(uci_lead), theta_hat_uci, uci_lead),
+             lci_lead = lead(theta_hat_lci),
+             lci_lead = if_else(is.na(lci_lead), theta_hat_lci, lci_lead),
+             post_logFC_exp = log2(hat_lead/theta_hat_mean),
+             post_logFC_uci = log2(uci_lead/theta_hat_uci),
+             post_logFC_lci = log2(lci_lead/theta_hat_lci),
+             pre_logFC_exp = log2((1-hat_lead)/(1-theta_hat_mean)),
+             pre_logFC_uci = log2((1-uci_lead)/(1-theta_hat_uci)),
+             pre_logFC_lci = log2((1-lci_lead)/(1-theta_hat_lci)))
+```
+
+Lower confidence interval for logFC is NaN for a number of titrations, will want to limit analysis to biological replicates and pipelines with non-negative theta estimates and confidence intervals. 
+
+```{r}
+logFC_exp %>% filter(is.nan(post_logFC_lci))
+```
+
+Expected logFC change values based on inferred theta values for sequential titrations.
+The expected theta values are outside of the estimated theta based confidence intervals indicating that this approach to inferring the logFC confidence intervals is not right, though the values are used below to demonstrate the approach. 
+
+```{r}
+logFC_exp %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = post_logFC_exp, color = biosample_id)) +
+      geom_errorbar(aes(x = t_fctr, ymin = post_logFC_lci, ymax = post_logFC_uci, color = biosample_id)) +
+      geom_line(aes(x = as.numeric(t_fctr), y = post_logFC_exp, color = biosample_id)) + 
+      theme_bw() + facet_grid(biosample_id~pipe, scales = "free_y")
+```
+
+
+```{r}
+logFC_exp %>% 
+      ggplot() + 
+      geom_point(aes(x = t_fctr, y = pre_logFC_exp, color = biosample_id)) +
+      geom_errorbar(aes(x = t_fctr, ymin = pre_logFC_lci, ymax = pre_logFC_uci, color = biosample_id)) +
+      geom_line(aes(x = as.numeric(t_fctr), y = pre_logFC_exp, color = biosample_id)) + 
+      theme_bw() + facet_grid(biosample_id~pipe, scales = "free_y")
+```
+
+
+## Comparing logFC estimates to expected values
+Looking at mothur logFC between the first and second titration for biological replicate E01JH0011.
+
+```{r}
+mothur_11 <- mothur_mrexp[,which(pData(mothur_mrexp)$biosample_id == "E01JH0011")]
+mothur_11 <- mothur_11[,which(pData(mothur_11)$titration %in% c(1,2))]
+mothur_11 <- cumNorm(mothur_11, p = 0.75)
+mothur_11 <- filterData(mothur_11, present = 8, depth = 1)
+
+pd <- pData(mothur_11)
+pd$t_fctr <- factor(pd$t_fctr, level = c(2,1))
+mod <- model.matrix(~1 + t_fctr, data = pd)
+mothur_res1 <- fitFeatureModel(mothur_11, mod)
+mothur_logFC <- MRcoefs(mothur_res1, number = Inf) %>% as.data.frame() %>% 
+      rownames_to_column(var = "feature_id")
+mothur_prepost <- count_nb %>% ungroup() %>% 
+      filter(pipe == "mothur", biosample_id == "E01JH0011") %>%
+      dplyr::select(feature_id, pre, post) %>% unique()
+mothur_logFC <- mothur_logFC %>% 
+      left_join(mothur_prepost) %>% #filter(!is.na(post)) %>% 
+      mutate(feat_spec = case_when(.$pre != 0 & .$post != 0 ~ "non",
+                                   .$pre == 0 & .$post != 0 ~ "post",
+                                   .$post ==0 & .$pre != 0 ~ "pre"))
+
+logFC_plot_df <- mothur_logFC %>% 
+      mutate(feature_id = fct_reorder(feature_id,logFC)) %>% 
+      filter(feat_spec %in% c("post", "pre")) %>% 
+      add_column(biosample_id = "E01JH0011") %>% 
+      add_column(pipe = "mothur") %>% 
+      left_join(logFC_exp %>% filter(t_fctr == 2)) %>% 
+      mutate(logFC_theta = case_when(feat_spec == "pre" ~ pre_logFC_exp,
+                                     feat_spec == "post" ~ post_logFC_exp),
+             logFC_theta_uci = case_when(feat_spec == "pre" ~ pre_logFC_uci,
+                                     feat_spec == "post" ~ post_logFC_uci),
+             logFC_theta_lci = case_when(feat_spec == "pre" ~ pre_logFC_lci,
+                                     feat_spec == "post" ~ post_logFC_lci)
+             )
+```
+
+Points and error bars represent the estimated logFC and 95% confidence intervals, the vertical line indicates the expected logFC based on inferred theta.
+
+The expected logFC estimates are within the confidence interval for most of the post-exposure specific features but not for the pre-exposure features. 
+
+```{r}
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+
+## Expanding approach to larger set of biological replicates and titrations
+
+
+```{r}
+## subset data
+subset_mrexp <- function(mrexp, biosample_comp, logFC_titration){
+      ## subset by biological replicate and titrations being evaluated
+      mrexp_subset <- mrexp[,which(pData(mrexp)$biosample_id == biosample_comp)]
+      mrexp_subset <- mrexp_subset[,which(pData(mrexp_subset)$titration %in% logFC_titration)] 
+      
+      ## Calculate normalization factors
+      mrexp_subset <- cumNorm(mrexp_subset, p = 0.75)
+      
+      ## remove features not observed in all four PCR replicates for both titrations 
+      filterData(mrexp_subset, present = 8, depth = 1)
+}
+
+
+## calculate logFC
+calc_titration_logFC <- function(mrexp, titrations){
+      ## Generate design matrix - for titration comparison
+      pd <- pData(mrexp)
+      pd$t_fctr <- factor(pd$t_fctr, level = titrations)
+      mod <- model.matrix(~1 + t_fctr, data = pd)
+      ## Fit model
+      fit <- fitFeatureModel(mrexp, mod)
+      
+      ## Get logFC estimates
+      MRcoefs(fit, number = Inf) %>% as.data.frame() %>% 
+            rownames_to_column(var = "feature_id")
+}
+
+## generate df for plot 
+get_logFC_plot_df <- function(logFC_df, count_nb, pipe_comp, biosample_comp, logFC_exp, t_comp){
+      
+      ## Annotate pre and post specific features
+      prepost <- count_nb %>% ungroup() %>% 
+            filter(pipe == pipe_comp, biosample_id == biosample_comp) %>%
+            dplyr::select(feature_id, pre, post) %>% unique()
+     logFC_df <- logFC_df %>% 
+            left_join(prepost) %>% #filter(!is.na(post)) %>% 
+            mutate(feat_spec = case_when(.$pre != 0 & .$post != 0 ~ "non",
+                                         .$pre == 0 & .$post != 0 ~ "post",
+                                         .$post ==0 & .$pre != 0 ~ "pre"))
+     
+     ## Append expected logFC values
+     logFC_df %>% 
+           mutate(feature_id = fct_reorder(feature_id,logFC)) %>% 
+           filter(feat_spec %in% c("post", "pre")) %>% 
+           add_column(biosample_id = biosample_comp) %>% 
+           add_column(pipe = pipe_comp) %>% 
+           left_join(logFC_exp %>% filter(t_fctr == t_comp)) %>% 
+           mutate(logFC_theta = case_when(feat_spec == "pre" ~ pre_logFC_exp,
+                                          feat_spec == "post" ~ post_logFC_exp),
+                  logFC_theta_uci = case_when(feat_spec == "pre" ~ pre_logFC_uci,
+                                              feat_spec == "post" ~ post_logFC_uci),
+                  logFC_theta_lci = case_when(feat_spec == "pre" ~ pre_logFC_lci,
+                                              feat_spec == "post" ~ post_logFC_lci)
+           )
+}
+```
+
+
+```{r}
+test_pipe <- "mothur"
+
+test_biosample_id <- "E01JH0011"
+test_titrations <- c(2,1)
+test_t_comp <- 2
+test_mrexp_sub <- subset_mrexp(mrexp = mothur_mrexp, biosample_comp = test_biosample_id, logFC_titration = test_titrations)
+
+test_logFC_df <- calc_titration_logFC(test_mrexp_sub, test_titrations)
+test_logFC_plot_df <- get_logFC_plot_df(test_logFC_df, count_nb, pipe_comp = test_pipe, 
+                                        biosample_comp = test_biosample_id, logFC_exp, 
+                                        t_comp = test_t_comp)
+```
+
+
+Check converting to functions generated the same result
+```{r}
+test_logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+```{r}
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+### Other Comparisons
+Subset of pipeline, titrations, and biological replicates with smaller confidence intervals.
+
+
+#### Mothur E01JH0011 Titration 2-3
+```{r}
+pipe_comp <- "mothur"
+biosample_comp <- "E01JH0011"
+logFC_titration <- c(3,2)
+t_comp <- 3
+mrexp_sub <- subset_mrexp(mothur_mrexp, biosample_comp, logFC_titration)
+logFC_df <- calc_titration_logFC(mrexp_sub, titrations = logFC_titration)
+logFC_plot_df <- get_logFC_plot_df(logFC_df, count_nb, pipe_comp, 
+                                        biosample_comp, logFC_exp, 
+                                        t_comp)
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+Relating logFC with end-point proportion
+```{r}
+logFC_plot_df %>% mutate(base_prop = if_else(feat_spec == "pre", pre, post)) %>% 
+ggplot() + geom_point(aes(x = base_prop, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = base_prop, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      facet_wrap(~feat_spec) + theme_bw() + scale_x_log10()
+```
+
+#### DADA2 E01JH0011 Titration 2-1
+```{r}
+pipe_comp <- "dada2"
+biosample_comp <- "E01JH0011"
+logFC_titration <- c(2,1)
+t_comp <- 2
+mrexp_sub <- subset_mrexp(dada_mrexp, biosample_comp, logFC_titration)
+logFC_df <- calc_titration_logFC(mrexp_sub, titrations = logFC_titration)
+logFC_plot_df <- get_logFC_plot_df(logFC_df, count_nb, pipe_comp, 
+                                        biosample_comp, logFC_exp, 
+                                        t_comp)
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+Relating logFC with end-point proportion
+```{r}
+logFC_plot_df %>% mutate(base_prop = if_else(feat_spec == "pre", pre, post)) %>% 
+ggplot() + geom_point(aes(x = base_prop, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = base_prop, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      facet_wrap(~feat_spec) + theme_bw() + scale_x_log10()
+```
+
+#### DADA2 E01JH0011 Titration 2-3
+```{r}
+pipe_comp <- "dada2"
+biosample_comp <- "E01JH0011"
+logFC_titration <- c(3,2)
+t_comp <- 3
+mrexp_sub <- subset_mrexp(dada_mrexp, biosample_comp, logFC_titration)
+logFC_df <- calc_titration_logFC(mrexp_sub, logFC_titration)
+logFC_plot_df <- get_logFC_plot_df(logFC_df, count_nb, pipe_comp, 
+                                        biosample_comp, logFC_exp, 
+                                        t_comp)
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+
+Relating logFC with end-point proportion
+```{r}
+logFC_plot_df %>% mutate(base_prop = if_else(feat_spec == "pre", pre, post)) %>% 
+ggplot() + geom_point(aes(x = base_prop, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = base_prop, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      facet_wrap(~feat_spec) + theme_bw() + scale_x_log10()
+```
+
+#### Mothur E01JH0038 Titration 2-1
+```{r}
+pipe_comp <- "mothur"
+biosample_comp <- "E01JH0038"
+logFC_titration <- c(2,1)
+t_comp <- 2
+mrexp_sub <- subset_mrexp(mothur_mrexp, biosample_comp, logFC_titration)
+logFC_df <- calc_titration_logFC(mrexp_sub, logFC_titration)
+logFC_plot_df <- get_logFC_plot_df(logFC_df, count_nb, pipe_comp, 
+                                        biosample_comp, logFC_exp, 
+                                        t_comp)
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+
+Relating logFC with end-point proportion
+```{r}
+logFC_plot_df %>% mutate(base_prop = if_else(feat_spec == "pre", pre, post)) %>% 
+ggplot() + geom_point(aes(x = base_prop, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = base_prop, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      facet_wrap(~feat_spec) + theme_bw() + scale_x_log10()
+```
+
+#### DADA2 E01JH0038 Titration 2-1
+```{r}
+pipe_comp <- "dada2"
+biosample_comp <- "E01JH0038"
+logFC_titration <- c(2,1)
+t_comp <- 2
+mrexp_sub <- subset_mrexp(dada_mrexp, biosample_comp, logFC_titration)
+logFC_df <- calc_titration_logFC(mrexp_sub, logFC_titration)
+logFC_plot_df <- get_logFC_plot_df(logFC_df, count_nb, pipe_comp, 
+                                        biosample_comp, logFC_exp, 
+                                        t_comp)
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+Relating logFC with end-point proportion
+```{r}
+logFC_plot_df %>% mutate(base_prop = if_else(feat_spec == "pre", pre, post)) %>% 
+ggplot() + geom_point(aes(x = base_prop, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = base_prop, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      facet_wrap(~feat_spec) + theme_bw() + scale_x_log10()
+```
+
+#### QIIME E01JH0038 Titration 2-1
+```{r}
+pipe_comp <- "qiime"
+biosample_comp <- "E01JH0038"
+logFC_titration <- c(2,1)
+t_comp <- 2
+mrexp_sub <- subset_mrexp(qiime_mrexp, biosample_comp, logFC_titration)
+logFC_df <- calc_titration_logFC(mrexp_sub, logFC_titration)
+logFC_plot_df <- get_logFC_plot_df(logFC_df, count_nb, pipe_comp, 
+                                        biosample_comp, logFC_exp, 
+                                        t_comp)
+logFC_plot_df %>% 
+ggplot() + geom_point(aes(x = feature_id, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = feature_id, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      coord_flip() + facet_wrap(~feat_spec) + theme_bw()
+```
+
+```{r}
+logFC_plot_df %>% mutate(base_prop = if_else(feat_spec == "pre", pre, post)) %>% 
+ggplot() + geom_point(aes(x = base_prop, y = logFC, color = feat_spec)) + 
+      geom_errorbar(aes(x = base_prop, ymin = logFC - 2.36*se, ymax = logFC + 2.36*se, color = feat_spec)) + 
+      geom_hline(aes(yintercept = logFC_theta)) + 
+       geom_hline(aes(yintercept = logFC_theta_uci), linetype = 2) +
+       geom_hline(aes(yintercept = logFC_theta_lci), linetype = 2) + 
+      facet_wrap(~feat_spec) + theme_bw() + scale_x_log10()
+```
+

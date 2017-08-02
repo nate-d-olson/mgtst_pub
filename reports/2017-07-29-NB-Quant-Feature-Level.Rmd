@@ -1,0 +1,266 @@
+---
+title: "Feature-Level Quant Error Rate"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(forcats)
+prop_df <- readRDS("../data/nb_feature_prop_df.rds")
+theta_est <- readRDS("../data/bootstrap_theta_estimates.rds")
+```
+
+## Objective
+Compare feature level bias interms of error rate across individuals (biological replicates) and pipelines. 
+To reduce data noise negative binomial weighted means are used to summarise observed counts across PCR replicates. 
+The inferred theta estimates were used to calculate the expected values rather than the mixture design theta values. 
+
+See `2017-07-30_NB-Feature-Prop.Rmd` for negative binomial weighted means calculations. 
+
+### Issues to consider
+* NaN values are generated using the negative binomial weighted means when one or more of the four PCR replicates are 0.   
+      * Looking into addressing this issue by using alternative methods for obtaining count summarise, e.g. glm.nb or limma's lmFit.   
+
+* For this initial analysis, end-points (pre- and post-exposure samples) features not observed in all four PCR replicates treated as 0.  
+      * This not ideal and susceptible to single PCR replicate outliers.  
+      * Alternative methods for summarizing count values across replicates may address this,  alternatively only use features where the counts are observed for all or none of the PCR replicates.   
+* Due to negative inferred theta estimates, some of the expected values are less than zero, as a result the absolute error is negative for some features.  
+
+## Next Steps 
+
+* Mixed effects model for error cov  
+* correlate outlier features with taxonomy  
+* Address issues with input count data.
+
+
+### Tidying the data for error analysis. 
+```{r}
+## removing estimates where one or more of the PCR replicates had no observed counts. 
+prop_df <- prop_df %>% filter(!is.nan(prop_est)) 
+
+pre_post_prop <- prop_df %>% 
+      ungroup() %>% 
+      filter(t_fctr %in% c(0,20)) %>% 
+      mutate(end_point = if_else(t_fctr == 0 , "post", "pre")) %>% 
+      select(-t_fctr) %>% 
+      ## setting values to 0 when one or more of the PCR replicates are 0 for titration end-points
+      spread(end_point,prop_est, fill = 0)
+
+prop_inferred <- theta_est %>% ungroup() %>%
+      mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
+      select(pipe, biosample_id, theta_hat_mean, t_fctr) %>% 
+      right_join(prop_df) %>% right_join(pre_post_prop) %>% 
+      filter(t_fctr %in% c(1:5,10,15)) %>% 
+      ## Using inferred theta estimates to calculate expected values
+      mutate(inferred_prop = post * theta_hat_mean + pre * (1-theta_hat_mean))
+```
+
+
+### Overall Observed and Expected Value Relationship
+Inferred and observed count relationship. 
+Orange line indicates expected 1-to-1 relationship. 
+Blue line a smoothed regression line of the observed and expected value relationship. 
+
+Outlier points are observed for all pipelines and biological replicates. 
+E01JH0016 when processed using QIIME is especially disperse with the expected values consistent less than the observed values. 
+
+```{r}
+prop_inferred %>% ggplot() + 
+      geom_point(aes(x = prop_est, y = inferred_prop), alpha = 0.05) +
+      geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") +
+      geom_smooth(aes(x = prop_est, y = inferred_prop)) +
+      facet_grid(pipe~biosample_id) +
+      scale_y_log10() + scale_x_log10() + theme_bw() +
+      labs(x = "Observed Relative Abundance", y = "Expected Relative Abundance")
+```
+
+Titration factor appears to account for some of the difference between the expected and observed relationship for E01JH0016, especially for the QIIME pipeline.
+The increase in distance from the expected 1-to-1 relationship for QIIME with titration indicates the bias is associated with the pre-exposure samples. 
+
+```{r}
+prop_inferred %>% filter(biosample_id == "E01JH0016") %>% 
+      ggplot() + 
+      geom_smooth(aes(x = prop_est, y = inferred_prop, color = t_fctr),se = FALSE) + 
+      geom_abline(aes(intercept = 0, slope = 1), color = "grey40") + 
+      facet_grid(pipe~biosample_id) +
+      scale_y_log10() + scale_x_log10() + theme_bw()
+```
+
+
+
+
+
+
+## Feature level error rates
+Error rate calculated as follows
+
+$$error = \frac{|obs - exp|}{exp}$$
+The error rates are then summarized (median) across titrations to obtain a feature-level error estimate. 
+
+```{r}
+rel_abu_error <- prop_inferred %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5, 10, 15))) %>% 
+      mutate(inferred_error = abs(prop_est - inferred_prop),
+             inferred_error_rate = inferred_error/inferred_prop) 
+
+rel_abu_error_summary <-  rel_abu_error %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(median_error = median(inferred_error_rate),
+                iqr_error = IQR(inferred_error_rate),
+                rcov_error = iqr_error/median_error, 
+                mean_error = mean(inferred_error_rate),
+                var_error = var(inferred_error_rate),
+                cov_error = var_error/mean_error) 
+```  
+
+
+
+
+
+Number of features per sample-pipeline remaining
+```{r}
+rel_abu_error_summary %>% 
+      group_by(pipe, biosample_id) %>% 
+      summarise(count = n()) %>% 
+      spread(biosample_id, count) %>% 
+      knitr::kable(booktabs = TRUE)
+```
+
+Large feature-level median error rates were observed for most pipelines and biological replicates.
+
+```{r}
+rel_abu_error_summary %>% 
+      ggplot() + geom_boxplot(aes(x = biosample_id, y = median_error)) + facet_wrap(~pipe) +
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+      labs(x = "Individual", y = "Feature-Level Error")
+```
+
+Comparing error rates excluding outliers. 
+```{r}
+error_boxplot <- rel_abu_error %>% group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(median_error = median(inferred_error_rate)) %>%
+      ggplot() + geom_boxplot(aes(x = biosample_id, y = median_error), outlier.shape = NA) + 
+      facet_wrap(~pipe) + 
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+      labs(x = "Individual", y = "Median Error Rate")
+
+ymin <- ggplot_build(error_boxplot)$data[[1]]$ymin %>% min()
+ymax <- ggplot_build(error_boxplot)$data[[1]]$ymax %>% max()
+
+
+error_boxplot + coord_cartesian(ylim = c(ymin, ymax))
+```
+
+Excluding QIIME E01JH0016 and outliers, the feature-level error is less than 1.5 for all features and pipelines. 
+```{r}
+error_boxplot <- rel_abu_error %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(median_error = median(inferred_error_rate)) %>%
+      filter(pipe != "qiime" | biosample_id != "E01JH0016") %>% 
+      ggplot() + geom_boxplot(aes(x = biosample_id, y = median_error), outlier.shape = NA) + 
+      facet_wrap(~pipe) + 
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+      labs(x = "Individual", y = "Median Error Rate")
+
+ymin <- ggplot_build(error_boxplot)$data[[1]]$ymin %>% min()
+ymax <- ggplot_build(error_boxplot)$data[[1]]$ymax %>% max()
+
+
+error_boxplot + coord_cartesian(ylim = c(ymin, ymax))
+```
+
+
+
+Annotating features as outliers, outside whiskers in ggplot boxplot (1.5 * IQR), and inliers within ggplot boxplot. 
+```{r}
+error_plot_dat <- ggplot_build(error_boxplot)$data[[1]] %>% 
+      mutate(pipe = fct_recode(PANEL, 
+                               dada2 = "1", 
+                               mothur = "2", 
+                               qiime = "3"),
+             biosample_id = fct_recode(factor(group), 
+                                       E01JH0004 = "1", 
+                                       E01JH0011 = "2", 
+                                       E01JH0016 = "3", 
+                                       E01JH0017 = "4", 
+                                       E01JH0038 = "5"))
+outlier_error_dat <- error_plot_dat %>% 
+      dplyr::select(ymin, ymax, pipe, biosample_id)
+
+rel_error_outlier_cat <- rel_abu_error_summary %>% 
+      left_join(outlier_error_dat) %>% 
+      mutate(outlier_cat = if_else(median_error < ymin | median_error > ymax, "outlier","inlier"))
+```
+
+
+### Testing for Pipeline and biological replicate differences
+
+When accounting for biological replicate effect DADA2 different from mothur and qiime, qiime and mothur are not different from each other.  
+The feature-level median error rate is higher for Mothur and QIIME compared to DADA2
+
+```{r}
+count_fit <- nlme::lme(median_error ~ pipe, random =  ~ 1 | biosample_id, 
+                 data = rel_error_outlier_cat %>% filter(outlier_cat == "inlier"))
+summary(count_fit)
+```
+
+Pipeline larger contribution to variance than individual
+```{r}
+ape::varcomp(count_fit)
+```
+
+__Not sure about the fit__
+```{r}
+plot(count_fit)
+
+```
+
+
+```{r}
+qqnorm(count_fit, ~ranef(., level=1))
+```
+
+```{r}
+qqnorm(count_fit$residuals)
+```
+
+
+```{r}
+plot(count_fit$fitted, count_fit$residuals)
+```
+
+### Feature-level Robust Error COV
+
+
+Robust Error COV = IQR/median
+```{r}
+rel_error_outlier_cat %>% 
+      ggplot() + geom_boxplot(aes(x = biosample_id, y = rcov_error)) + 
+      facet_wrap(~pipe) +
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+      labs(x = "Individual", y = "Feature-Level Robust Error COV")
+```
+
+```{r}
+error_boxplot <- rel_abu_error_summary %>%
+      ggplot() + geom_boxplot(aes(x = biosample_id, y = rcov_error), outlier.shape = NA) + 
+      facet_wrap(~pipe) + 
+      theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
+      labs(x = "Individual", y = "Robust Error COV")
+
+ymin <- ggplot_build(error_boxplot)$data[[1]]$ymin %>% min()
+ymax <- ggplot_build(error_boxplot)$data[[1]]$ymax %>% max()
+
+
+error_boxplot + coord_cartesian(ylim = c(ymin, ymax))
+```
+
+
+
+
+

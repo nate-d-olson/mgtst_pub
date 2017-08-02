@@ -16,7 +16,7 @@ library(modelr)
 
 ```{r loadData, warning=FALSE, message=FALSE, echo = FALSE}
 ## Raw count data with pre and post negative binomial count proportions
-count_nb <- readRDS("data/nb_expected_eo_metric_feature_df.rds") %>% 
+count_nb <- readRDS("../data/nb_expected_eo_metric_feature_update_df.rds") %>% 
       mutate(count_post = post * total_abu, count_pre = pre * total_abu)
 
 

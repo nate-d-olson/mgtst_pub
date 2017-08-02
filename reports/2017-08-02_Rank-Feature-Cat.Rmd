@@ -1,0 +1,478 @@
+---
+title: "Rank base feature categorization"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Clean-up and revise
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+library(broom)
+
+```
+
+## Objective 
+Use normalized count ranks to identify features where the abundance estimates either increase or decrease with titration. 
+
+
+## Approach
+* Using normalized count estimates across PCR replicates generated with LIMMA calculate the count rank for titrations 1 - 4 for each feature.  
+* Titrations 1-4 are used as this is where the most change is expected to occur.  
+* A linear regression is fit to the titration level (1-4) and ranks. 
+* The slope and adjusted R^2 values are used to categorize the features. 
+* The following analysis is for DADA2 pipeline and the E01JH0004 biological replicate
+
+
+## Notes
+* Can use rank based regression slope and R2 values and logFC between pre- and post-exposure samples to obtain features for quantitative analysis. 
+
+
+## Preparing input data
+```{r}
+count_est_df <- readRDS("../data/limma_count_est.rds")
+count_est_mat <- readRDS("../data/limma_count_mat.rds")
+
+count_ranks <- count_est_df %>% 
+      ## excluding features not observed in any titration
+      filter(feature_id %in% rownames(count_est_mat)) %>% 
+      mutate(norm_count = if_else(count_abs < 0, 0, count_abs)) %>% 
+      ## only using titrations 1-5 as this is where the greatest change is expected
+      ## the higher titrations are primarily pre-exposure with little expected change between titrations
+      filter(t_fctr %in% 1:5) %>% 
+      mutate(t_fctr = factor(t_fctr)) %>% 
+      select(feature_id, t_fctr, norm_count) %>% 
+      group_by(feature_id) %>% 
+      mutate(rank_dense = dense_rank(norm_count),
+             rank_min = min_rank(norm_count),
+             rank_cum = cume_dist(norm_count)) %>% 
+      mutate(t_level = as.numeric(t_fctr))
+```
+
+## Example feature set 
+### Fitting linear model
+```{r}
+rank_fit <- count_ranks %>% 
+      group_by(feature_id) %>% 
+      nest()  %>% 
+      filter(feature_id %in% paste0("SV",1:9)) %>% 
+      mutate(fit = map(data, ~lm(rank_dense ~ t_level, data = .)))
+
+## Extracting slope and adjusted R2 values
+
+rank_fit_coef <- rank_fit %>% 
+      mutate(fit_tidy = map(fit, tidy)) %>% 
+      select(-data, -fit) %>% 
+      unnest() 
+
+rank_slopes <- rank_fit_coef %>% 
+      filter(term == "t_level") %>% 
+      select(feature_id, estimate) %>% 
+      rename(slope = estimate)
+```
+
+
+### Regressions 
+ranks and titration level
+```{r}
+count_ranks %>% 
+      filter(feature_id %in% paste0("SV",1:9)) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = rank_dense)) + 
+      geom_smooth(aes(x = t_level, y = rank_dense), method = "lm") + 
+      facet_wrap(~feature_id)
+```
+
+normalized count values and titrations
+```{r}
+count_ranks %>% 
+      filter(feature_id %in% paste0("SV",1:9)) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") + 
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+
+For example subset the high R-squared and slope correlate with features that titrate
+```{r}
+rank_fit_summary <- rank_fit %>% 
+      mutate(fit_glance = map(fit, glance)) %>% 
+      select(-fit, -data) %>% 
+      unnest()
+rank_fit_summary %>% select(feature_id, adj.r.squared) %>% 
+      left_join(rank_slopes)
+```
+
+```{r}
+count_ranks %>% arrange(feature_id)
+```
+
+
+## Larger Feature Set
+```{r}
+rank_fit <- count_ranks %>% 
+      group_by(feature_id) %>% 
+      nest()  %>% 
+      mutate(fit = map(data, ~lm(rank_dense ~ t_level, data = .)))
+
+rank_fit_coef <- rank_fit %>% 
+      mutate(fit_tidy = map(fit, tidy)) %>% 
+      select(-data, -fit) %>% 
+      unnest() 
+
+rank_slopes <- rank_fit_coef %>% 
+      filter(term == "t_level") %>% 
+      select(feature_id, estimate) %>% 
+      rename(slope = estimate)
+
+rank_fit_metrics <- rank_fit %>% 
+      mutate(fit_glance = map(fit, glance)) %>% 
+      select(-fit, -data) %>% 
+      unnest()
+
+feature_fit_stats <- rank_fit_metrics %>% 
+      select(feature_id, adj.r.squared) %>% 
+      left_join(rank_slopes)
+```
+
+### Rank slope and R2 relationship 
+Size of the point indicates the number of features. 
+```{r}
+feature_fit_stats %>% 
+      group_by(adj.r.squared, slope) %>% 
+      summarise(count = n()) %>% 
+      ggplot() + geom_point(aes(x = slope, y = adj.r.squared, size = count))
+```
+
+No clear separation between groups categorization values choosen arbitrarily - need a better method to select features.
+```{r}
+feature_fit_cat <- feature_fit_stats %>%  
+      mutate(feat_cat = case_when(adj.r.squared <= 0.5 ~ "low-r2",
+                                  slope > 0.5 & adj.r.squared > 0.5 ~ "pos-slope",
+                                  slope < -0.5 & adj.r.squared > 0.5 ~ "neg-slope",
+                                  abs(slope) <= 0.5 ~ "low-slope")
+      )
+```
+
+
+```{r}
+feature_fit_cat %>% group_by(feat_cat) %>% summarise(count = n())
+```
+
+
+### Example features that titrate
+```{r}
+set.seed(1)
+good_feats <- count_ranks %>% left_join(feature_fit_cat) %>% 
+      filter(feat_cat %in% c("pos-slope", "neg_slope")) %>% 
+      filter(feature_id %in% paste0("SV", sample(1:3144,replace = F, size = 400)))
+```
+
+
+Features are ordered based on R2 values
+
+```{r}
+good_feats %>% ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, -adj.r.squared)) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") + 
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+Might want to consider changing the slope cutoff to 0.6 or higher
+```{r}
+good_feats %>% select(feature_id, slope, adj.r.squared) %>% 
+      unique() %>% arrange(-adj.r.squared)
+```
+
+Potentially consider excluding or annotating low abundance features, e.g. SV1131, 118, 1244, and 1607.
+Maybe setting values less than 1/10000 (max library size) to 0....
+
+```{r}
+feature_fit_cat %>% filter(feature_id %in% paste0("SV", c(11131,118,1244, 1607))) 
+```
+
+```{r}
+count_ranks %>% left_join(feature_fit_cat) %>% 
+      filter(feature_id %in% paste0("SV", c(11131,118,1244, 1607))) %>% 
+      ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, -adj.r.squared)) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") + 
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+
+
+
+
+
+
+```{r}
+set.seed(1)
+poor_feats <- count_ranks %>% left_join(feature_fit_cat) %>% 
+      filter(feat_cat == "low-r2") %>% 
+      filter(feature_id %in% sample(rownames(count_est_mat), replace = F, size = 10)) %>% 
+      ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, -adj.r.squared))
+```
+
+```{r}
+poor_feats %>% select(feature_id, slope, adj.r.squared) %>% 
+      unique() %>% arrange(-adj.r.squared)
+```
+
+Features SV271 and SV459 look okay but have low R2 values
+```{r}
+poor_feats  %>%  ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+```{r}
+feature_fit_cat <- feature_fit_stats %>%  
+      mutate(feat_cat = case_when(abs(slope) > 0.7 ~ "high-slope",
+                                  abs(slope) <= 0.7 ~ "low-slope")
+      )
+```
+
+```{r}
+feature_fit_cat %>% group_by(feat_cat) %>% summarise(count = n())
+```
+
+```{r}
+feature_fit_cat
+```
+
+```{r}
+example_feats <- feature_fit_cat %>% group_by(feat_cat) %>% 
+      sample_n(6) 
+example_feats %>%
+      left_join(count_ranks) %>% 
+      ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, -abs(slope))) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count, color = feat_cat), method = "lm") +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+```{r}
+example_feats %>% select(feature_id, adj.r.squared, slope) %>% unique() %>% arrange(-abs(slope))
+```
+
+# Looking at rank_min
+When rank_min results in larger slopes when the outlier values are at the ends of the titrations, e.g. titration levels 1 or 5
+
+## Larger Feature Set
+
+```{r}
+rank_fit <- count_ranks %>% 
+      group_by(feature_id) %>% 
+      nest()  %>% 
+      mutate(fit = map(data, ~lm(rank_min ~ t_level, data = .)))
+
+rank_fit_coef <- rank_fit %>% 
+      mutate(fit_tidy = map(fit, tidy)) %>% 
+      select(-data, -fit) %>% 
+      unnest() 
+
+rank_slopes <- rank_fit_coef %>% 
+      filter(term == "t_level") %>% 
+      select(feature_id, estimate) %>% 
+      rename(slope = estimate)
+
+rank_fit_metrics <- rank_fit %>% 
+      mutate(fit_glance = map(fit, glance)) %>% 
+      select(-fit, -data) %>% 
+      unnest()
+
+feature_fit_stats <- rank_fit_metrics %>% 
+      select(feature_id, adj.r.squared) %>% 
+      left_join(rank_slopes)
+```
+
+### Rank slope and R2 relationship 
+Size of the point indicates the number of features. 
+Slope and adjusted R squared are more closely correlated when using min rank compared to dense rank
+```{r}
+feature_fit_stats %>% 
+      group_by(adj.r.squared, slope) %>% 
+      summarise(count = n()) %>% 
+      ggplot() + geom_point(aes(x = slope, y = adj.r.squared, size = count))
+```
+
+No clear separation between groups categorization values choosen arbitrarily - need a better method to select features.
+```{r}
+feature_fit_cat <- feature_fit_stats %>%  
+      mutate(feat_cat = case_when(adj.r.squared <= 0.5 ~ "low-r2",
+                                  slope > 0.5 & adj.r.squared > 0.5 ~ "pos-slope",
+                                  slope < -0.5 & adj.r.squared > 0.5 ~ "neg-slope",
+                                  abs(slope) <= 0.5 ~ "low-slope")
+      )
+```
+
+
+```{r}
+feature_fit_cat %>% group_by(feat_cat) %>% summarise(count = n())
+```
+
+
+### Example features that titrate
+```{r}
+set.seed(1)
+good_feats <- count_ranks %>% left_join(feature_fit_cat) %>% 
+      filter(feat_cat %in% c("pos-slope", "neg_slope")) %>% 
+      filter(feature_id %in% paste0("SV", sample(1:3144,replace = F, size = 400)))
+```
+
+
+Features are ordered based on R2 values
+
+```{r}
+good_feats %>% ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, -adj.r.squared)) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") + 
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+Might want to consider changing the slope cutoff to 0.6 or higher
+```{r}
+good_feats %>% select(feature_id, slope, adj.r.squared) %>% 
+      unique() %>% arrange(-adj.r.squared)
+```
+
+Potentially consider excluding or annotating low abundance features, e.g. SV1131, 118, 1244, and 1607.
+Maybe setting values less than 1/10000 (max library size) to 0....
+```{r}
+count_ranks %>% left_join(feature_fit_cat) %>% 
+      filter(feature_id %in% paste0("SV", c(11131,118,1244, 1607))) %>% 
+      ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, -adj.r.squared)) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") + 
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+
+
+
+
+
+
+```{r}
+set.seed(1)
+poor_feats <- feature_fit_cat %>% 
+      ungroup() %>% 
+      filter(feat_cat == "low-r2") %>% 
+      sample_n(10) %>% 
+      mutate(feature_id = fct_reorder(feature_id, -adj.r.squared)) %>% 
+      left_join(count_ranks)
+      
+```
+
+```{r}
+poor_feats %>% select(feature_id, slope, adj.r.squared) %>% 
+      unique() %>% arrange(-adj.r.squared)
+```
+
+```{r}
+poor_feats  %>%  ggplot() + 
+      geom_line(aes(x = t_level, y = rank_min)) + 
+      geom_smooth(aes(x = t_level, y = rank_min), method = "lm") +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+
+```{r}
+poor_feats  %>%  ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+```{r}
+feature_fit_cat <- feature_fit_stats %>%  
+      mutate(feat_cat = case_when(adj.r.squared > 0.7 ~ "high-r2",
+                                  adj.r.squared <= 0.7 ~ "low-r2")
+      )
+```
+
+```{r}
+feature_fit_cat %>% group_by(feat_cat) %>% summarise(count = n())
+```
+
+```{r}
+feature_fit_cat
+```
+
+```{r}
+example_feats <- feature_fit_cat %>% group_by(feat_cat) %>% 
+      sample_n(6) 
+example_feats %>%
+      left_join(count_ranks) %>% 
+      ungroup() %>% 
+      mutate(feature_id = fct_reorder(feature_id, -adj.r.squared)) %>% 
+      ggplot() + 
+      geom_line(aes(x = t_level, y = norm_count)) + 
+      geom_smooth(aes(x = t_level, y = norm_count, color = feat_cat), method = "lm") +
+      facet_wrap(~feature_id, scales = "free_y")
+```
+
+```{r}
+example_feats %>% select(feature_id, adj.r.squared, slope) %>% unique() %>% arrange(-adj.r.squared)
+```
+
+
+## Cluster analysis on ranks
+Does not seem to be an appropraite approach
+
+```{r}
+ranks_wide <- count_ranks %>% select(feature_id, t_fctr, rank_dense) %>% 
+      mutate(t_fctr = paste0("T", t_fctr)) %>% 
+      spread(t_fctr, rank_dense) %>% 
+      as.data.frame()
+
+rownames(ranks_wide) <- ranks_wide$feature_id
+ranks_wide$feature_id <- NULL
+ranks_mat <- ranks_wide %>% as.matrix()# %>% scale()
+```
+
+Looking at pattern frequency
+```{r}
+## ranks_wide %>% group_by(T1,T2,T3,T4,T5) %>% summarise(count = n()) %>% arrange(-count)
+```
+
+```{r}
+fit <- kmeans(ranks_mat, 3) # 5 cluster solution
+# get cluster means 
+aggregate(ranks_mat,by=list(fit$cluster),FUN=median)
+# append cluster assignment
+cluster_assign <- data.frame(feature_id = names(fit$cluster), cluster_id = fit$cluster)
+```
+
+```{r}
+rank_cluster <- cluster_assign %>% 
+      group_by(cluster_id) %>% 
+      sample_n(3) %>% 
+      left_join(count_ranks)
+```
+
+Results don't look too promising ...
+```{r}
+rank_cluster %>% 
+      ggplot() + geom_point(aes(x = t_fctr, y = norm_count, color = factor(cluster_id))) + 
+      facet_wrap(~feature_id, scales = "free_y")
+``` 
+

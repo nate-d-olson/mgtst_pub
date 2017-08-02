@@ -1,0 +1,229 @@
+---
+title: "Linear Model Based Count Estimates"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(MASS)
+library(modelr)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd) 
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp <- get_mrexp(pipeline_dir)
+```
+
+## Objective
+Calculate summary count values across PCR replicates values that take into account differences in sampling depth. 
+
+## Approach
+two approaches were used
+1. glm.nb - the negative binomial glm function that is part of the MASS package
+2. limma linear model with normalization
+
+## glm.nb 
+```{r}
+get_count_df <- function(mrobj, agg_genus = FALSE, css = TRUE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
+      if(css == TRUE){
+            mrobj <- cumNorm(mrobj, p = 0.75)
+            count_mat <- MRcounts(mrobj, norm = TRUE, log = FALSE, sl = 1000)
+      }else{
+            count_mat <- MRcounts(mrobj, norm = FALSE, log = FALSE, sl = 1)
+      }
+       count_mat %>%  
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+}
+
+count_df <- mrexp %>% map_df(get_count_df, css = FALSE, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC") %>% 
+      select(pipe, biosample_id, id, pcr_rep, feature_id, t_fctr, count) %>% 
+      group_by(biosample_id, pipe, id) %>% 
+      mutate(total_abu = sum(count))
+```
+
+```{r}
+nested_count_df <- count_df %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      nest()
+
+test_df <- nested_count_df$data[[1]] %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(0:5,10,15,20)))
+
+fit_log <- glm.nb(count ~ t_fctr, data = test_df, link = "log")
+fit_logoff <- glm.nb(count ~ t_fctr + offset(log(total_abu)), data = test_df, link = "log")
+fit_idprop <- glm.nb(count/total_abu ~ t_fctr, data = test_df, link = "identity")
+fit_id <- glm.nb(count ~ t_fctr, data = test_df, link = "identity")
+```
+
+```{r}
+fit_log
+```
+
+```{r}
+fit_logoff
+```
+
+```{r}
+fit_id
+```
+
+```{r}
+plot(fit_id)
+```
+
+```{r}
+fit_idprop
+```
+
+```{r}
+plot(fit_idprop)
+```
+
+
+```{r}
+test_pred <- test_df %>% dplyr::select(t_fctr) %>% unique() %>%
+      add_predictions(fit_id, var = "link_id") %>% 
+      add_predictions(fit_idprop, var = "link_idprop") %>% 
+      add_predictions(fit_log, var = "link_log") %>% 
+      # add_predictions(fit_logoff, var = "link_logoff") %>% 
+      gather("model","pred", -t_fctr)
+```
+
+Not sure the best way to validate/ evaluate the model
+```{r}
+test_pred %>% ggplot() + geom_point(aes(x = t_fctr, y = pred)) + facet_wrap(~model, scales = "free_y")
+```
+
+
+```{r}
+test_df %>% ggplot() + geom_point(aes(x = t_fctr, y = count/total_abu))
+```
+
+```{r}
+test_df %>% ggplot() + geom_point(aes(x = t_fctr, y = count))
+```
+
+```{r}
+test_df %>% ggplot() + 
+      geom_point(aes(x = total_abu, y = count, color = t_fctr)) +
+      geom_line(aes(x = total_abu, y = count, color = t_fctr))
+```
+
+```{r}
+fit_logoff
+```
+
+
+## Using Limma to get replicate estimates
+```{r}
+dada_pdat <- pData(mrexp$dada2)
+dada_04 <- filter(dada_pdat, biosample_id == "E01JH0004")
+dada_04_id <- dada_04$id %>% unique()
+dada_counts <- mrexp$dada2@assayData$counts %>% .[rowSums(.) != 0, colSums(.) > 50000]
+dada_counts_04 <- dada_counts[, colnames(dada_counts) %in% dada_04_id]
+# Sanity check removing featues with no counts and samples with counts < 50k
+# {rowSums(dada_counts) == 0} %>% sum()
+# colSums(dada_counts) %>% summary()
+library(limma)
+library(edgeR)
+dge <- DGEList(counts = dada_counts_04)
+dge <- calcNormFactors(dge)
+```
+
+```{r}
+cpm_norm <- cpm(dge, log = FALSE)
+```
+
+```{r}
+dada_pdat04 <- dada_pdat %>% 
+      filter(id %in% colnames(dada_counts_04)) %>% 
+      dplyr::select(id, biosample_id, t_fctr) %>% 
+      mutate(biosample_id = factor(biosample_id)) %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
+      column_to_rownames(var = "id")
+t_fctr <- dada_pdat04$t_fctr
+design <- model.matrix(~t_fctr)
+fit <- lmFit(cpm_norm, design)
+estimate_df <- fit$coefficients %>% as.data.frame() %>% rownames_to_column(var = "feature_id")
+count_est <- estimate_df %>% 
+      rename(t_fctr0 = `(Intercept)`) %>% 
+      gather("t_fctr", "count_fit", -feature_id, -t_fctr0) %>% 
+      mutate(count_abs = t_fctr0 + count_fit) 
+``` 
+
+
+
+```{r}
+count_est_tfctr0 <- count_est %>% 
+      dplyr::select(feature_id, t_fctr0) %>%
+      add_column(t_fctr = "t_fctr0") %>% 
+      rename(count_fit = t_fctr0) %>% 
+      mutate(count_abs = count_fit) %>% 
+      dplyr::select(feature_id, t_fctr, count_fit, count_abs) %>% 
+      unique()
+```
+
+```{r}
+count_est_df <- count_est %>% dplyr::select(-t_fctr0) %>% 
+      bind_rows(count_est_tfctr0) %>% 
+      mutate(t_fctr = str_replace(t_fctr, "t_fctr",""),
+             titration = as.numeric(t_fctr),
+             t_fctr = factor(t_fctr, levels = c(0:5, 10 ,15, 20)))
+```
+
+```{r}
+count_est_df %>% 
+      ggplot() + geom_line(aes(x = titration, y = count_abs, group = feature_id))
+```
+
+
+
+Very small negative values - attributing to variance in model fit...
+
+```{r}
+filter(count_est_df, count_abs < 0)  %>% arrange(count_abs) %>% head()
+```
+
+
+
+```{r}
+count_est_mat <- count_est_df %>% 
+      ## addressing issue with negative count estimates
+      mutate(count_abs = if_else(count_abs < 0, 0, count_abs)) %>% 
+      mutate(t_fctr = paste0("T", t_fctr),
+             t_fctr = factor(t_fctr, levels = paste0("T",c(0:5,10,15,20)))) %>% 
+      dplyr::select(feature_id, t_fctr, count_abs) %>% 
+      spread(t_fctr, count_abs)
+
+rownames(count_est_mat) <- count_est_mat$feature_id
+count_est_mat$feature_id <- NULL
+count_est_mat <- as.matrix(count_est_mat)
+```
+
+```{r}
+dim(count_est_mat)
+count_est_mat <- count_est_mat[rowSums(count_est_mat) > 0,]
+dim(count_est_mat)
+```
+
+### Saving limma based count estimates
+```{r}
+saveRDS(count_est_df, "../data/limma_count_est.rds")
+saveRDS(count_est_mat, "../data/limma_count_mat.rds")
+```

@@ -7,6 +7,7 @@ output:
     toc: FALSE
 ---
 
+
 __Look into edgeR for logFC calc__  
 __Calc logFC and take ratio - directly calculate logFC__
 __Change order for filtering features__ 
@@ -20,12 +21,15 @@ library(stringr)
 library(modelr)
 count_nb <- readRDS("../data/nb_expected_eo_metric_feature_df.rds")
 mothur_mrexp <- readRDS("../../mgtst_pipelines/mothur/mothur_mrexp.rds")
+dada_mrexp <- readRDS("../../mgtst_pipelines/dada2/dada_mrexp.rds")
 ```
+
 
 Issue logFC results are not close to expectation with difference if 1 between subsequent titrtations. 
 * Two approaches to validate methods 
 1. Generate simulated count data to validate code 
 2. Look at results for a subset of samples - one biological replicate and two titrations.
+
 
 ### logFC for Mothur  Biosample ID E01JH0011
 E01JH0011 had the theta estimates that were in the best agreement with the expected theta values. 
@@ -281,7 +285,8 @@ sub_logFC %>% left_join(unmix_count) %>%
      ggplot() + geom_point(aes(x = factor(t_fctr), y = total_count, color = feat_spec)) +
      geom_line(aes(x = factor(t_fctr) %>% as.numeric(), y = total_count, group = feature_id)) +
      facet_wrap(~feat_spec) + scale_y_log10()
- ```
+```
+
 
 
 ```{r}
@@ -290,9 +295,7 @@ sub_logFC %>% left_join(unmix_count) %>%
       ggplot() + geom_point(aes(x = T0, y = logFC))
 ```
 
-```{r}
 
-```
 
 ### DADA2
 ```{r}
@@ -329,7 +332,8 @@ count_df <- count_mat %>% as.data.frame() %>% rownames_to_column(var = "feature_
 dada_count <- dada_pdata %>% 
       left_join(count_df) %>% 
       mutate(t_fctr = paste0("T",t_fctr)) 
-```
+``` 
+
 ```{r}
 dada_sub <- dada_count %>% filter(total_abu < 600000, total_abu > 58000, 
                                   t_fctr %in% c("T0","T1","T2","T20"), 
@@ -364,8 +368,8 @@ dada_sub <- dada_count %>% filter(#total_abu < 67000, total_abu > 57000,
      # filter(T0 != 0 | T20 != 0) #%>% 
       # mutate(logFC = if_else(T2 != 0, log2(T2/T3), NaN)) %>% 
       # mutate(feat_spec = case_when(.$T0 != 0 & .$T20 != 0 ~ "non",
-                       .$T20 == 0 & .$T0 != 0 ~ "post",
-                       .$T0 ==0 & .$T20 != 0 ~ "pre"))
+                       # .$T20 == 0 & .$T0 != 0 ~ "post",
+                       # .$T0 ==0 & .$T20 != 0 ~ "pre"))
 ```
 
 ```{r}
@@ -385,7 +389,7 @@ dada_pdata %>% filter(biosample_id == "E01JH0011") %>% arrange(-total_abu) %>% g
 
 
 ```{r}
-dada_sub$t_fctr %>% unique() %>% ggplot(aes(x = feat_spec, y = logFC)) + geom_boxplot() + geom_point()
+# dada_sub %>% ggplot(aes(x = feat_spec, y = logFC)) + geom_boxplot() + geom_point()
 ```
 
 
