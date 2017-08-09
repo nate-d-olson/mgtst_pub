@@ -11,7 +11,7 @@ bibliography: [mgtst.bib, packages.bib]
 ```{r qual_setup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(tidyverse)
-feature_exp_df <- readRDS("data/nb_expected_eo_metric_feature_df.rds") 
+feature_exp_df <- readRDS("data/nb_expected_eo_metric_feature_update_df.rds") 
 ```
 
 
@@ -140,8 +140,8 @@ eo_pos1 <- feature_exp_df  %>% filter(eo_metric == 1) %>% left_join(min_prop)
 #       mutate(mc_prop = map(data, ~with(., mc_sim(max_prop = min_exp_prop, 
 #                                                     total_abundance = total_abu, 
 #                                                     obs_count = count))))
-# saveRDS(titration_mc,"~/Desktop/monte-carlo-titration.RDS")
-#titration_mc <- readRDS("~/Desktop/monte-carlo-titration.RDS")
+# saveRDS(titration_mc,"data/monte-carlo-titration.RDS")
+#titration_mc <- readRDS("data/monte-carlo-titration.RDS")
 #```
 
 #```{r mcProp, fig.cap = "Distribution of titration specifc features PCR replicate titrations Monte Carlo count simulations with equal to or more extreme counts than the observed counts.", message = FALSE, echo = FALSE}
@@ -311,12 +311,13 @@ feature_spec_count %>% filter(total_obs != 1) %>%
 ```
 
 ```{r}
-feature_spec_count %>% filter(feat_spec == "Titration-Specific") %>% 
-      ggplot() + geom_histogram(aes(x = pval_count, fill = pval_cat)) + scale_y_log10()
+# feature_spec_count
+# feature_spec_count %>% filter(feat_spec == "Titration-Specific") %>% 
+#       ggplot() + geom_histogram(aes(x = pval_count, fill = pval_cat)) + scale_y_log10()
 ```
 
 ```{r}
-feature_spec_count %>% 
+feature_spec_count %>%
       ggplot() + geom_histogram(aes(x = pval_count, fill = pval_cat)) + scale_y_log10() +
       facet_grid(pipe~feat_spec)
 ```
