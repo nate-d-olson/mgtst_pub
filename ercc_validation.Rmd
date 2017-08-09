@@ -12,6 +12,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(ProjectTemplate)
 load.project()
 library(modelr)
+library(ggpubr)
 ```
 
 
@@ -71,9 +72,11 @@ post_fit <- post_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
              efficiency = (amplification_factor - 1) * 100) 
 
 ## Pre-treatment sample fit
-pre_fit_mod <- ercc_sam %>% filter(assay_type == "Pre") %>%
+pre_fit_mod <- ercc_sam %>% 
+      filter(assay_type == "Pre", titration %in% c(1:4,20)) %>%
+      mutate(pre_log2 = log2(pre_prop)) %>% 
       group_by(ercc,assay_type) %>% nest() %>%
-      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+      mutate(fit = map(data, ~lm(Ct~pre_log2, data = . )))
 
 pre_fit_list <- pre_fit_mod$fit %>% set_names(pre_fit_mod$ercc)
 
@@ -88,76 +91,134 @@ pre_fit <- pre_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
       mutate(amplification_factor = 10^(-1/slope),
              efficiency = (amplification_factor - 1) * 100) 
 
-post_fit_mod14 <- ercc_sam %>% filter(assay_type == "Post", titration %in% 1:4) %>% 
-      group_by(ercc,assay_type) %>% nest() %>% 
-      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
 
-post_fit_list14 <- post_fit_mod14$fit %>% set_names(post_fit_mod14$ercc)
-
-# Extract fit parameters and calculate efficiency
-post_fit_coefs14 <- post_fit_list14 %>% map_df(coefficients) %>% 
-      add_column(coefs = c("intercept","slope")) %>% 
-      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
-
-post_fit14 <- post_fit_list14 %>% map_df(broom::glance, .id = "ercc") %>% 
-      select(ercc, adj.r.squared) %>%
-      left_join(post_fit_coefs14) %>% mutate(fit = "1:4")
-
-post_fit_mod05 <- ercc_sam %>% filter(assay_type == "Post", titration %!in% 1:4) %>% 
-      group_by(ercc,assay_type) %>% nest() %>% 
-      mutate(fit = map(data, ~lm(Ct~titration, data = . )))
-
-post_fit_list05 <- post_fit_mod05$fit %>% set_names(post_fit_mod05$ercc)
+## Titration subset models ###################################
+# post_fit_mod14 <- ercc_sam %>% filter(assay_type == "Post", titration %in% 1:4) %>% 
+#       group_by(ercc,assay_type) %>% nest() %>% 
+#       mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+# 
+# post_fit_list14 <- post_fit_mod14$fit %>% set_names(post_fit_mod14$ercc)
 
 # Extract fit parameters and calculate efficiency
-post_fit_coefs05 <- post_fit_list05 %>% map_df(coefficients) %>% 
-      add_column(coefs = c("intercept","slope")) %>% 
-      gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+# post_fit_coefs14 <- post_fit_list14 %>% map_df(coefficients) %>%
+#       add_column(coefs = c("intercept","slope")) %>%
+#       gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+# 
+# post_fit14 <- post_fit_list14 %>% map_df(broom::glance, .id = "ercc") %>%
+#       select(ercc, adj.r.squared) %>%
+#       left_join(post_fit_coefs14) %>% mutate(fit = "1:4")
+# 
+# post_fit_mod05 <- ercc_sam %>% filter(assay_type == "Post", titration %!in% 1:4) %>%
+#       group_by(ercc,assay_type) %>% nest() %>%
+#       mutate(fit = map(data, ~lm(Ct~titration, data = . )))
+# 
+# post_fit_list05 <- post_fit_mod05$fit %>% set_names(post_fit_mod05$ercc)
+# 
+# # Extract fit parameters and calculate efficiency
+# post_fit_coefs05 <- post_fit_list05 %>% map_df(coefficients) %>%
+#       add_column(coefs = c("intercept","slope")) %>%
+#       gather("ercc","stat",-coefs) %>% spread(coefs, stat)
+# 
+# post_fit05 <- post_fit_list05 %>% map_df(broom::glance, .id = "ercc") %>%
+#       select(ercc, adj.r.squared) %>%
+#       left_join(post_fit_coefs05) %>%
+#       mutate(fit = "0,5,10,15")
 
-post_fit05 <- post_fit_list05 %>% map_df(broom::glance, .id = "ercc") %>% 
-      select(ercc, adj.r.squared) %>%
-      left_join(post_fit_coefs05) %>% 
-      mutate(fit = "0,5,10,15")
+####################### Data for qPCR summary Table ############################
+ercc_stdtbl <- ercc_meta %>% 
+      right_join(std_fit) %>% 
+      mutate(std_R2 = round(adj.r.squared,4), E = round(efficiency, 2)) %>% 
+      select(biosample_id, treatment, std_R2, E) 
+
+ercc_vldtbl <- bind_rows(post_fit, pre_fit) %>% 
+      left_join(ercc_meta) %>% 
+      mutate(R2 = round(adj.r.squared, 2), Slope = round(slope, 2)) %>% 
+      select(biosample_id, treatment, R2, Slope)
+
+ercc_tbl <- left_join(ercc_stdtbl, ercc_vldtbl)
+
+
+#### Code for t-tests to check slopes equal to -1 and 1
+# fit_tdy <- post_fit_mod$fit[[1]] %>% tidy()
+# fit_glance <- post_fit_mod$fit[[1]] %>% glance()
+# resid_df <- fit_glance$df.residuals
+# slope_est <- fit_tdy[2,2]
+# slope_stderror <- fit_tdy[2,3]
+# t_val <- (slope_est - 1)/slope_stderror
+# p_val <-pt(t_val, resid_df)
+# p_val
+
+# fit_tdy <- pre_fit_mod$fit[[1]] %>% tidy()
+# fit_glance <- pre_fit_mod$fit[[1]] %>% glance()
+# resid_df <- fit_glance$df.residual
+# slope_est <- fit_tdy[2,2]
+# slope_stderror <- fit_tdy[2,3]
+# 
+# t_val <- (slope_est + 1)/slope_stderror
+# p_val <-pt(t_val, resid_df)
+# p_val
+
+
+### Code for ERCC Titration Factor plot
+ercc_sam <- ercc_sam %>% 
+      mutate(ercc = as.character(ercc)) %>% 
+      left_join(ercc_meta)
+
+### Code for independent Pre and Post Plots
+ercc_plot_dat <- ercc_sam %>% mutate(ercc = as.character(ercc)) %>% 
+      left_join(ercc_meta) %>% 
+      mutate(pre_log2 = log2(pre_prop))
+
+ercc_preplot <- ercc_plot_dat %>% 
+      filter(treatment == "Pre", titration %in% c(1:4)) %>% 
+      ggplot() +
+      geom_smooth(aes(x = pre_prop, y = Ct), method = "lm") + 
+      geom_point(aes(x = pre_prop, y = Ct)) +
+      facet_wrap(~biosample_id, ncol = 1) +
+      theme_bw() + labs(x = "Pre-Exposure Proportion", y = "Ct")  +
+      scale_x_continuous(trans = "log2")
+
+ercc_postplot <- ercc_plot_dat %>% 
+      filter(treatment == "Post") %>%
+      ggplot() +
+      geom_smooth(aes(x = titration, y = Ct), method = "lm") + 
+      geom_point(aes(x = titration, y = Ct)) +
+      facet_wrap(~biosample_id, ncol = 1) +
+      theme_bw() + labs(x = "Titration Factor", y = "Ct") +
+      scale_x_continuous(trans = "log2")
 ```
 
-__TODO__: Combine the two tables  
+- The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 for all standard curves (Table \@ref(tab:erccTable)).  
+- The amplification efficiency was outside of the ideal range (0.9 - 1.1), but within the acceptable range (0.8-1.2). Ideal and acceptable ranges based on rule of thumb community accepted guidelines.  
 
-- The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 for all standard curves (Table \@ref(tab:erccStdCurve)).  
-- The amplification efficiency was outside of the ideal range (0.9 - 1.1), but within the acceptable range (0.8-1.2).  
-    - Ideal and acceptable ranges based on rule of thumb community accepted guidelines.  
+- The post treatment qPCR assays had good $R^2$ and slope values (Table \@ref(tab:erccTable)). The expected slope is 1, for a doubling every cycle.  
+- The 1-4 titration factor samples had Ct values consistently above the regression line (Figure \@ref(fig:erccPlot)).  
+- For the pre-treatment samples, should be 1 Ct difference between the unmixed post and titration factor 1 and 0.5 Ct between titration factor 0 and 1. For the other titration factors the expected difference is to small to detect using qPCR (< 0.5 Ct).  
+- Figure \@ref(fig:erccPlot) has both pre- and post-exposure qPCR results on a $log_2$ scale with expected slopes of 1 and -1 (Table \@ref(tab:erccTable)). 
 
-- The post treatment qPCR assays had good $R^2$ and slope values (Table \@ref(tab:erccTitrationCurve)). The expected slope is 1, for a doubling every cycle.  
-    - The 1-4 titration factor samples had Ct values consistently above the regression line (Figure \@ref(fig:erccPlot)).  
-- For the pre-treatment samples, should be 1 Ct difference between the unmixed post and titration factor 1 and 0.5 Ct between titration factor 1 and 2.  
-    - For the other titration factors the expected difference is to small to detect using qPCR (< 0.5 Ct).  
-
-
-
-```{r erccStdCurve, echo=FALSE, message=FALSE}
-ercc_meta %>% 
-    right_join(std_fit) %>% 
-    select(biosample_id, treatment, adj.r.squared, efficiency) %>% 
-    mutate(adj.r.squared = round(adj.r.squared,4), efficiency = round(efficiency, 2)) %>%
-    knitr::kable(caption = "ERCC Spike-in qPCR standard curve summary metrics.", booktabs = TRUE)
-```
-
-```{r erccTitrationCurve, echo=FALSE, message=FALSE}
-bind_rows(post_fit, pre_fit) %>% left_join(ercc_meta) %>% 
-    select(biosample_id, treatment, adj.r.squared, slope) %>% 
-    mutate(adj.r.squared = round(adj.r.squared, 2),
-           slope = round(slope, 2)) %>% 
-    knitr::kable(caption = "ERCC qPCR titration validation assays",  booktabs = TRUE)
+```{r erccTable, echo=FALSE, message=FALSE}
+ercc_tbl %>% arrange(treatment) %>% 
+    knitr::kable(caption = "ERCC Spike-in qPCR summary statistics. $R^2$ and Efficiency (E) for standard curves. $R^2$ and slope for titration qPCR results for ", booktabs = TRUE)
 ```
 
 ```{r erccPlot, fig.cap = "qPCR ERCC spike-in titration validation results.", echo=FALSE, message=FALSE}
-ercc_sam <- ercc_sam %>% mutate(ercc = as.character(ercc)) %>% left_join(ercc_meta) 
-bind_rows(pre_fit,post_fit) %>% left_join(ercc_meta) %>% ggplot() +
-      geom_abline(aes(intercept = intercept, slope = slope)) +
-      geom_point(data = ercc_sam,aes(x = titration, y = Ct)) +
-      facet_grid(treatment~biosample_id) +
+ercc_sam %>% ggplot() + 
+      geom_smooth(aes(x = titration, y = Ct), method = "lm") + 
+      geom_point(aes(x = titration, y = Ct)) +
+      facet_grid(treatment~biosample_id, scales = "free_y") +
       theme_bw() + labs(x = "Titration Factor", y = "Ct")
 ```
 
+```{r erccPlot2, fig.cap = "qPCR ERCC spike-in results for ERCC spiked into unmixed (A) Post-exposure samples and (B) Pre-exposure samples. X-axis is on a log2 scale with expected slope of 1 and -1 for Post-exposure and Pre-exposure spike-ins respectively.", fig.height = 7, echo=FALSE, message=FALSE}
+ggarrange(ercc_postplot, 
+          ercc_preplot,
+          labels = c("A", "B"),
+          nrow = 1, ncol = 2)
+```
 
+__Potential Next Steps__
+* Use a mixed effects model to account for qPCR plate effects   
+* Add test (t-test) to test whether slopes are significantly different from expectation (1,-1)  
+* Compare model fix results for different titration subsets (only relevant to support conclusions regarding titration specific differences.)
 
 
