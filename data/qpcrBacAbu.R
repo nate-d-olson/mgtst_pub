@@ -12,12 +12,13 @@ get_abu_0909 <- function(xcl_file){
 }
 
 get_abu_1209 <- function(xcl_file){
-      cols <- c("well","sample_name",
+      cols <- c("well","sample_name","conc",
                 "plate1_Ct","plate1_quant",
                 "plate2_Ct","plate2_quant",
                 "plate3_Ct","plate3_quant")
       
       std_cols <- cols %>% {c(paste("shan", ., sep = "_"), 
+                              "blank",
                               paste("zymo", ., sep = "_"))}
       
       bac_con_raw <- read_excel(path = xcl_file,
@@ -36,7 +37,8 @@ get_abu_1209 <- function(xcl_file){
 }
 
 tidy_abu_con <- function(bac_con_raw){
-      bac_con <- bac_con_raw %>% gather("id","value", -well, -sample_name, -std, -date) %>% 
+      bac_con <- bac_con_raw %>% 
+            gather("id","value", -well, -sample_name, -std, -date) %>% 
             separate(id, c("plate","var"), sep = "_") %>% 
             spread(var,value) %>% 
             mutate(sam_type = if_else(grepl('\\(', sample_name), "unmixed","titration"),

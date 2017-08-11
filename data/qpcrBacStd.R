@@ -6,7 +6,8 @@ get_std_0919 <- function(xcl_file){
       
       read_excel(path = xcl_file, sheet = "QDNA_20160919", 
                  skip = 3, col_names = FALSE, na = "Undetermined") %>% 
-            select(-X12, -X13, -X5,-X7,-X9) %>% set_colnames(cols) %>% 
+            select(-X__10,-X__11, -X__12, -X__13, -X__5,-X__7,-X__9) %>% 
+            set_colnames(cols) %>% 
             filter(sample_name %in% paste0("Std",1:7)) %>% 
             gather("plate","Ct",-well, -sample_name, -conc) %>% 
             mutate(conc = as.numeric(conc), Ct = as.numeric(Ct), 
@@ -21,8 +22,9 @@ get_std_1209 <- function(xcl_file){
       bac_std <- read_excel(path = xcl_file,
                             sheet = "ReDo_QDNA_20161209",skip = 3, 
                             na = "Undetermined", col_names = FALSE) %>% 
-            select(-X5,-X7,-X9,-X15,-X17,-X19) %>% 
-            filter(X2 %in% paste0("Std",1:7)) %>% set_colnames(full_cols)
+            select(-X__5,-X__7,-X__9,-X__10, -X__15,-X__17,-X__19) %>% 
+            filter(X__2 %in% paste0("Std",1:7)) %>% 
+            set_colnames(full_cols)
       
       shan_std <- bac_std %>% select(starts_with("shan")) %>% 
             set_colnames(cols) %>% mutate(std = "shan")
