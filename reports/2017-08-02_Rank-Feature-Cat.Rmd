@@ -160,7 +160,10 @@ feature_fit_cat <- feature_fit_stats %>%
 
 
 ```{r}
-feature_fit_cat %>% group_by(pipe, biosample_id, feat_cat) %>% summarise(count = n()) %>% spread(biosample_id, count)
+feature_fit_cat %>%
+      group_by(pipe, biosample_id, feat_cat) %>% 
+      summarise(count = n()) %>% 
+      spread(biosample_id, count)
 ```
 
 
@@ -179,8 +182,8 @@ count_ranks %>% left_join(feature_fit_cat) %>%
       ungroup() %>% 
       mutate(feature_id = fct_reorder(feature_id, -adj.r.squared)) %>% 
       ggplot() + 
-      geom_line(aes(x = t_level, y = norm_count)) + 
-      geom_smooth(aes(x = t_level, y = norm_count), method = "lm") + 
+      geom_line(aes(x = t_level, y = count_est)) + 
+      geom_smooth(aes(x = t_level, y = count_est), method = "lm") + 
       facet_wrap(~feature_id, scales = "free_y")
 ```
 

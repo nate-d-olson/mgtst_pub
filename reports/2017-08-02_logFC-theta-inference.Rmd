@@ -28,24 +28,27 @@ Using upper and lower confidence intervals for theta estimates to calculate the 
 logFC_exp <- theta_est %>% ungroup() %>% 
       # mutate(t_fctr = paste0("T", t_fctr)) %>% 
       # filter(t_fctr %in% paste0("T",1:4)) %>% 
+      ## Only calculating expected logFC not confidence intervals
       filter(t_fctr %in% 1:4) %>% 
       dplyr::select(pipe, biosample_id, t_fctr, theta_hat_mean, theta_hat_uci, theta_hat_lci) %>% 
-      mutate(theta_hat_mean = if_else(theta_hat_mean < 0, 0, theta_hat_mean),
-             theta_hat_uci = if_else(theta_hat_uci < 0, 0, theta_hat_uci),
-             theta_hat_lci = if_else(theta_hat_lci < 0, 0, theta_hat_lci)) %>% 
+      mutate(theta_hat_mean = if_else(theta_hat_mean < 0, 0, theta_hat_mean)#,
+             #theta_hat_uci = if_else(theta_hat_uci < 0, 0, theta_hat_uci),
+             #theta_hat_lci = if_else(theta_hat_lci < 0, 0, theta_hat_lci)
+             ) %>% 
       group_by(pipe, biosample_id) %>%
       mutate(hat_lead = lead(theta_hat_mean),
              hat_lead = if_else(is.na(hat_lead), theta_hat_mean, hat_lead),
-             uci_lead = lead(theta_hat_uci),
-             uci_lead = if_else(is.na(uci_lead), theta_hat_uci, uci_lead),
-             lci_lead = lead(theta_hat_lci),
-             lci_lead = if_else(is.na(lci_lead), theta_hat_lci, lci_lead),
+             #uci_lead = lead(theta_hat_uci),
+             #uci_lead = if_else(is.na(uci_lead), theta_hat_uci, uci_lead),
+             #lci_lead = lead(theta_hat_lci),
+             #lci_lead = if_else(is.na(lci_lead), theta_hat_lci, lci_lead),
              post_logFC_exp = log2(hat_lead/theta_hat_mean),
-             post_logFC_uci = log2(uci_lead/theta_hat_uci),
-             post_logFC_lci = log2(lci_lead/theta_hat_lci),
-             pre_logFC_exp = log2((1-hat_lead)/(1-theta_hat_mean)),
-             pre_logFC_uci = log2((1-uci_lead)/(1-theta_hat_uci)),
-             pre_logFC_lci = log2((1-lci_lead)/(1-theta_hat_lci)))
+             #post_logFC_uci = log2(uci_lead/theta_hat_uci),
+             #post_logFC_lci = log2(lci_lead/theta_hat_lci),
+             pre_logFC_exp = log2((1-hat_lead)/(1-theta_hat_mean))#,
+             #pre_logFC_uci = log2((1-uci_lead)/(1-theta_hat_uci)),
+             #pre_logFC_lci = log2((1-lci_lead)/(1-theta_hat_lci))
+             )
 ```
 
 Lower confidence interval for logFC is NaN for a number of titrations, will want to limit analysis to biological replicates and pipelines with non-negative theta estimates and confidence intervals. 
