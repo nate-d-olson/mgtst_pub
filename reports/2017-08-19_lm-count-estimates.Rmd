@@ -1,0 +1,157 @@
+---
+title: "Negative Binomial Linear Model Count Estimates"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(MASS)
+library(modelr)
+library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
+load.project()
+setwd(cwd) 
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp <- get_mrexp(pipeline_dir)
+```
+
+## Objective
+Calculate summary count values across PCR replicates values that take into account differences in sampling depth. 
+
+## Approach
+1. glm.nb - the negative binomial glm function that is part of the MASS package
+
+
+## glm.nb 
+```{r}
+get_count_df <- function(mrobj, agg_genus = FALSE, css = TRUE){
+      if(agg_genus){
+            mrobj <- aggregateByTaxonomy(mrobj, lvl = "Rank6", 
+                                         norm = FALSE, log = FALSE, sl = 1)
+      }
+      
+      if(css == TRUE){
+            mrobj <- cumNorm(mrobj, p = 0.75)
+            count_mat <- MRcounts(mrobj, norm = TRUE, log = FALSE, sl = 1000)
+      }else{
+            count_mat <- MRcounts(mrobj, norm = FALSE, log = FALSE, sl = 1)
+      }
+       count_mat %>%  
+            as.data.frame() %>% 
+            rownames_to_column(var = "feature_id") %>% 
+            gather("id","count", -feature_id)
+}
+
+count_df <- mrexp %>% map_df(get_count_df, css = FALSE, .id = "pipe") %>% 
+      left_join(pData(mrexp$dada2)) %>% 
+      filter(biosample_id != "NTC") %>% 
+      select(pipe, biosample_id, id, pcr_rep, feature_id, t_fctr, count) %>% 
+      group_by(biosample_id, pipe, id) %>% 
+      mutate(total_abu = sum(count))
+
+nonzero_count_features <- count_df %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(0:5,10,15,20))) %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      summarise(total_count = sum(count)) %>% 
+      filter(total_count > 0) %>% 
+      select(-total_count)
+
+nested_count_df <- count_df %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(0:5,10,15,20))) %>% 
+      group_by(pipe, biosample_id, feature_id) %>% 
+      right_join(nonzero_count_features) %>% 
+      nest()
+```
+
+```{r}
+test_df <- nested_count_df$data[[1]]
+
+fit_logoff <- glm.nb(count ~ t_fctr + offset(log(total_abu)), data = test_df, link = "log")
+```
+
+
+```{r}
+fit_logoff
+```
+```{r}
+fit_coefs <- fit_logoff %>% coefficients()
+fit_coefs
+```
+
+t_fctr0 (unmixed Post-exposure) is the intercept. 
+Adding the intercept term to other titration estimates and converting to proportions from log space. 
+```{r}
+c(fit_coefs[1], fit_coefs[1] + fit_coefs[2:9]) %>% exp() %>% plot()
+```
+
+
+## Fitting negative binomial model to full dataset
+```{r}
+get_coefs <- function(fit){
+      coefs <- coefficients(fit) 
+      coefs_df <- c(coefs[1], 
+                    coefs[1] + coefs[2:9]) %>% 
+            exp() %>% 
+            as.data.frame() %>% 
+            rownames_to_column(var = "t_fctr")
+      
+      colnames(coefs_df) <- c("t_fctr", "nb_prop")
+      
+      coefs_df
+}
+
+safe_glm.nb <- safely(glm.nb)
+
+nb_fit <- nested_count_df %>%
+      mutate(fit = map(data, 
+                       ~safe_glm.nb(count ~ t_fctr + offset(log(total_abu)), 
+                               data = ., 
+                               link = "log"))) 
+
+saveRDS(nb_fit, "~/Desktop/nb_fit.RDS")
+
+fit_results <- nb_fit$fit %>% 
+      transpose() %>% 
+      as_data_frame()
+
+
+nb_fit_results <- nb_fit %>% 
+      select(-fit) %>% 
+      bind_cols(fit_results) %>% 
+      mutate(ok_model = map_lgl(error, is_null)) 
+
+nb_counts <- nb_fit_results %>% 
+      filter(ok_model == T) %>% 
+      mutate(coefs = map(result, get_coefs)) %>% 
+      select(-data, -result, -error, -ok_model) %>%
+      unnest()
+
+nb_counts <- nb_counts %>%
+      mutate(t_fctr = if_else(t_fctr == "(Intercept)",
+                              "0",
+                              str_replace(t_fctr, "t_fctr","")),
+             t_fctr = factor(t_fctr, levels = c(0:5,10,15,20)))
+
+saveRDS(nb_counts, "~/Desktop/nb_counts.RDS")
+```
+
+Failed models have high proportion of zeros
+```{r}
+bad_models <- nb_fit_results %>% 
+      filter(ok_model == F) 
+
+bad_models
+```
+
+```{r}
+bad_models$data
+```
+
+
+
