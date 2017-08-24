@@ -1,0 +1,115 @@
+---
+title: "Bacterial DNA Concentration qPCR"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+--- 
+
+```{r bac_setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(ProjectTemplate)
+load.project()
+library(modelr)
+library(broom)
+```
+
+```{r warning=FALSE, message=FALSE, echo = FALSE}
+mod <- qpcrBacStd %>% 
+      filter(std == "shan", conc >= 0.2) %>% mutate(log_conc = log10(conc)) %>% 
+      {lm(log_conc~Ct, data = .)}
+
+bac_abu <- qpcrBacAbu %>% filter(!is.na(Ct), std == "shan") %>% 
+      add_predictions(mod) %>% 
+      mutate(quant = 10^pred)
+
+#### Standard Curve Summary Metrics
+fit <- qpcrBacStd %>% 
+      filter(std == "shan", conc >= 0.2) %>%
+      mutate(log_conc = log10(conc)) %>% 
+      {lm(Ct~log_conc, data = .)} 
+
+mod_summary <- summary(fit)
+std_r2 <- mod_summary$adj.r.squared
+std_slope <- mod_summary$coefficients[2,1]
+af <- 10^(-1/std_slope)
+efficiency <- (af - 1) * 100
+
+### DNA Concentration Plot data
+sample_name_df <- data_frame(bio_rep = as.character(1:5),
+                             biosample_id = paste0("E01JH00",c("04","11","16","17","38")))
+
+bac_con_plot <- bac_abu %>% 
+      filter(sample_name != "NTC") %>% 
+      ungroup() %>% 
+      mutate(sample_name = gsub(" ","_", sample_name)) %>% 
+      separate(sample_name, c("bio_rep","titration"), sep = "_") %>% 
+      left_join(sample_name_df) %>% 
+      mutate(titration = case_when(titration %in% paste0("M",c(0:20)) ~ str_replace(titration, "M",""),
+                                   titration == "Pre" ~ "20", 
+                                   titration == "Post" ~ "0"),
+             titration = as.numeric(titration)) %>% 
+      filter(titration != 0) %>%
+      mutate(t_group = if_else(titration < 5, "mix","pre")) 
+
+######### Model Fit data
+bac_con_fit <- bac_con_plot %>% 
+      group_by(biosample_id, t_group) %>% nest() %>% 
+      mutate(fit = map(data, ~lm(quant~titration, data = .)),
+             fit_tdy = map(fit, tidy),
+             fit_glance = map(fit, glance))
+
+######### E01JH0017 
+## Fit model to titration series with and without titration 5
+bac_con17_full <- bac_con_plot %>% filter(biosample_id == "E01JH0017") 
+fit_17_full <- lm(quant~titration, data = bac_con17_full)
+slope_17_full <- coefficients(fit_17_full)[2]
+r2_17_full <- rsquare(fit_17_full, bac_con17_full)
+
+
+bac_con17_no5 <- bac_con_plot %>% 
+      filter(biosample_id == "E01JH0017", titration != 5) 
+fit_17_no5 <- lm(quant~titration, data = bac_con17_no5)
+slope_17_no5 <- coefficients(fit_17_no5)[2]
+r2_17_no5 <- rsquare(fit_17_no5, bac_con17_no5)
+# %>% 
+#       group_by(biosample_id) %>% nest() %>% 
+#       mutate(fit = map(data, ~lm(quant~titration, data = .)),
+#              fit_tdy = map(fit, tidy),
+#              fit_glance = map(fit, glance))
+```
+
+
+
+```{r bacConFit, warning=FALSE, message=FALSE, echo = FALSE}
+bac_con_fit %>% select(biosample_id, t_group, fit_tdy) %>% 
+      unnest() %>% filter(term == "titration") %>% 
+      add_column(adj.p.value =  p.adjust(.$p.value, method = "BH")) %>% 
+      select(biosample_id, t_group, estimate, std.error, adj.p.value) %>% 
+      knitr::kable(digits = 4, caption = "Slope estimate for linear model of bacterial DNA concentration and titration factor. Separate linear models were fit for each titration series (biological replicate) and titration group. Mix titration group includes titrations 1-4 and pre titration group 5, 10, and 15. Multiple test correction was performed using the Benjamini-Hochberg method. The expectation is for the slopes to equal 0.",  booktabs = TRUE)
+```
+
+
+```{r bacPlot, fig.cap = "Slope for titrations 1-4 is not consistent with the slope for titration 5, 10, 15 for three individuals.", warning=FALSE, message=FALSE, echo = FALSE}
+bac_con_plot %>% #filter(t_group == "mix") %>% 
+      ggplot() +
+      geom_point(aes(y = quant, x = titration)) +
+      geom_smooth(aes(x = titration, y = quant, color = t_group), method = "lm") + 
+      facet_wrap(~biosample_id, nrow = 1) +
+      theme_bw() + labs(x = "Titration Factor", y = "DNA concentration (ng/ul)") +
+      theme(legend.position = "none")
+```
+
+
+* The in-house standard curve with standard concentrations 20 ng/ul, 2ng/ul, and 0.2 ng/ul was used. Standard curve efficiency `r efficiency`, and $R^2$ `r std_r2`.  
+* If the proportion of bacterial DNA is the same between pre- and post-exposure samples the slope of the concentration estimates across the two-sample titration would be equal to 0.  
+* For individuals where the proportion of bacterial DNA is higher in the pre-exposure samples the slope will be negative a positive when the proporition is higher for post-exposure samples.  
+* Titrations 1-4 the slope estimates is statistically significantly different from 1 for individuals E01JH0011, E01JH00016, and E01JH00038 (Table \@ref(tab:bacConFit), Fig. \@ref(fig:bacPlot)).  
+* The proportion of pre-exposure sample in the mixture is greater than 0.97 for titration 5, 10, and 15 and therefore minimal difference in the bacterial DNA concentration is expected between titrations as observed for individuals E01JH0016 and E01JH0038.  
+* The bacterial concentration estimates are not consistent between the lower (1-4) and higher (titrations 5,10, and 15). For individuals E01JH0004, E01JH0011 and E01JH0017.  
+* For these three individuals the DNA concentration estimates are higher for titrations 5,10, and 15 compared to titrations 1-4.  
+* For E01JH0017 if titration 5 is considered an outlier the two sets of titrations are consistent. When a linear model is fit to the full titration series the $R^2$ value increases from `r round(r2_17_full,3)` to `r round(r2_17_no5,3)` when titration 5 is excluded from the model.  
+* For individual E01JH0004 the negative slope is an artifact of noisy qPCR data with no change in bacterial DNA concentration between titrations 1-4.  
+* I do not have an explanation for the lack of a linear trend in the bacterial DNA concentrations between the two sets of titrtaions for E01JH0011.  
+
