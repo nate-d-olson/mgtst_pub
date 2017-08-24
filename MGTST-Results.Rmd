@@ -502,6 +502,8 @@ feature_exp_df %>%
 
 
 ##### Quantitative Analysis  
+Use `getBaseMeansAndPooledVariances` from DESeq2. 
+Then calculate bias as obs/exp using base means
 
 ```{r}
 ## Extracting a tidy dataframe with count values from MRexpiment objects
@@ -625,6 +627,8 @@ fit_summary %>%
       geom_point(aes(x = cov_est, y = cov_sigma, color = biosample_id, shape = pipe)) + theme_bw() +
     facet_grid(pipe~biosample_id, scales = "free")
 ```
+
+
 
 # Session information 
 
