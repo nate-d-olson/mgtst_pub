@@ -1,0 +1,26 @@
+---
+title: "Untitled"
+author: "Nate Olson"
+date: "8/20/2017"
+output: html_document
+---
+
+* Negative Binomial Summary Counts
+      * Catch failed feature models
+* Theta Estimates
+      * Feature filtering  
+            * logFC 
+            * number of non-zero PCR reps or 0 summary values  
+      * Bootstrap theta estimates  
+* Count Error rates
+      * Calculate expected values 
+      * Mixed Effects model using non-outlier error estimates
+      * Explore features with outlier error estimates 
+* logFC Error Rates 
+      * Calc logFC
+      * Calc logFC expected values
+      * logFC error rates
+      * Mixed Effects model using non-outlier error estimates 
+      * Explore features with outlier error estimates
+      
+            
