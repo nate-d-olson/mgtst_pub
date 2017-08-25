@@ -1,30 +1,21 @@
 Next Steps
 ==========
-
-* workout story  
-
-* outline discussion  
-
-* outline introduction  
-
-* qualitative analysis
-      - monte-carlo bayesian sampling analysis for mix and unmixed specific features, Use a monte-carlo distribution to look at EO metric values of -1, where the expected count values are 0. bayesian assume different prior between some value and 0 to get a likelihood, then test likelihood....
-
-* Revise feature selection for quantitative analysis  
-    - subset features with > log2 fold change between pre and post  
-    - MA plots by pipeline and biological replicate
-
-* draft theta:t_fctr bias and variance section 
-      - model demonstration/ validation  
-
-* PrePost Bias Variance results
-      - volcano plot - Mean est - cov est plot - faceted volcano plot, interested in deviation from 0 
-      - outlier features, specifically E. coli biological replicate 38, Want a wat to connect lines in estimate plot with feature level bias and variance 
-      - Correlate bias and variance metric with log2 fold-change  
-
 * Submit data to SRA
 
+Open Questions
+==============
+Dealing with NTC
+
+ERCC qPCR
+-----------------------------------------------------
+* Use a mixed effects model to account for qPCR plate effects   
+* Add test (t-test) to test whether slopes are significantly different from expectation (1,-1)  
+* Compare model fix results for different titration subsets (only relevant to support conclusions regarding titration specific differences.)
+
+
+
 NOTES
+=======================================================
 * Libraries no longer automatically loaded with project template - DESeq, DESeq2, edgeR, phyloseq, Rqc, savR, vegan, sads
 
 
