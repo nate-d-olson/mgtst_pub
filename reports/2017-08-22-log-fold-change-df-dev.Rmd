@@ -192,6 +192,7 @@ Function for running EdgeR
 ## Function based on phyloseq_to_edgeR code 
 ## http://joey711.github.io/phyloseq-extensions/edgeR.html
 mrexp_to_edgeR <- function(mrexp_obj, group, method = "RLE", ...){
+      require(edgeR)
       ## Extracting count data - no scaling or transformation
       x <- mrexp_obj %>% MRcounts(sl = 1) %>% as.matrix()
       x <- x + 1 # add 1 to prevent log(0) issues
@@ -202,7 +203,8 @@ mrexp_to_edgeR <- function(mrexp_obj, group, method = "RLE", ...){
             group <- pData(mrexp_obj) %>% .[,group]
       }
 
-      ## Use taxonomy information at gene annotations
+      ## Use taxonomy information at gene annotations 
+      ## - Where OTUname is incorporated into the results
       taxonomy <- fData(mrexp_obj)
       if(!is.null(taxonomy)){
             taxonomy <- taxonomy %>% as.matrix() %>% data.frame()
@@ -230,15 +232,16 @@ mrexp_to_edgeR <- function(mrexp_obj, group, method = "RLE", ...){
 
 #### DADA2
 ```{r message = FALSE}
+require(edgeR)
 logFC_edgeR_dada2_df <- titration_comp_dada2_df %>% 
-      mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "dilution"),
+      mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "t_fctr"),
              fit = map(fit, exactTest)) 
 
 logFC_edgeR_dada2_coefs_df <- logFC_edgeR_dada2_df %>% 
       mutate(fit_coefs = map(fit, topTags, n = Inf, adjust.method = "BH")) 
 
 logFC_edgeR_dada2_coefs_tidy <- logFC_edgeR_dada2_coefs_df %>% 
-      select(sampleID, T1, T2, fit_coefs) %>% 
+      select(biosample_id, T1, T2, fit_coefs) %>% 
       mutate(fit_coefs = map(fit_coefs, ~.@.Data[[1]])) %>% 
       unnest()
 ```
@@ -246,14 +249,14 @@ logFC_edgeR_dada2_coefs_tidy <- logFC_edgeR_dada2_coefs_df %>%
 #### Mothur
 ```{r message = FALSE}
 logFC_edgeR_mothur_df <- titration_comp_mothur_df %>% 
-      mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "dilution"),
+ mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "t_fctr"),
              fit = map(fit, exactTest)) 
 
 logFC_edgeR_mothur_coefs_df <- logFC_edgeR_mothur_df %>% 
       mutate(fit_coefs = map(fit, topTags, n = Inf, adjust.method = "BH")) 
 
 logFC_edgeR_mothur_coefs_tidy <- logFC_edgeR_mothur_coefs_df %>% 
-      select(sampleID, T1, T2, fit_coefs) %>% 
+      select(biosample_id, T1, T2, fit_coefs) %>% 
       mutate(fit_coefs = map(fit_coefs, ~.@.Data[[1]])) %>% 
       unnest()
 ```
@@ -261,16 +264,17 @@ logFC_edgeR_mothur_coefs_tidy <- logFC_edgeR_mothur_coefs_df %>%
 #### QIIME
 ```{r message = FALSE}
 logFC_edgeR_qiime_df <- titration_comp_qiime_df %>% 
-      mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "dilution"),
+      mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "t_fctr"),
              fit = map(fit, exactTest)) 
 
 logFC_edgeR_qiime_coefs_df <- logFC_edgeR_qiime_df %>% 
       mutate(fit_coefs = map(fit, topTags, n = Inf, adjust.method = "BH")) 
 
 logFC_edgeR_qiime_coefs_tidy <- logFC_edgeR_qiime_coefs_df %>% 
-      select(sampleID, T1, T2, fit_coefs) %>% 
+      select(biosample_id, T1, T2, fit_coefs) %>% 
       mutate(fit_coefs = map(fit_coefs, ~.@.Data[[1]])) %>% 
-      unnest()
+      unnest() %>% 
+      rename(feature_id =)
 ```
 
 
