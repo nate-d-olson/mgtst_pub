@@ -1,0 +1,201 @@
+---
+title: "logFC Error Rate Analysis"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(forcats)
+library(stringr)
+# nb_counts <- readRDS("~/Desktop/nb_counts.RDS")
+pa_summary_anno_df <- readRDS("~/Desktop/pa_summary_anno_df.RDS")
+theta_est <- readRDS("~/Desktop/bootstrap_theta_estimates.rds")
+logFC_edgeR_df <- readRDS("~/Desktop/logFC_edgeR_df.rds")
+```
+
+## Objective
+Evaluate the logFC estimate accuracy.  
+
+## Summary
+The expected logFC between two titrations for pre- and post-specific features is $log_2{\theta_{T1}/\theta_{T2}}$, where $T1$ and $T2$ are the two titrations being compared. 
+The inferred theta was used to obtain expected logFC estimates. 
+The expectd logFC estimates were compared to logFC estimates calculated using edgeR. 
+
+
+```{r data_munging, echo = FALSE, warning = FALSE, message = FALSE}
+### Summarizing theta across pipelines
+theta_est <- theta_est %>% group_by(biosample_id, t_fctr) %>% 
+      summarise(theta_hat_mean = mean(theta_hat_mean))
+
+logFC_comp <- logFC_edgeR_df %>% 
+      select(pipe, biosample_id, T1, T2) %>% 
+      unique() %>% 
+      filter(T1 %in% c(0:5, 20), T2 %in% c(0:5,20))
+
+### Obtaining theta estimates
+logFC_exp <-logFC_comp %>% 
+      mutate(t_fctr = T1) %>% 
+      left_join(theta_est) %>% 
+      rename(T1_theta = theta_hat_mean) %>% 
+      mutate(T1_theta = case_when(T1 %in% c("1","2","3","4","5","10","15") ~ T1_theta,
+                                  T1 == "0" ~ 1,
+                                  T1 == "20" ~ 0)) %>% 
+      # select(-theta, -theta_hat_lci, -theta_hat_uci, -theta_var, -theta_bias) %>%
+      mutate(t_fctr = T2) %>%
+      left_join(theta_est) %>%
+      rename(T2_theta = theta_hat_mean) %>%
+      mutate(T2_theta = case_when(T2 %in% c("1","2","3","4","5","10","15") ~ T2_theta,
+                                  T2 == "0" ~ 1,
+                                  T2 == "20" ~ 0)) %>%
+      # select(-t_fctr, -theta, -theta_hat_lci, -theta_hat_uci, -theta_var, -theta_bias) %>% 
+      mutate(post_exp_logFC = log2(T2_theta/T1_theta),
+             pre_exp_logFC = log2((T2_theta - 1)/(T1_theta - 1)))
+
+### Pre and post specific features
+pre_post_features <- pa_summary_anno_df %>% 
+      filter(pre_specific == 1 | post_specific == 1) %>% 
+      filter(pa_specific == "unspecific") %>% 
+      mutate(pre_post = if_else(post_specific == 1, "post","pre")) %>%
+      ## Present in over half of the titration PCR replicates
+      filter(pa_mixed > 14) %>% 
+      select(biosample_id, pipe, feature_id, pre_post)
+
+## Filtering logFC data frame
+logFC_comp <- logFC_edgeR_df %>% 
+      right_join(logFC_exp) %>%
+      select(-Rank1, -Rank2, -Rank3, -Rank4, -Rank5, -Rank6, -Rank7) %>% 
+      rename(feature_id = OTUname) %>% 
+      right_join(pre_post_features) %>% 
+      # Assign expected logFC based on pre- or post- specific 
+      mutate(exp_logFC = if_else(pre_post == "pre", pre_exp_logFC, post_exp_logFC))
+
+## Excluding unreasonable expected logFC
+logFC_comp <- logFC_comp %>% filter(exp_logFC != -Inf, !is.nan(exp_logFC))
+
+## Calculating Error Rate
+logFC_error_df <- logFC_comp %>% 
+      mutate(logFC_error = abs(exp_logFC - logFC)/exp_logFC)
+```
+
+
+## Results
+Only pre- and post-specific features observed in at least half of the titration PCR replicates were use in the analysis (Table \@ref(tab:featTbl)). 
+Very few pre-specific features meet the inclusion criteria and therefore excluded from the following analysis. 
+Most of the logFC changes were not significantly different from 0 regardless of feature abundance (logCPM) (Fig. \@ref(fig:MAplot)). 
+A 1-to-1 relationship between the logFC estimates and expected values were not observed (Fig. \@ref(fig:logFCestVexp)). 
+This lack of a relationship was consistent across individuals, pipelines, and titrations comparisons for features with statistically significant logFC. 
+For post-featues the logFC estimates are expected to all be negative as feature relative abundance should decrease with sequential titrations. 
+However, both postive and negative logFC estimates were observed.
+Some features with a 1-to-1 relationship between the logFC estimates and expected values (Fig. \@ref(fig:exampleFeatLogFC)).
+The logFC estimate error rate was consistent across pipelines (excluding E01JH0038) but varied by individual (Fig. \@ref(fig:logFCerrorRate)). 
+This indicates the the error rate is more dependent on the individual than pipeline indicating that a bias in the theta estimate is likely skewing the results.
+
+
+
+
+There are a number of potential reasons for the overall lack of agreement between the expected value and estimated logFC. 
+
+* logFC not calculated correctly  
+* expected logFC not calculated correctly  
+* bug in data munging  
+* noisy features dominant  
+* poor relationship between theta estimates  
+* lack of consistency in direction of logFC estimates
+
+
+
+Of the potential reasons, the theta estimates are likely a primary contibutor. 
+This is evident with the postive expected logFC values for E01JH0017. 
+The E01JH0017 theta estimates are not monotomically decreasing across titrations resulting in positive expected logfC values for post-exposure specific features.
+
+
+```{r featTbl, echo = FALSE, warning = FALSE, message = FALSE}
+pre_post_features %>% 
+      group_by(biosample_id, pipe, pre_post) %>% 
+      summarise(count = n()) %>% 
+      spread(biosample_id, count,fill = 0) %>% 
+      arrange(pre_post) %>% 
+      knitr::kable(caption = "Summary Table with number of pre and post specific features.", booktabs = TRUE)
+```
+  
+
+```{r MAplot, fig.cap = "MA plot of logFC estimates between titrations for post-specific features.", echo = FALSE, warning = FALSE, message = FALSE}
+logFC_error_df %>% 
+      filter(T1 != 0, T2 != 20, pre_post == "post") %>% 
+      mutate(FDR_cat = if_else(FDR < 0.05, "<0.05",">0.05")) %>% 
+      ggplot() + 
+      geom_point(aes(x = logCPM, y = logFC, color = FDR_cat), alpha = 0.25) +
+      facet_grid(pipe~biosample_id, scales = "free") + 
+      theme_bw() 
+```
+
+```{r logFCestVexp, fig.cap = "Relationship between the estimated and observed logFC", , echo = FALSE, warning = FALSE, message = FALSE}
+logFC_error_df %>% 
+      filter(T1 != 0, T2 != 20, pre_post == "post") %>% 
+      mutate(FDR_cat = if_else(FDR < 0.05, "<0.05",">0.05")) %>% 
+      filter(biosample_id != "E01JH0017") %>% 
+      ggplot() + 
+      geom_point(aes(x = exp_logFC, y = logFC)) +
+      geom_smooth(aes(x = exp_logFC, y = logFC)) + 
+      theme_bw() + facet_wrap(~FDR_cat)
+```
+
+
+```{r exampleFeatLogFC, fig.cap = "Example features with a 1-to-1 relationship between the expected and estimated logFC values. The grey line indicates the expected 1-to-1 relationship. Point shape and color are used to represent the titrations being compared.  Features include those with a logCPM > 10, FDR < 0.05, for E01JH0016, excluding dada2.", echo = FALSE, message = FALSE}
+logFC_error_df %>% 
+      filter(logCPM > 10, FDR < 0.05, 
+             pre_post == "post", 
+             biosample_id == "E01JH0016",
+             T1 != 0, logFC < 0, pipe != "dada2") %>%  
+      ggplot() + 
+      geom_point(aes(x = exp_logFC, y = logFC, color = T2, shape = T1)) + 
+      geom_line(aes(x = exp_logFC, y = logFC)) + 
+      geom_abline(aes(intercept = 0, slope = 1), color = "grey60") + 
+      facet_wrap(~feature_id) + theme_bw()
+```
+
+
+
+
+```{r logFCerrorRate, fig.cap = "Distribution of logFC error rates for post-specific features by individual and pipeline. Only comparison between titrations (i.e. excluding unmixed samples) with expected logFC values < -1 were included. Orange points are comparisons with FDR < 0.05.", echo = FALSE, warning = FALSE, message = FALSE}
+filtered_dat <- logFC_error_df %>% 
+      filter(T1 != 0, T2 != 20, pre_post == "post", abs(exp_logFC) > 1) %>% 
+      mutate(FDR_cat = if_else(FDR < 0.05, "<0.05",">0.05")) %>% 
+      filter(biosample_id != "E01JH0017") 
+filtered_dat %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = pipe, y = logFC_error)) + 
+      geom_jitter(data = filter(filtered_dat, FDR_cat == "<0.05"),
+                  aes(x = pipe, y = logFC_error), color = "darkorange", width = 0.25) + 
+      facet_grid(.~biosample_id, scales = "free") +
+      theme_bw()
+```
+
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
+
