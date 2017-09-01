@@ -26,6 +26,7 @@ Pipelines:
 1. DADA2  
 2. Mothur   
 3. QIIME  
+4. Unclustered
 
 Differential Abundance Methods:  
 1. metagenomeSeq - fitFeatureModel  
@@ -92,6 +93,10 @@ titration_comp_mothur_df <- mrexp$mothur %>%
 
 ### QIIME
 titration_comp_qiime_df <- mrexp$qiime %>%
+      make_titration_comp_subset_df(titration_comp_df)
+
+### Unclustered
+titration_comp_unclustered_df <- mrexp$unclustered %>%
       make_titration_comp_subset_df(titration_comp_df)
 ```
 
@@ -176,6 +181,24 @@ logFC_MgSeq_qiime_coefs_tidy <- logFC_MgSeq_qiime_coefs_df %>%
       unnest()
 ```
 
+#### Unclustered
+```{r message = FALSE, warning = FALSE}
+logFC_MgSeq_unclustered_df <- titration_comp_unclustered_df %>% 
+      mutate(fit = pmap(list(mrexp_sub, T1, T2), fit_safely)) 
+
+logFC_MgSeq_unclustered_coefs_df <- logFC_MgSeq_unclustered_df %>% 
+      mutate(fit_coefs = map(fit, ~mrcoefs_safely(.$result, number = Inf))) 
+
+logFC_MgSeq_unclustered_coefs_tidy <- logFC_MgSeq_unclustered_coefs_df %>% 
+      select(biosample_id, T1, T2, fit_coefs) %>% 
+      ## excluding titration comparisons where the model failed
+      mutate(fit_coefs = map(fit_coefs, ~.$result),
+             fit_coefs_class = map_chr(fit_coefs, class)) %>% 
+      filter(fit_coefs_class == "data.frame") %>% select(-fit_coefs_class) %>% 
+      mutate(fit_coefs = map(fit_coefs, rownames_to_column, var = "featureNames")) %>% 
+      unnest()
+```
+
 Cleanup fitfeatureModel
 ```{r}
 rm(logFC_MgSeq_dada2_df)
@@ -184,6 +207,8 @@ rm(logFC_MgSeq_mothur_df)
 rm(logFC_MgSeq_mothur_coefs_df)
 rm(logFC_MgSeq_qiime_df)
 rm(logFC_MgSeq_qiime_coefs_df)
+rm(logFC_MgSeq_unclustered_df)
+rm(logFC_MgSeq_unclustered_coefs_df)
 ```
 
 ### EdgeR
@@ -273,8 +298,22 @@ logFC_edgeR_qiime_coefs_df <- logFC_edgeR_qiime_df %>%
 logFC_edgeR_qiime_coefs_tidy <- logFC_edgeR_qiime_coefs_df %>% 
       select(biosample_id, T1, T2, fit_coefs) %>% 
       mutate(fit_coefs = map(fit_coefs, ~.@.Data[[1]])) %>% 
-      unnest() %>% 
-      rename(feature_id =)
+      unnest()
+```
+
+#### Unclustered
+```{r message = FALSE}
+logFC_edgeR_unclustered_df <- titration_comp_unclustered_df %>% 
+      mutate(fit = map(mrexp_sub, mrexp_to_edgeR, group = "t_fctr"),
+             fit = map(fit, exactTest)) 
+
+logFC_edgeR_unclustered_coefs_df <- logFC_edgeR_unclustered_df %>% 
+      mutate(fit_coefs = map(fit, topTags, n = Inf, adjust.method = "BH")) 
+
+logFC_edgeR_unclustered_coefs_tidy <- logFC_edgeR_unclustered_coefs_df %>% 
+      select(biosample_id, T1, T2, fit_coefs) %>% 
+      mutate(fit_coefs = map(fit_coefs, ~.@.Data[[1]])) %>% 
+      unnest()
 ```
 
 
@@ -283,12 +322,14 @@ Combine tables for the different pipelines into individual data frames for each 
 ```{r}
 list(dada2 = logFC_MgSeq_dada2_coefs_tidy,
      mothur = logFC_MgSeq_mothur_coefs_tidy,
-     qiime = logFC_MgSeq_qiime_coefs_tidy) %>% 
+     qiime = logFC_MgSeq_qiime_coefs_tidy,
+     unclustered = logFC_MgSeq_unclustered_coefs_tidy) %>% 
       bind_rows(.id = "pipe") %>% saveRDS("~/Desktop/logFC_MgSeq_df.rds") 
 
 list(dada2 = logFC_edgeR_dada2_coefs_tidy,
      mothur = logFC_edgeR_mothur_coefs_tidy,
-     qiime = logFC_edgeR_qiime_coefs_tidy) %>%
+     qiime = logFC_edgeR_qiime_coefs_tidy,
+     unclustered = logFC_edgeR_unclustered_coefs_tidy) %>%
       bind_rows(.id = "pipe") %>% saveRDS("~/Desktop/logFC_edgeR_df.rds")
 ```
 
