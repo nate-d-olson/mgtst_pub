@@ -53,9 +53,10 @@ pre_post_prop <- nb_counts %>%
       spread(end_point,nb_prop, fill = 0)
 
 prop_inferred <- theta_est %>% 
+      filter(pipe == "unclustered") %>% 
       ungroup() %>%
       mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
-      select(pipe, biosample_id, theta_hat_mean, t_fctr) %>% 
+      select(biosample_id, theta_hat_mean, t_fctr) %>% 
       right_join(nb_counts) %>% right_join(pre_post_prop) %>% 
       filter(t_fctr %in% c(1:5,10,15)) %>% 
       ## Using inferred theta estimates to calculate expected values
