@@ -1,0 +1,95 @@
+---
+title: "Feature Clustering"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+## Objective
+Use PCA to identify group of features based titration comparison logFC estimates. 
+
+## Conclusion
+No clear separation of features not sure this approach is worth further investigation.  
+
+```{r cluster_setup, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(ggfortify)
+logFC_edgeR_df <- readRDS("~/Desktop/logFC_edgeR_df.rds")
+```
+
+
+```{r}
+logFC_wide <- logFC_edgeR_df %>% 
+      rename(feature_id = OTUname) %>% 
+      #filter(pipe == "dada2") %>% 
+      filter(T1 %in% c(1:4), T2 %in% c(2:5)) %>% 
+      select(pipe, biosample_id, feature_id, T1, T2, logFC, Rank2) %>% 
+      unite(t_comp, T1, T2, sep = ":") %>% 
+      mutate(t_comp = paste0("T", t_comp)) %>%
+      spread(t_comp, logFC)
+
+
+logFC_mat <- logFC_wide %>% ungroup() %>% 
+      select(-pipe, -biosample_id, -feature_id, -Rank2) %>% 
+      as.matrix()
+non_zero_rows <- rowSums(logFC_mat) != 0
+# rownames(logFC_mat) <- logFC_wide$feature_id    
+logFC_mat <- logFC_mat[non_zero_rows,]
+logFC_wide <- logFC_wide[non_zero_rows, ]
+## Number of non-zero logFC
+# logFC_01 <- logFC_mat
+# logFC_01[logFC_01 != 0] <- 1
+# logFC_01 %>% rowSums() %>% summary()
+
+
+```
+
+```{r}
+df <- logFC_wide %>% ungroup() %>% select(-pipe, -biosample_id, -feature_id, -Rank2)
+logFC_rank <- logFC_wide %>% ungroup() %>% select(-feature_id) %>% 
+      mutate(Rank2 = str_replace(Rank2, "p__",""))
+pcs <- prcomp(df,center = FALSE, scale. = FALSE)
+```
+
+```{r}
+plot(pcs)
+```
+
+
+
+
+```{r}
+autoplot(pcs)
+```
+
+```{r}
+autoplot(pcs, data = logFC_rank, colour = "Rank2") + facet_grid(pipe~biosample_id)
+```
+
+
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
