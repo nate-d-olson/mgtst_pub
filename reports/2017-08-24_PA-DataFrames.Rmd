@@ -87,7 +87,7 @@ pa_summary_anno <- pa_summary %>%
              post_specific = if_else(T00 == 0 & T20 == 4, 1, 0),
              pa_specific = case_when(
                    pa_unmixed != 0 & pa_mixed != 0 ~ "unspecific",
-                   pa_unmixed != 0 & pa_mixed == 0 ~ "unmix",
+                   pa_unmixed != 0 & pa_mixed == 0 ~ "unmixed",
                    pa_unmixed == 0 & pa_mixed != 0 ~ "mixed"))
 
 saveRDS(pa_summary_anno, "~/Desktop/pa_summary_anno_df.RDS")
