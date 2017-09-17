@@ -79,10 +79,35 @@ nonzero_titrations <- titration_counts %>%
 ### Filtering nonzero features and modifying data frame to fit model      
 nested_count_df <- count_df %>% 
       mutate(t_fctr = factor(t_fctr, levels = c(0:5,10,15,20))) %>% 
-      group_by(pipe, biosample_id, feature_id) %>% 
       right_join(nonzero_count_features) %>% 
       right_join(nonzero_titrations) %>% 
+      group_by(pipe, biosample_id, feature_id) %>%
       nest()
+```
+
+## Issue with unmix specific features
+No unmix specific features were observed for dada2 E01JH0017 and E01JH0038. 
+```{r}
+zero_titrations %>% filter(feature_id == "SV1077", biosample_id == "E01JH0017")
+```
+
+Example where counts are only observed for one titration. 
+```{r}
+test_df <- count_df %>% filter(feature_id == "SV1077", biosample_id == "E01JH0017") %>% filter(t_fctr == 20)
+```
+
+```{r}
+test_df
+```
+
+Unable to fit model when only one titration
+```{r}
+glm.nb(count ~ t_fctr + offset(log(total_abu)), data = test_df, link = "log")
+```
+Able to fit model when only excluding t_fctr from the model. 
+Potential alternative solution is to fit the negative binomial model to each titration individual instead of by feature. 
+```{r}
+glm.nb(count ~ offset(log(total_abu)), data = test_df, link = "log")
 ```
 
 ```{r}
