@@ -35,11 +35,37 @@ microbiome scale quantitative and qualitative measurement assessment
       + Results indicate that the qualitative performance varied by bioinformatic pipeline whereas the quantitative performance varied by biological replicate. 
 
 ## Methods  
-+ Making the dataset
-+ Validating/ Characterizing the dataset
-+ Bioinformatic pipelines
+### Generating Mixtures 
 
-### Feature Presence/Absence Analysis 
+### Sequencing  
+
+### Bioinformatic pipelines
++ Mothur  
++ DADA2  
++ Unclustered  
++ QIIME  
+
+###Validating/ Characterizing the dataset
+#### ERCC qPCR
+
+#### Bacterial DNA Concentration qPCR
+
+#### Theta Estimates
+Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
+The unmixed pre and post counts calculated using the weighted feature count proportion estimates and the total abundance for sample $j$.  
+
+$$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}$$  
+
+16S rRNA sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
+Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly estimate $\theta_j$ in log-space . 
+To address this issue we fit the model using a standard least-squares regression then obtained non-parametric confidence intervals for the $\theta$ estimates by bootstraping with 1000 replicates. 
+To limit the impact of uninformative and low abundance features a subset of features were used to estimate $\theta$ (Table \@ref(tab:thetaFeatures)). 
+Features used were biolgical replicate specific.
+To be included in the following analysis a feature was observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations), greater than 1 log2 change between the unmixed pre and post samples, and present in all four or none of the pre- and post-exposure PCR replicates.
+
+### Quantitative Analysis
+
+### Qualitative Analysis 
 For the qualitative component of our measurement assessment we evaluated features only observed in either the unmixed pre- and post-exposure samples, unmixed-specific, or the titrations, titration-specific, for each biological replicate. 
 Features are unmixed- or titration-specific due to differences in sampling depth (number of sequences) between the unmixed samples and titrations or an artifact of the feature inference process. 
 We tested if sampling alone could explain feature specificity. For unmixed-specific features we used a Binomial test and for titration-specific features we used Monte-Carlo simulation and a Bayesian hypothesis test. 
@@ -72,21 +98,6 @@ __NOTE__
 Not sure this is appropriate due to the difference in the range of $\pi$ used for the null and alternative hypothetis. May also want to consider a different alternative hypothesis $\pi$ upper limit, potentially using the $\pi_{min_{pre}}$, and post treatment $\pi_{min_{post}}$ to calculate a more realistic upper limit._ 
 
 
-
-### Microbiome-Scale Theta Estimates
-Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
-The unmixed pre and post counts calculated using the weighted feature count proportion estimates and the total abundance for sample $j$.  
-
-$$C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}$$  
-
-16S rRNA sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
-Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly estimate $\theta_j$ in log-space . 
-To address this issue we fit the model using a standard least-squares regression then obtained non-parametric confidence intervals for the $\theta$ estimates by bootstraping with 1000 replicates. 
-To limit the impact of uninformative and low abundance features a subset of features were used to estimate $\theta$ (Table \@ref(tab:thetaFeatures)). 
-Features used were biolgical replicate specific.
-To be included in the following analysis a feature was observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations) and greater than 1 log2 change between the unmixed pre and post samples.
-
-
 ## Results
 ### Titration Series Validation 
 In order to use information from the unmixed samples to obtain expected count values for the titrations we need to evaluate two assumptions about the mixed samples; 
@@ -102,8 +113,12 @@ Total bacterial DNA in the unmixed samples was quantified using a qPCR assay tar
 ```
 
 #### Bacterial DNA Concentration 
+```{r ercc, child="bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
 
-
+#### Theta Estimates
+```{r thetaEst, child="theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
 
 #### Dataset characteristics  
 - General summary statistics: number of reads per sample, read length, failed PCR/ bad samples 
@@ -118,8 +133,16 @@ Total bacterial DNA in the unmixed samples was quantified using a qPCR assay tar
 
 ### Measurement Assessment  
 Next we assessed the 16S rRNA measurement processing using our mixture dataset. 
-We evaluated the quanitative performance of the measurement method both at the microbiome scale and at the feature level.  
+We evaluated the quantitative performance of the measurement method both at the microbiome scale and at the feature level.  
 Additionally we were interested in the qualitative performance of the measurement method. 
+
+#### Quantitative Assessment
+
+<!--
+Count Error Rate Results
+-->
+
+
 
 #### Qualitative Assessment
 
@@ -130,16 +153,7 @@ Proportion of titration and endpoint specific features that could not be explain
 ```{r qualAnalysis, child="qualitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-#### Quantitative Assessment
 
-<!--
-Relationship between theta estimates - biological replicates - and bioinformatic pipeline
--->
-
-For our global measurement assessment we used our observed count values for the unmixed pre- and post-exposure samples to estimate the proportion of post-exposure sample in individual titrations. 
-
-```{r thetaEst, child="theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-```
 
 ## Discussion
 
@@ -148,7 +162,7 @@ For our global measurement assessment we used our observed count values for the 
 * Why qualitative analysis is pipeline dependent?  
       - What dependency means for 16S gene surveys  
 * Why quantitative analysis is biological replicate dependent?  
-      - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?S
+      - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?
 * Relationship between factors impacting quant and qual analysis  
 * How this dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.  
 
