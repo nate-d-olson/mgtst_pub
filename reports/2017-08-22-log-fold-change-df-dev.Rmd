@@ -219,7 +219,9 @@ Function for running EdgeR
 mrexp_to_edgeR <- function(mrexp_obj, group, method = "RLE", ...){
       require(edgeR)
       ## Extracting count data - no scaling or transformation
-      x <- mrexp_obj %>% MRcounts(sl = 1) %>% as.matrix()
+      x <- mrexp_obj %>% 
+            metagenomeSeq::MRcounts(norm = FALSE, log = FALSE, sl = 1) %>% 
+            as.matrix()
       x <- x + 1 # add 1 to prevent log(0) issues
 
       ## Check `group` argument
