@@ -51,7 +51,7 @@ bac_con_plot <- bac_abu %>%
                                    titration == "Post" ~ "0"),
              titration = as.numeric(titration)) %>% 
       filter(titration != 0) %>%
-      mutate(t_group = if_else(titration < 5, "mix","pre")) 
+      mutate(t_group = if_else(titration < 5, "low","high")) 
 
 ######### Model Fit data
 bac_con_fit <- bac_con_plot %>% 
@@ -81,13 +81,16 @@ r2_17_no5 <- rsquare(fit_17_no5, bac_con17_no5)
 ```
 
 
-
 ```{r bacConFit, warning=FALSE, message=FALSE, echo = FALSE}
 bac_con_fit %>% select(biosample_id, t_group, fit_tdy) %>% 
       unnest() %>% filter(term == "titration") %>% 
       add_column(adj.p.value =  p.adjust(.$p.value, method = "BH")) %>% 
       select(biosample_id, t_group, estimate, std.error, adj.p.value) %>% 
-      knitr::kable(digits = 4, caption = "Slope estimate for linear model of bacterial DNA concentration and titration factor. Separate linear models were fit for each titration series (biological replicate) and titration group. Mix titration group includes titrations 1-4 and pre titration group 5, 10, and 15. Multiple test correction was performed using the Benjamini-Hochberg method. The expectation is for the slopes to equal 0.",  booktabs = TRUE)
+      arrange(biosample_id) %>% 
+      rename(`Std. Error` = std.error, `Adj. p-value` = adj.p.value, 
+             `Individual` = biosample_id, Titrations = t_group,
+             Slope = estimate) %>% 
+      knitr::kable(digits = 4, caption = "Slope estimate for linear model of bacterial DNA concentration and titration factor. Separate linear models were fit for each titration series (individual) and titration group. Mix titration group includes titrations 1-4 and pre titration group 5, 10, and 15. Multiple test correction was performed using the Benjamini-Hochberg method. The expectation is for the slopes to equal 0.",  booktabs = TRUE)
 ```
 
 
@@ -101,15 +104,19 @@ bac_con_plot %>% #filter(t_group == "mix") %>%
       theme(legend.position = "none")
 ```
 
+In order for the relative proportion of bacterial DNA from pre- and post-exposure samples in each titration to be consistent with the mixture design the proportion of bacterial DNA needs to be consistent between the unmixed samples. 
+A qPCR assay targeting the 16S rRNA gene was used to quantify the concentration of bacterial DNA in the titrations. 
+For the qPCR assay an in-house standard curve with standard concentrations 20 ng/ul, 2ng/ul, and 0.2 ng/ul was used. 
+Standard curve efficiency `r efficiency`, and $R^2$ `r std_r2`. 
+If the proportion of bacterial DNA is the same between pre- and post-exposure samples the slope of the concentration estimates across the two-sample titration would be equal to 0. 
+For individuals where the proportion of bacterial DNA is higher in the pre-exposure samples the slope will be negative and positive when the proporition is higher for post-exposure samples. 
+For titrations 1-4 the slope estimates are significantly different from 1 for individuals E01JH0011, E01JH00016, and E01JH00038 (Table \@ref(tab:bacConFit), Fig. \@ref(fig:bacPlot)). 
+The proportion of DNA from pre-exposure unmixed samples is greater than 0.97 for titration 5, 10, and 15 and therefore minimal difference in the bacterial DNA concentration is expected between titrations as observed for individuals E01JH0016 and E01JH0038. 
+The bacterial concentration estimates are not consistent between the lower (1-4) and higher titrations (5,10, and 15) for individuals E01JH0004, E01JH0011 and E01JH0017. 
+For these three individuals the DNA concentration estimates are higher for titrations 5,10, and 15 compared to titrations 1-4. 
+For individual E01JH0017, excluding titration 5 the two sets of titrations are consistent. 
+When a linear model is fit to the full titration series the $R^2$ value increases from `r round(r2_17_full,3)` to `r round(r2_17_no5,3)` when titration 5 is excluded from the model. 
+For individual E01JH0004 the negative slope is an artifact of noisy qPCR data with no change in bacterial DNA concentration between titrations 1-4.  
 
-* The in-house standard curve with standard concentrations 20 ng/ul, 2ng/ul, and 0.2 ng/ul was used. Standard curve efficiency `r efficiency`, and $R^2$ `r std_r2`.  
-* If the proportion of bacterial DNA is the same between pre- and post-exposure samples the slope of the concentration estimates across the two-sample titration would be equal to 0.  
-* For individuals where the proportion of bacterial DNA is higher in the pre-exposure samples the slope will be negative a positive when the proporition is higher for post-exposure samples.  
-* Titrations 1-4 the slope estimates is statistically significantly different from 1 for individuals E01JH0011, E01JH00016, and E01JH00038 (Table \@ref(tab:bacConFit), Fig. \@ref(fig:bacPlot)).  
-* The proportion of pre-exposure sample in the mixture is greater than 0.97 for titration 5, 10, and 15 and therefore minimal difference in the bacterial DNA concentration is expected between titrations as observed for individuals E01JH0016 and E01JH0038.  
-* The bacterial concentration estimates are not consistent between the lower (1-4) and higher (titrations 5,10, and 15). For individuals E01JH0004, E01JH0011 and E01JH0017.  
-* For these three individuals the DNA concentration estimates are higher for titrations 5,10, and 15 compared to titrations 1-4.  
-* For E01JH0017 if titration 5 is considered an outlier the two sets of titrations are consistent. When a linear model is fit to the full titration series the $R^2$ value increases from `r round(r2_17_full,3)` to `r round(r2_17_no5,3)` when titration 5 is excluded from the model.  
-* For individual E01JH0004 the negative slope is an artifact of noisy qPCR data with no change in bacterial DNA concentration between titrations 1-4.  
-* I do not have an explanation for the lack of a linear trend in the bacterial DNA concentrations between the two sets of titrtaions for E01JH0011.  
+__I do not have an explanation for the lack of a linear trend in the bacterial DNA concentrations between the two sets of titrtaions for E01JH0011.__
 
