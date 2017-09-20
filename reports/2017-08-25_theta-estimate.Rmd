@@ -19,7 +19,7 @@ library(modelr)
 raw_counts <- readRDS("~/Desktop/raw_counts.RDS")
 
 ## Negative Binomial Summaries
-nb_counts <- readRDS("~/Desktop/nb_counts.RDS") 
+nb_counts <- readRDS("~/Desktop/nb_counts_titrations.RDS") 
 
 ## Pre-Post Expected Counts
 pre_post <- nb_counts %>% 
