@@ -1,0 +1,102 @@
+---
+title: "2017-09-21_logFC_checkPlots"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+always_allow_html: yes
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(metagenomeSeq)
+library(tidyverse)
+library(forcats)
+```
+
+Meeting follow-up plots
+* E.coli 1-3 comparison looks promising  
+      * E. coli across titrations, for unclustered - higher abundance, panel by titration  
+```{r}
+## Escherichia features
+mrexp_dada2 <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_mrexp.rds")
+dada2_ec <- fData(mrexp_dada2) %>% 
+      filter(grepl("Escherichia", Rank6)) %>% .$OTUname
+
+mrexp_unclustered <- readRDS("~/Projects/mgtst_pipelines/mothur/unclustered_mrexp.rds")
+unclustered_ec <- fData(mrexp_unclustered) %>% 
+      filter(grepl("Escherichia", Rank6)) %>% .$OTUname
+
+mrexp_mothur <- readRDS("~/Projects/mgtst_pipelines/mothur/mothur_mrexp.rds")
+mothur_ec <- fData(mrexp_mothur) %>% 
+      filter(grepl("Escherichia", Rank6)) %>% .$OTUname
+
+mrexp_qiime <- readRDS("~/Projects/mgtst_pipelines/qiime/qiime_mrexp.rds")
+qiime_ec <- fData(mrexp_qiime) %>% 
+      filter(grepl("Escherichia", Rank6)) %>% .$OTUname
+
+ec11 <- readRDS("~/Desktop/logFC_edgeR_df.rds") %>%
+      filter(pipe %in% c("dada2","unclustered"),
+             biosample_id == "E01JH0011",
+             OTUname %in% c(dada2_ec, unclustered_ec)) %>%
+      rename(feature_id = OTUname)
+```
+
+```{r}
+ec11_df <- ec11 %>% 
+      mutate(explogFC = if_else(T1 != 0,
+                                as.numeric(T1) - as.numeric(T2), 
+                                as.numeric(T2) - as.numeric(T1))) %>% 
+      filter(logCPM > 7, T1 %in% 0:5, T2 %in% 0:5) #%>%
+
+ggplot(ec11_df) +
+      geom_density(aes(x = logFC, fill = T2)) +
+      geom_vline(aes(xintercept = explogFC), linetype = 2) +
+                       facet_grid(T2~T1, scale = "free") +
+                       theme_bw()
+```
+
+
+Consistent 
+__Note__ Issue with 0 base logFC having the wrong sign - manually correcting in the plot.
+
+```{r}
+ec11_df %>% mutate(logFC = if_else(T1 == 0, -abs(logFC), logFC)) %>% 
+      ggplot() + 
+      geom_jitter(aes(x = T2, y = logFC)) +
+      geom_boxplot(aes(x = T2, y = logFC)) + 
+      facet_grid(pipe~T1, scale = "free",space = "free") + theme_bw()
+```
+
+```{r}
+ec11_df %>% mutate(logFC = if_else(T1 == 0, -abs(logFC), logFC)) %>% 
+      ggplot() + 
+      geom_path(aes(x = T2, y = logFC, group = feature_id)) + 
+            geom_point(aes(x = T2, y = logFC), color = "grey60") +
+      facet_grid(pipe~T1, scale = "free",space = "free") + theme_bw()
+```
+
+```{r}
+ec_logFC <- readRDS("~/Desktop/logFC_edgeR_df.rds") %>% 
+      filter(pipe %in% c("dada2","unclustered"),
+             biosample_id == "E01JH0011",
+             OTUname %in% c(dada2_ec, unclustered_ec, mothur_ec, qiime_ec)) %>% 
+      rename(feature_id = OTUname)
+```
+
+```{r}
+ec_logFC_df <- ec_logFC %>% 
+      mutate(explogFC = if_else(T1 != 0,
+                                as.numeric(T1) - as.numeric(T2), 
+                                as.numeric(T2) - as.numeric(T1))) %>% 
+      filter(logCPM > 8, T1 %in% 0:5, T2 %in% 0:5)
+
+ec_logFC_df %>% mutate(logFC = if_else(T1 == 0, -abs(logFC), logFC)) %>% 
+      ggplot() + 
+      geom_path(aes(x = T2, y = logFC, group = feature_id)) + 
+            geom_point(aes(x = T2, y = logFC), color = "grey60") +
+      facet_grid(pipe*biosample_id~T1, scale = "free",space = "free") + theme_bw()
+ggsave("~/Desktop/ecoli_logFC_plot.pdf", height = 12, width = 8)
+```
+
+
