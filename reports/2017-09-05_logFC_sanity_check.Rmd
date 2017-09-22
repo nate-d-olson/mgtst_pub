@@ -39,17 +39,19 @@ e16 <- readRDS("~/Desktop/logFC_edgeR_df.rds") %>%
 
 ## Adding Post specific annotations
 pa_df <- readRDS("~/Desktop/pa_summary_anno_df.RDS") %>% 
-      dplyr::select(biosample_id, pipe, feature_id, T00, T20, post_specific) %>% 
+      dplyr::select(biosample_id, pipe, feature_id, T00, T20) %>% 
       filter(biosample_id == "E01JH0011", pipe %in% c("dada2","unclustered"))
 e16_anno <- e16 %>% rename(feature_id = OTUname) %>% left_join(pa_df)
 ```
 
 The logFC estimates for post-specific features are not consistent with the expected value of 2
 ```{r}
-e16_anno %>% ggplot() + 
-      geom_point(aes(x = logCPM, y = logFC)) + 
-      geom_hline(aes(yintercept = 2)) + 
-      facet_grid(post_specific~pipe) + theme_bw()
+e16_anno %>% 
+      ggplot() + 
+      geom_point(aes(x = logCPM, y = logFC, color = pipe)) + 
+      geom_hline(aes(yintercept = -2)) + 
+      geom_hline(aes(yintercept = 0), linetype = 2) + 
+      facet_grid(T00~T20) + theme_bw()
 ```
 
 
@@ -108,12 +110,6 @@ fit_tbl <- bind_rows(dada2_fit_tbl, unclustered_fit_tbl)
 ```
 
 
-
-```{r}
-colSums(dada2_counts)
-```
-
-
 X-axis facet is the number of post-exposure PCR replicates with observed counts, post-specific features are in the top right plot.
 ```{r}
 fit_tbl %>% mutate(T00 = as.character(T00), T20 = as.character(T20)) %>% 
@@ -160,9 +156,6 @@ fit_tbl %>% mutate(T00 = as.character(T00), T20 = as.character(T20)) %>%
 
 ```{r}
 dada2_ec <- fData(mrexp_dada2) %>% filter(grepl("Escherichia", Rank6)) %>% .$OTUname
-```
-
-```{r}
 length(dada2_ec)
 ```
 
@@ -177,47 +170,3 @@ fit_tbl %>% mutate(T00 = as.character(T00), T20 = as.character(T20)) %>%
       facet_grid(T00~T20) + 
       theme_bw()
 ```
-
-Meeting follow-up plots
-* E.coli 1-3 comparison looks promising  
-      * E. coli across titrations, for unclustered - higher abundance, panel by titration  
-```{r}
-ec11 <- readRDS("~/Desktop/logFC_edgeR_df.rds") %>% 
-      filter(pipe %in% c("dada2","unclustered"),
-             biosample_id == "E01JH0011",
-             OTUname %in% c(dada2_ec, unclustered_ec)) %>% 
-      rename(feature_id = OTUname)
-```
-
-
-```{r}
-ec11 %>% filter(logCPM > 7, T1 %in% 0:5, T2 %in% 0:5)
-```
-
-```{r}
-ec11 %>% filter(logCPM > 7, T1 %in% 0:5, T2 %in% 0:5) %>% 
-      ggplot() + 
-      geom_point(aes(x = logCPM, y = logFC), 
-                 color = "grey60", alpha = 0.25) + 
-      # geom_hline(aes(yintercept = -2)) +
-      geom_hline(aes(yintercept = 0), linetype = 2) +
-      geom_hline(aes(yintercept = as.numeric(T2) - as.numeric(T1))) +
-      facet_grid(T1~T2) + 
-      theme_bw()
-```
-
-```{r}
-ec11 %>% filter(logCPM > 7, T1 %in% 0:5, T2 %in% 0:5) %>% 
-      ggplot() + 
-      geom_density(aes(x = logFC, fill = T2)) + 
-      # geom_hline(aes(yintercept = -2)) +
-      geom_vline(aes(xintercept = as.numeric(T1) - as.numeric(T2)),
-                 linetype = 2) +
-      facet_grid(T2~T1, scale = "free_y") + 
-      theme_bw()
-```
-
-
-* Post-specific features are trouble some 
-      * Plot raw counts vs. seq depth coloring by titration for post-specific 1-3 comparison  
-
