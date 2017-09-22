@@ -299,7 +299,8 @@ nb_counts %>% filter(nb_prop > 1)
 ```
 
 
-Notes from exploring model failuers during development
+# Notes from exploring model failuers during development
+## Fitting model by features
 ## Issue with unmix specific features
 No unmix specific features were observed for dada2 E01JH0017 and E01JH0038. 
 ```{r}
@@ -336,8 +337,8 @@ Compare with pa_summary pa totals
 
 
 ## Titration level model fit - Bad Models 
-Not clear indication why the fit errors.... 
-Need to keep track of the titrations with model fit errors.
+Model fit errors due to outliers - not sure how to address.
+Fit errors due to model unable to come to convergence - providing starting value prevents error.
 ```{r}
 dada_fit <- readRDS("~/Desktop/nb_fit_dada2_titration.RDS")
 dada_results <- dada_fit$fit %>% 
@@ -355,10 +356,58 @@ dada_fail <- dada_fit_results %>% filter(ok_model == FALSE)
 ```{r}
 dada_fail
 ```
-
+Unclear from the data frames why the models failed
 ```{r}
 dada_fail$data
 ```
+
+```{r}
+dada_fail$data[[1]] %>% mutate(prop = count/total_abu)
+```
+
+```{r}
+glm.nb(count ~ offset(log(total_abu)), 
+       data = dada_fail$data[[1]], 
+       link = "log")
+```
+
+
+Removing low total abundance sample addresses error as the observer 0 count is an outlier
+```{r}
+glm.nb(count ~ offset(log(total_abu)), 
+       data = dada_fail$data[[1]] %>% filter(total_abu > 10000), 
+       link = "log")
+```
+
+
+Providing starting value prevents error
+```{r}
+dada_fail$data[[2]] %>% mutate(prop = count/total_abu) %>% .$prop %>% mean() %>% log()
+```
+
+```{r}
+glm.nb(count ~ offset(log(total_abu)), start = -5.654,  
+       data = dada_fail$data[[2]], link = "log")
+```
+
+Providing starting value prevents error
+```{r}
+dada_fail$data[[3]]
+```
+
+
+```{r}
+st_value <- dada_fail$data[[3]] %>% mutate(prop = count/total_abu) %>% 
+      .$prop %>% mean() %>% log()
+```
+
+```{r}
+glm.nb(count ~ offset(log(total_abu)), start = st_value,  
+       data = dada_fail$data[[3]], link = "log")
+```
+
+
+
 
 ```{r}
 mothur_fit <- readRDS("~/Desktop/nb_fit_mothur_titration.RDS")
@@ -374,13 +423,33 @@ mothur_fit_results <- mothur_fit %>%
 mothur_fail <- mothur_fit_results %>% filter(ok_model == FALSE)
 ```
 
-Most are for NTC 
+
 ```{r}
 mothur_fail
 ```
 
+Again here one of the values is an outlier resulting in a failed model fit
+
 ```{r}
-mothur_fail %>% filter(!is.na(biosample_id)) %>% .$data 
+mothur_fail$data[[1]]
+```
+
+
+```{r}
+st_value <- mothur_fail$data[[1]] %>% mutate(prop = count/total_abu) %>% 
+      .$prop %>% mean() %>% log()
+```
+
+This error was reported elsewhere, https://stackoverflow.com/questions/11749977/why-does-glm-nb-throw-a-missing-value-error-only-on-very-specific-inputs. Not sure if the solution is applicable
+```{r}
+glm.nb(count ~ offset(log(total_abu)), start = st_value,  
+       data = mothur_fail$data[[1]], link = "log")
+```
+
+```{r}
+test_dat <- mothur_fail$data[[1]]
+test_dat[2,4] <-  test_dat[2,4] + 1
+test_dat
 ```
 
 ```{r}
@@ -397,7 +466,7 @@ qiime_fit_results <- qiime_fit %>%
 qiime_fail <- qiime_fit_results %>% filter(ok_model == FALSE)
 ```
 
-All NTC
+No failed models
 ```{r}
 qiime_fail
 ```
@@ -423,4 +492,20 @@ unclustered_fail
 
 ```{r}
 unclustered_fail$data
+```
+
+```{r}
+glm.nb(count ~ offset(log(total_abu)),  
+       data = unclustered_fail$data[[1]], link = "log")
+```
+
+```{r}
+st_value <- unclustered_fail$data[[1]] %>% mutate(prop = count/total_abu) %>% 
+      .$prop %>% mean() %>% log()
+```
+
+This error was reported elsewhere, https://stackoverflow.com/questions/11749977/why-does-glm-nb-throw-a-missing-value-error-only-on-very-specific-inputs. Not sure if the solution is applicable
+```{r}
+glm.nb(count ~ offset(log(total_abu)), start = st_value,  
+       data = unclustered_fail$data[[1]], link = "log")
 ```
