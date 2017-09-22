@@ -36,21 +36,74 @@ microbiome scale quantitative and qualitative measurement assessment
 
 ## Methods  
 ### Generating Mixtures 
+Dataset of environmental sample mixtures was generated and used to evalute the abundance values and log-fold change values for count tables generated using three different bioinformatic pipelines. 
 
-### Sequencing  
+#### Two-Sample Titration Design  
+Samples from a vaccine trial were selected for use in the study [@harro2011refinement].
+Five trial participants were selected based as those with no _Eshechichia coli_ detected in stool samples before exposure to Enterotoxigenic _Escherichia coli_ (ETEC)) and timepoints with the highest concentration of _E. coli_ after exposure [@pop2016individual] \@ref(fig:experimenta_design) (Panel A).
+For the two-sample titration post-treatment samples (stool samples collected after exposure to _E. coli_ ETEC) were titrated into pre-treatment samples (stool samples collected _before_ exposure to _E. coli_ ETEC) with $log_2$ changes in pre to post sample proportions \@ref(fig:experimenta_design) (Panel B).
+Unmixed samples were diluted to 12.5 $ng/\mu L$ in tris-EDTA buffer prior to making two-sample titrations.
+Initial DNA concentration was measured using NanoDrop ND-1000 (Thermo Fisher Scientific Inc. Waltham, MA USA).
 
-### Bioinformatic pipelines
-+ Mothur  
-+ DADA2  
-+ Unclustered  
-+ QIIME  
+```{r experimental_design, echo=FALSE, fig.width = 4, fig.cap="Sample selection and experimental design for two-sample titration 16S rRNA metagenomic sequencing assessment dataset. A) Pre- and post-treatment samples from five participants in a vaccine trial (Harro et al. 2011) were selected based on Escherichia coli abundance measured using qPCR and 454 16S rRNA metagenomics sequencing (454-NGS), data from Pop et al. 2016. Pre- and post-treatment samples are indicated with orange and green data points. Grey indicates other samples from the vaccine trial time series. B) The pre-treatment samples were titrated into post-treatment samples following a $log_2$ dilution series. The NA titration factor represents the unmixed pre-treatment sample. C) The five vaccine trial participants are biological replicates and independent sets of two-sample titrations were mixed for each. The result was a total of 45 samples, 7 titrations + 2 unmixed samples times 5 biological replicates. Four replicate PCRs were performed for each of the 45 samples resulting in 190 PCRs."}
+knitr::include_graphics("img/experimental_design.png")
+```
 
-###Validating/ Characterizing the dataset
-#### ERCC qPCR
+### Titration Validation
 
-#### Bacterial DNA Concentration qPCR
+To ensure that the two-sample titrations were correctly mixed independent ERCC plasmids were spiked into the unmixed pre- and post-treatment samples (Supplemental Table ERCC).
+The ERCC plasmids were resuspendended in 100 $ng/\mu L$ tris-EDTA buffer and 2 $ng/\mu L$ was spiked into each sample.  
+Plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) specific to each ERCC plasmids using the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA).
 
-#### Theta Estimates
+To account for differences in the proportion of bacterial DNA in the pre- and post-treatment samples, the amount of bacterial DNA was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA).
+All two-sample titrations and unmixed samples were run in triplicate along with a standard curve.
+An in-house standard curve consisting of log10 dilutions of _E. coli_ DNA was used as the standard curve. ( __TODO__ Supplemental Material justification for using in-house instead of manufacturer provided standard curve).
+
+All qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher).
+The amplification data and Ct values were exported from the QuantStudio™ Design and Analysis Software v1.4.1 as tsv files for statistical analysis.
+
+### Sequencing 
+#### Sample Processing Workflow
+The resulting in 45 samples (seven titrations and two unmixed samples for the five biological replicates) were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (REF).
+The protocol consisted of an initial 16S rRNA PCR followed by a separate sample indexing PCR.
+A total of 192 PCRs were run including four PCR replicates per sample and 12 no template controls ( __TODO__ Supplemental PCR plate figure).
+After the initial PCR and clean-up the 192 PCRs were split into technical replicates and sent to two laboratories for library preparation and sequencing.
+The concentration of the resulting indexed 16S PCR products were normalized using the SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA).
+The normalized indexed samples were pooled and sequenced on the Illumina MiSeq (Illumina Inc., San Diego, CA).  
+
+#### Library Preparation and Sequencing
+The 16S PCR targeted the V3-V4 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
+The V3-V4 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at) (__TODO__ Supplemental Figure Amplicon Region).
+The primer sequences include additional overhang adapter sequences to facilitate library preparation (5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3') and reverse primers (GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC).
+
+The 16S targeted PCR was performed according to the Illumina protocol using the KAPA HiFI HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
+The resulting PCR product was verified using agarose gel electrophoresis.
+Quality control DNA concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and after normalization. DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Mocledular Devices LLC. Sunnyvale CA, USA) flourescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Mocledular Devices LLC. Sunnyvale CA, USA). 
+After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D ( __Check Barcodes__ Illumina Inc., San Diego CA).
+The purified sample concentration was normalized using SequalPrep (ThermoFisher, Waltham MA), according to the manufactuers protocol and pooled prior to sequencing.
+The pooled library concentration was measured using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
+Due to low concentration of the pooled amplicon library the modified protocol for low concentration libraries was used.
+The library was run on a Illumina MiSeq and base calls were made using Illumina Real Time Analysis Software version 1.18.54.
+
+#### Sequencing Data Quality Assessment
+To generate summaries of QA metrics for the 384 datasets in the study (192 samples with forward and reverse reads) used the bioconductor `Rqc` package (REF) to calculate the quality metrics used in the following analysis. 
+
+### Sequence Processing
+Sequence data was processed using a number of bioinformatic pipelines, Mothur [@schloss2009introducing], QIIME [@caporaso2010qiime], DADA2 [@callahan2016dada2], and an in-house pipeline with _de-novo_ clustering and phylogenetic placement.
+The Mothur (version 1.37, http://www.mothur.org/) pipeline used was based on the MiSeq SOP [@schloss2009introducing,@kozich2013development].
+As a different 16S rRNA region was sequenced than the region the SOP was developed for the procedure was modified to account for smaller overlap between the forward and reverse reads compared to the amplicons the protocol was developed for, see the Makefile in the project github repository ( __TODO__ add website).
+The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merge using the Needleman-Wunsch algorithm.
+Low quality reads, presence of ambiguous bases, reads that failed alignment to the SILVA reference database (https://www.arb-silva.de/), and chimeras were filtered from the dataset.
+Chimera filtering was performed using UChime without a reference database [@edgar2011uchime].
+Average neighbor clustering for OTU clustering using pairwise sequences distances calculated from the reference based multiple sequence alignment.
+The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set [@wang2007naive].
+The QIIME pipeline for paired-end Illumina data was performed according to the online tutorial (http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb).
+The methods included open reference clustering __TODO: ADD MORE TO THE DESCRIPTION__ [@caporaso2010qiime].
+DADA2 a R native pipeline was also used to process the sequencing data [@callahan2016dada2].
+The pipeline included a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier.
+The in-house pipeline used Sickle for read trimming [@sickle], Pandaseq [@masella2012pandaseq] for merging paired-end reads, DNAclust for OTU assignment using a 0.99 similarity threshold [@ghodsi2011dnaclust], and a phylogenetic placement based method TIPP was used for taxonomic assignment [@nguyen2014tipp].  
+
+### Theta Inference
 Estimating $\theta$, where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
 The unmixed pre and post counts calculated using the weighted feature count proportion estimates and the total abundance for sample $j$.  
 
@@ -132,7 +185,7 @@ Total bacterial DNA in the unmixed samples was quantified using a qPCR assay tar
 ```
 
 ### Measurement Assessment  
-Next we assessed the 16S rRNA measurement processing using our mixture dataset. 
+Next we assessed the 16S rRNA measurement process using our mixture dataset. 
 We evaluated the quantitative performance of the measurement method both at the microbiome scale and at the feature level.  
 Additionally we were interested in the qualitative performance of the measurement method. 
 
@@ -141,7 +194,8 @@ Additionally we were interested in the qualitative performance of the measuremen
 <!--
 Count Error Rate Results
 -->
-
+```{r quantAnalysis, child="quantitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
 
 
 #### Qualitative Assessment
@@ -168,6 +222,7 @@ Proportion of titration and endpoint specific features that could not be explain
 
 ## Conclusions
 
+\pagebreak
 # Session information 
 
 ## Git repo commit information
@@ -193,3 +248,7 @@ print(s_info$platform)
 s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>%
       knitr::kable()
 ```
+
+\pagebreak
+
+## References
