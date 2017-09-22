@@ -80,11 +80,11 @@ pa_summary <- pa_df %>%
 
 ## PA Annotation
 pa_summary_anno <- pa_summary %>% 
-      mutate(full_pre = if_else(T00 == 4, 1, 0),
-             full_post = if_else(T20 == 4, 1, 0),
+      mutate(full_pre = if_else(T20 == 4, 1, 0),
+             full_post = if_else(T00 == 4, 1, 0),
              full_unmixed = if_else(T00 + T20 == 8, 1, 0),
-             pre_specific = if_else(T00 == 4 & T20 == 0, 1, 0),
-             post_specific = if_else(T00 == 0 & T20 == 4, 1, 0),
+             pre_specific = if_else(T20 == 4 & T00 == 0, 1, 0),
+             post_specific = if_else(T20 == 0 & T00 == 4, 1, 0),
              pa_specific = case_when(
                    pa_unmixed != 0 & pa_mixed != 0 ~ "unspecific",
                    pa_unmixed != 0 & pa_mixed == 0 ~ "unmixed",
