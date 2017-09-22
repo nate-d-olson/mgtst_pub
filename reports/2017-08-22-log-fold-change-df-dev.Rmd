@@ -68,6 +68,10 @@ titration_comp_df %>% ggplot() +
       facet_wrap(~biosample_id)
 ```
 
+```{r}
+titration_comp_df %>% filter(biosample_id == "E01JH0004", T1 == 0)
+```
+
 ## Subset MRexperiments
 For each set of logFC calculations subset the MRexperiment objects 
 ```{r}
@@ -84,7 +88,7 @@ make_titration_comp_subset_df <- function(mrexp_obj, titration_comp_df){
 }
 
 ### DADA2
-titration_comp_dada2_df <- mrexp$dada2 %>% 
+titration_comp_dada2_df <- mrexp$dada2 %>%
   make_titration_comp_subset_df(titration_comp_df)
 
 ### Mothur
@@ -108,10 +112,9 @@ Functions for calculating logFC using fitFeatureModel
 ```{r}
 fit_model <- function(mrexp_sub, T1, T2, css_p = 0.75, present = 8, depth = 1){
       ## Normalize count data
-      T1 <- as.numeric(as.character(T1))
-      T2 <- as.numeric(as.character(T2))
       mrexp_sub <-  cumNorm(mrexp_sub, p = css_p)
-
+      
+      # Exclude features with counts not observed in all PCR replicates
       mrexp_sub2 <- filterData(mrexp_sub, present = present, depth = depth)
 
       pd <- pData(mrexp_sub2) 
@@ -123,7 +126,6 @@ fit_model <- function(mrexp_sub, T1, T2, css_p = 0.75, present = 8, depth = 1){
 
 fit_safely <- safely(fit_model)
 mrcoefs_safely <- safely(MRcoefs)
-
 ```
 
 #### DADA2
@@ -228,6 +230,10 @@ mrexp_to_edgeR <- function(mrexp_obj, group, method = "RLE", ...){
       if(identical(all.equal(length(group), 1), TRUE) & ncol(mrexp_obj)> 1){
             ## Assumes grouop is a categorical sample variable name
             group <- pData(mrexp_obj) %>% .[,group]
+            group <- as.numeric(as.character(group))
+            T1 <- min(group)
+            T2 <- max(group)
+            group <- factor(group, levels = c(as.character(T1), as.character(T2)))
       }
 
       ## Use taxonomy information at gene annotations 
