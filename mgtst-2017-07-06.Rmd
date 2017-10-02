@@ -241,6 +241,12 @@ Proportion of titration and endpoint specific features that could not be explain
       - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?
 * Relationship between factors impacting quant and qual analysis  
 * How this dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.  
+* Given study results
+      * How would you analyze 16S sequencing data assuming current methods?  
+      * How would you like to analyze 16S sequencing data?  
+      * What are the limitations of current methods?  
+      * What would you like to see a clustering method/ pipeline be able to do?  
+            * What should be improved?  
 
 ## Conclusions
 
