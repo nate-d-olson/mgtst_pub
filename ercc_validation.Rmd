@@ -155,14 +155,21 @@ ercc_plot_dat <- ercc_sam %>% mutate(ercc = as.character(ercc)) %>%
       left_join(ercc_meta) %>%
       mutate(pre_log2 = log2(pre_prop))
 
+pre_prop_values <- ercc_plot_dat %>%
+      filter(treatment == "Pre", titration %in% c(1:4)) %>% 
+      .$pre_prop %>% unique() %>% round(2)
+
 ercc_preplot <- ercc_plot_dat %>%
       filter(treatment == "Pre", titration %in% c(1:4)) %>%
       ggplot() +
       geom_smooth(aes(x = pre_prop, y = Ct), method = "lm") +
       geom_point(aes(x = pre_prop, y = Ct)) +
       facet_wrap( ~ biosample_id, ncol = 1) +
-      theme_bw() + labs(x = "Pre-Exposure Proportion", y = "Ct")  +
-      scale_x_continuous(trans = "log2")
+      labs(x = "Pre-Exposure Proportion", y = "Ct")  +
+      scale_x_continuous(breaks = pre_prop_values, 
+                         labels = pre_prop_values, 
+                         trans = "log2") +     
+      theme_bw()
 
 ercc_postplot <- ercc_plot_dat %>%
       filter(treatment == "Post") %>%
@@ -182,8 +189,7 @@ Slope estimates less than 1 were attributed to the assay standard curve amplific
 The 1-4 titration factor samples had Ct values consistently above the regression line (Figure \@ref(fig:erccPlot)). 
 For the pre-exposure ERCCs a regression line was fit to the log2 pre-exposure sample proportion for titrations 1-4 and the unmixed pre-exposure sample. 
 The change in pre-exposure sample proportion between titrations 5, 10, and 15 ($0.03$ - $3.05e^-5$) is to small for qPCR to accuratey detect changes in ERCC spike-in concentration. 
-For the ERCCs spiked into the pre-treatment samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)) when a regression line was fit to the Ct values and log2 Pre-treatment sample proportion \@ref(fig:erccPlot), with a -1 expected slope. 
-The 
+For the ERCCs spiked into the pre-exposure samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)) when a regression line was fit to the Ct values and log2 Pre-exposure sample proportion \@ref(fig:erccPlot), with a -1 expected slope. 
 These results indicate that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
 
 ```{r erccTable, echo=FALSE, message=FALSE}
