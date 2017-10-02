@@ -19,7 +19,7 @@ library(modelr)
 raw_counts <- readRDS("~/Desktop/raw_counts.RDS")
 
 ## Negative Binomial Summaries
-nb_counts <- readRDS("~/Desktop/nb_counts.RDS") 
+nb_counts <- readRDS("~/Desktop/nb_counts_titrations.RDS") 
 
 ## Pre-Post Expected Counts
 pre_post <- nb_counts %>% 
@@ -171,14 +171,17 @@ These results were consistent with the qPCR bacterial DNA concentration results(
 The bacterial DNA concentrations for E01JH0038 was lower for titrations 5, 10, and 15 compared to titrations 1-4. Conversely, the bacterial DNA concentration was higher for titratations 5, 10, and 15 compared to titrations 1-4 for E01JH0017.
 
 ```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
-ggplot(boot_theta_hat) + 
+boot_theta_hat %>% 
+      mutate(pipe = factor(pipe, levels = c("unclustered","dada2","mothur","qiime"))) %>% 
+      ggplot() + 
       geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
       geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, 
                         ymax = theta_hat_uci, color = pipe),width = 0.2) + 
       geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
       facet_grid(biosample_id~pipe, scale = "free_y") + theme_bw() +
-    labs(x = "Titration Factor", y = expression(theta), color = "Pipeline", shape = "Pipeline") + 
-    theme(legend.position = "bottom")
+      labs(x = "Titration Factor", y = expression(theta), 
+           color = "Pipeline", shape = "Pipeline") + 
+      theme(legend.position = "bottom")
 ```
 
 
