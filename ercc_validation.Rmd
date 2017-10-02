@@ -159,6 +159,8 @@ pre_prop_values <- ercc_plot_dat %>%
       filter(treatment == "Pre", titration %in% c(1:4)) %>% 
       .$pre_prop %>% unique() %>% round(2)
 
+
+      
 ercc_preplot <- ercc_plot_dat %>%
       filter(treatment == "Pre", titration %in% c(1:4)) %>%
       ggplot() +
@@ -177,7 +179,8 @@ ercc_postplot <- ercc_plot_dat %>%
       geom_smooth(aes(x = titration, y = Ct), method = "lm") +
       geom_point(aes(x = titration, y = Ct)) +
       facet_wrap( ~ biosample_id, ncol = 1) +
-      theme_bw() + labs(x = "Titration Factor", y = "Ct")
+      labs(x = "Titration Factor", y = "Ct") +
+      theme_bw()
 ```
 
 To validate the volumetric mixing of the two-sample titration ERCC plasmids were spiked into the unmixed pre- and post-exposure samples. 
