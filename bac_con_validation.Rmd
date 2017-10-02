@@ -94,12 +94,13 @@ bac_con_fit %>% select(biosample_id, t_group, fit_tdy) %>%
 ```
 
 
-```{r bacPlot, fig.cap = "Slope for titrations 1-4 is not consistent with the slope for titration 5, 10, 15 for three individuals.", warning=FALSE, message=FALSE, echo = FALSE}
-bac_con_plot %>% #filter(t_group == "mix") %>% 
+```{r bacPlot, fig.cap = "Bacterial DNA concentration (ng/ul) across titrations for titrations that are primarily from the pre-exposure sample (5,10, and 15) and mixed titrations (1-4).", warning=FALSE, message=FALSE, echo = FALSE}
+bac_con_plot %>% 
+      mutate(t_group = if_else(t_group == "high", "Pre", "Mixed")) %>% 
       ggplot() +
       geom_point(aes(y = quant, x = titration)) +
       geom_smooth(aes(x = titration, y = quant, color = t_group), method = "lm") + 
-      facet_wrap(~biosample_id, nrow = 1) +
+      facet_grid(biosample_id~t_group, scales = "free") +
       theme_bw() + labs(x = "Titration Factor", y = "DNA concentration (ng/ul)") +
       theme(legend.position = "none")
 ```
