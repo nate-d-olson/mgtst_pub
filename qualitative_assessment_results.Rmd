@@ -126,6 +126,7 @@ ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text
           mix_test_plot, unmix_test_plot, 
           labels = c("A", "B", "C","D"),
           ncol = 2, nrow = 2, heights = c(4, 5))
+#ggsave("~/Desktop/qual_assessment.png", dpi = 450)
 ```
 
 There are a number of unmixed- and titration-specific features with a range of observed (titration-specific) and expected (unmix-specific) counts. (Fig. \@ref(fig:qualPlot)A-B). 

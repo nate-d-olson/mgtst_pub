@@ -172,6 +172,7 @@ The bacterial DNA concentrations for E01JH0038 was lower for titrations 5, 10, a
 
 ```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
 boot_theta_hat %>% 
+      ungroup() %>% 
       mutate(pipe = factor(pipe, levels = c("unclustered","dada2","mothur","qiime"))) %>% 
       ggplot() + 
       geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
@@ -182,6 +183,7 @@ boot_theta_hat %>%
       labs(x = "Titration Factor", y = expression(theta), 
            color = "Pipeline", shape = "Pipeline") + 
       theme(legend.position = "bottom")
+# ggsave("~/Desktop/theta_estimates.png", dpi = 450)
 ```
 
 
