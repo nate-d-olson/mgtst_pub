@@ -340,172 +340,172 @@ Compare with pa_summary pa totals
 Model fit errors due to outliers - not sure how to address.
 Fit errors due to model unable to come to convergence - providing starting value prevents error.
 ```{r}
-dada_fit <- readRDS("~/Desktop/nb_fit_dada2_titration.RDS")
-dada_results <- dada_fit$fit %>% 
-      transpose() %>% 
-      as_data_frame()
-
-dada_fit_results <- dada_fit %>% 
-      dplyr::select(-fit) %>%
-      bind_cols(dada_results) %>% 
-      mutate(ok_model = map_lgl(error, is_null)) 
-
-dada_fail <- dada_fit_results %>% filter(ok_model == FALSE)
+# dada_fit <- readRDS("~/Desktop/nb_fit_dada2_titration.RDS")
+# dada_results <- dada_fit$fit %>% 
+#       transpose() %>% 
+#       as_data_frame()
+# 
+# dada_fit_results <- dada_fit %>% 
+#       dplyr::select(-fit) %>%
+#       bind_cols(dada_results) %>% 
+#       mutate(ok_model = map_lgl(error, is_null)) 
+# 
+# dada_fail <- dada_fit_results %>% filter(ok_model == FALSE)
 ```
 
 ```{r}
-dada_fail
+# dada_fail
 ```
 Unclear from the data frames why the models failed
 ```{r}
-dada_fail$data
+# dada_fail$data
 ```
 
 ```{r}
-dada_fail$data[[1]] %>% mutate(prop = count/total_abu)
+# dada_fail$data[[1]] %>% mutate(prop = count/total_abu)
 ```
 
 ```{r}
-glm.nb(count ~ offset(log(total_abu)), 
-       data = dada_fail$data[[1]], 
-       link = "log")
+# glm.nb(count ~ offset(log(total_abu)), 
+#        data = dada_fail$data[[1]], 
+#        link = "log")
 ```
 
 
 Removing low total abundance sample addresses error as the observer 0 count is an outlier
 ```{r}
-glm.nb(count ~ offset(log(total_abu)), 
-       data = dada_fail$data[[1]] %>% filter(total_abu > 10000), 
-       link = "log")
+# glm.nb(count ~ offset(log(total_abu)), 
+#        data = dada_fail$data[[1]] %>% filter(total_abu > 10000), 
+#        link = "log")
 ```
 
 
 Providing starting value prevents error
 ```{r}
-dada_fail$data[[2]] %>% mutate(prop = count/total_abu) %>% .$prop %>% mean() %>% log()
+# dada_fail$data[[2]] %>% mutate(prop = count/total_abu) %>% .$prop %>% mean() %>% log()
 ```
 
 ```{r}
-glm.nb(count ~ offset(log(total_abu)), start = -5.654,  
-       data = dada_fail$data[[2]], link = "log")
+# glm.nb(count ~ offset(log(total_abu)), start = -5.654,  
+#        data = dada_fail$data[[2]], link = "log")
 ```
 
 Providing starting value prevents error
 ```{r}
-dada_fail$data[[3]]
+# dada_fail$data[[3]]
 ```
 
 
 ```{r}
-st_value <- dada_fail$data[[3]] %>% mutate(prop = count/total_abu) %>% 
-      .$prop %>% mean() %>% log()
+# st_value <- dada_fail$data[[3]] %>% mutate(prop = count/total_abu) %>% 
+#       .$prop %>% mean() %>% log()
 ```
 
 ```{r}
-glm.nb(count ~ offset(log(total_abu)), start = st_value,  
-       data = dada_fail$data[[3]], link = "log")
+# glm.nb(count ~ offset(log(total_abu)), start = st_value,  
+#        data = dada_fail$data[[3]], link = "log")
 ```
 
 
 
 
 ```{r}
-mothur_fit <- readRDS("~/Desktop/nb_fit_mothur_titration.RDS")
-mothur_results <- mothur_fit$fit %>% 
-      transpose() %>% 
-      as_data_frame()
-
-mothur_fit_results <- mothur_fit %>% 
-      dplyr::select(-fit) %>%
-      bind_cols(mothur_results) %>% 
-      mutate(ok_model = map_lgl(error, is_null)) 
-
-mothur_fail <- mothur_fit_results %>% filter(ok_model == FALSE)
+# mothur_fit <- readRDS("~/Desktop/nb_fit_mothur_titration.RDS")
+# mothur_results <- mothur_fit$fit %>% 
+#       transpose() %>% 
+#       as_data_frame()
+# 
+# mothur_fit_results <- mothur_fit %>% 
+#       dplyr::select(-fit) %>%
+#       bind_cols(mothur_results) %>% 
+#       mutate(ok_model = map_lgl(error, is_null)) 
+# 
+# mothur_fail <- mothur_fit_results %>% filter(ok_model == FALSE)
 ```
 
 
 ```{r}
-mothur_fail
+# mothur_fail
 ```
 
 Again here one of the values is an outlier resulting in a failed model fit
 
 ```{r}
-mothur_fail$data[[1]]
+# mothur_fail$data[[1]]
 ```
 
 
 ```{r}
-st_value <- mothur_fail$data[[1]] %>% mutate(prop = count/total_abu) %>% 
-      .$prop %>% mean() %>% log()
+# st_value <- mothur_fail$data[[1]] %>% mutate(prop = count/total_abu) %>% 
+#       .$prop %>% mean() %>% log()
 ```
 
 This error was reported elsewhere, https://stackoverflow.com/questions/11749977/why-does-glm-nb-throw-a-missing-value-error-only-on-very-specific-inputs. Not sure if the solution is applicable
 ```{r}
-glm.nb(count ~ offset(log(total_abu)), start = st_value,  
-       data = mothur_fail$data[[1]], link = "log")
+# glm.nb(count ~ offset(log(total_abu)), start = st_value,  
+#        data = mothur_fail$data[[1]], link = "log")
 ```
 
 ```{r}
-test_dat <- mothur_fail$data[[1]]
-test_dat[2,4] <-  test_dat[2,4] + 1
-test_dat
+# test_dat <- mothur_fail$data[[1]]
+# test_dat[2,4] <-  test_dat[2,4] + 1
+# test_dat
 ```
 
 ```{r}
-qiime_fit <- readRDS("~/Desktop/nb_fit_qiime_titration.RDS")
-qiime_results <- qiime_fit$fit %>% 
-      transpose() %>% 
-      as_data_frame()
-
-qiime_fit_results <- qiime_fit %>% 
-      dplyr::select(-fit) %>%
-      bind_cols(qiime_results) %>% 
-      mutate(ok_model = map_lgl(error, is_null)) 
-
-qiime_fail <- qiime_fit_results %>% filter(ok_model == FALSE)
+# qiime_fit <- readRDS("~/Desktop/nb_fit_qiime_titration.RDS")
+# qiime_results <- qiime_fit$fit %>% 
+#       transpose() %>% 
+#       as_data_frame()
+# 
+# qiime_fit_results <- qiime_fit %>% 
+#       dplyr::select(-fit) %>%
+#       bind_cols(qiime_results) %>% 
+#       mutate(ok_model = map_lgl(error, is_null)) 
+# 
+# qiime_fail <- qiime_fit_results %>% filter(ok_model == FALSE)
 ```
 
 No failed models
 ```{r}
-qiime_fail
+# qiime_fail
 ```
 
 ```{r}
-unclustered_fit <- readRDS("~/Desktop/nb_fit_unclustered_titration.RDS")
-unclustered_results <- unclustered_fit$fit %>% 
-      transpose() %>% 
-      as_data_frame()
-
-unclustered_fit_results <- unclustered_fit %>% 
-      dplyr::select(-fit) %>%
-      bind_cols(unclustered_results) %>% 
-      mutate(ok_model = map_lgl(error, is_null)) 
-
-unclustered_fail <- unclustered_fit_results %>% filter(ok_model == FALSE)
+# unclustered_fit <- readRDS("~/Desktop/nb_fit_unclustered_titration.RDS")
+# unclustered_results <- unclustered_fit$fit %>% 
+#       transpose() %>% 
+#       as_data_frame()
+# 
+# unclustered_fit_results <- unclustered_fit %>% 
+#       dplyr::select(-fit) %>%
+#       bind_cols(unclustered_results) %>% 
+#       mutate(ok_model = map_lgl(error, is_null)) 
+# 
+# unclustered_fail <- unclustered_fit_results %>% filter(ok_model == FALSE)
 ```
 
 Only two failed model fits
 ```{r}
-unclustered_fail
+# unclustered_fail
 ```
 
 ```{r}
-unclustered_fail$data
+# unclustered_fail$data
 ```
 
 ```{r}
-glm.nb(count ~ offset(log(total_abu)),  
-       data = unclustered_fail$data[[1]], link = "log")
+# glm.nb(count ~ offset(log(total_abu)),  
+#        data = unclustered_fail$data[[1]], link = "log")
 ```
 
 ```{r}
-st_value <- unclustered_fail$data[[1]] %>% mutate(prop = count/total_abu) %>% 
-      .$prop %>% mean() %>% log()
+# st_value <- unclustered_fail$data[[1]] %>% mutate(prop = count/total_abu) %>% 
+#       .$prop %>% mean() %>% log()
 ```
 
 This error was reported elsewhere, https://stackoverflow.com/questions/11749977/why-does-glm-nb-throw-a-missing-value-error-only-on-very-specific-inputs. Not sure if the solution is applicable
 ```{r}
-glm.nb(count ~ offset(log(total_abu)), start = st_value,  
-       data = unclustered_fail$data[[1]], link = "log")
+# glm.nb(count ~ offset(log(total_abu)), start = st_value,  
+#        data = unclustered_fail$data[[1]], link = "log")
 ```
