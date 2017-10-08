@@ -135,6 +135,21 @@ To be included in the following analysis a feature was observed in at least 14 o
 * Outliers were observed  
 * mixed effects model was used to compare the bais and variance across pipelines accounting for individual effect 
 
+The log fold-change estimates were compared to the expected log fold-change values for pre-specific and pre-dominant features. 
+Pre-dominant and pre-specific features were identified based on logFC between pre- and post-exposure samples and number of PCR replicates the feature was observed in for pre- and post-exposure PCR replicates (Table \@ref(tab:preCountTbl)). 
+Pre-dominant and pre-specific features were defined as features observed in all four pre-exposure PCR replicates and a logFC between pre- and post-exposure samples greater than 5.   
+Pre-specific features were not observed in any of the post-exposure PCR replicates and pre-dominant features were observed in one or more of the post-exposure PCR replicates. 
+
+To assess differential abundance logFC estimates, logFC between all titrations were compared to the expected logFC for the pre-specific and pre-dominant features. 
+When assuming the feature is only present in pre-exposure samples the expected logFC is independent of the observed counts for the unmixed samples. 
+Expected logFC between titrations $i$ and $j$ is calculated using \@ref(eq:expLogFC). 
+
+\begin{equation} 
+  logFC_{ij} = log_2\left(\frac{1-\theta_i}{1-\theta_j}\right)
+  (\#eq:expLogFC)
+\end{equation}
+
+
 ### Qualitative Analysis 
 For the qualitative component of our measurement assessment we evaluated features only observed in either the unmixed pre- and post-exposure samples, unmixed-specific, or the titrations, titration-specific, for each biological replicate. 
 Features are unmixed- or titration-specific due to differences in sampling depth (number of sequences) between the unmixed samples and titrations or an artifact of the feature inference process. 
@@ -219,6 +234,11 @@ Count Error Rate Results
 ```{r quantAnalysis, child="quantitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
+<!--
+logFC Error Rate Results
+-->
+```{r logFCanalysis, child="logFC_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
 
 #### Qualitative Assessment
 

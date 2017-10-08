@@ -1,0 +1,61 @@
+---
+title: "logFC Assessment"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+
+
+```{r logFC_setup, include=FALSE}
+library(tidyverse)
+library(stringr)
+```
+
+Across all pipelines and individuals the estimated and expected logFC estimates were positively correlated (Fig. \@ref(fig:estVexpLogFC)). 
+However, the slope of the linear relationship between the expected and estimated log fold-change estimates were less than 1 for all pipelines and individuals, with low adjusted $R^2$ values, with median and minimum-maximum of 0.0347074 (0.0004769-0.0929261)) and slope estimates (0.07528 (0.01816-0.12118)). 
+Outlier features were the primary driver of the lower than expected slope estimates. __Need to verify__ 
+The bias and variance of the log fold-change estimates were compared between pipelines. 
+Using a mixed-effects models to take into account differences in individual, there was no statistical difference in the logFC error feature-level bias (median error rate) or variance (error rate RCOV).  
+An additional mixed-effects model was used to determine feature characteristics that are correlated with logFC error rate. 
+Increased estimated logFC and logCPM were significantly related to lower error rates. 
+
+
+```{r preCountTbl, echo = FALSE}
+logFC_pre %>% filter(T1 == 0, T2 == 20) %>%
+      mutate(Type = if_else(T00 == 0, "specific", "dominant")) %>% 
+      group_by(pipe, biosample_id, Type) %>% 
+      summarise(count = n()) %>% 
+      spread(pipe, count,fill = 0) %>% 
+      rename(Individual = biosample_id) %>% 
+      knitr::kable(caption = "Number of pre-specific and pre-dominant features by individual and pipeline", booktabs = TRUE)
+```
+
+```{r estVexpLogFC, fig.cap = "Relationship between the observed and expected logFC for pre-specific and pre-domiant features by pipeline and individual for all titration pair comparisons. Orange line indicates expected 1-to-1 relationship between the estimated and expected logFC. Blue line is a linear model was fit to the data and grey area is the models uncertainty estimate.", echo = FALSE}
+logFC_pre %>% 
+      filter(T1 != 0, T2 != 20) %>% 
+      ggplot() + 
+      geom_point(aes(x = logFC, y = exp_logFC)) +
+      geom_smooth(aes(x = logFC, y = exp_logFC), method = "lm") +
+      geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
+      facet_grid(biosample_id~pipe) + theme_bw()  +
+      labs(x = "Estimated logFC", y = "Expected logFC")
+```
+
+```{r logFCerror, fig.cap = "Distribution of feature-level median error rate by individual and pipeline.", echo = FALSE}
+ggplot(logFC_pre_error) + 
+      geom_boxplot(aes(x = pipe, y = median_error)) + 
+      facet_wrap(~biosample_id) +
+      theme_bw() +
+      labs(x = "Pipeline", y = "Feature-Level Median Error Rate")
+```
+
+```{r logFCcov, fig.cap = "Distribution of feature-level error rate robust coefficient of variation by individual and pipeline.", echo = FALSE}
+logFC_pre_error %>% ggplot() + 
+      geom_boxplot(aes(x = pipe, y = rcov_error)) + 
+      facet_wrap(~biosample_id) +
+      theme_bw() +
+      labs(x = "Pipeline", y = "Feature-Level Robust Error COV")
+```
