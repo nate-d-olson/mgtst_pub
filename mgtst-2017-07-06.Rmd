@@ -12,7 +12,7 @@ bibliography: [mgtst.bib, packages.bib]
 BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
 -->
 
-## Introduction
+# Introduction
 - 16S metagenomics is a complex measurement process comprised of multiple molecular laboratory and computation steps.  
 - There are numerous sources of bias in the measurement process, wetlab includes PCR and sequencing, ect. and computational includes pre-processing the feature inference or clustering. 
 - Further challenging the measurement is the compositional nature of data, that is the proporition of an organism within a sample is being measured.  
@@ -35,18 +35,18 @@ BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission
 microbiome scale quantitative and qualitative measurement assessment  
       + Results indicate that the qualitative performance varied by bioinformatic pipeline whereas the quantitative performance varied by biological replicate. 
 
-## Methods  
-### Generating Mixtures 
+# Methods  
+## Generating Mixtures 
 Dataset comprised of mixtures of environmental samples was generated and used to assess the count tables generated using three different bioinformatic pipelines. 
 
-#### Two-Sample Titration Design  
+### Two-Sample Titration Design  
 Samples from a vaccine trial were selected for use in the study [@harro2011refinement].
-Five trial participants were selected based on the following criteria no _Escherichia coli_ detected in stool samples before exposure (pre-exposure) to Enterotoxigenic _Escherichia coli_ (ETEC)) and timepoints with the highest concentration of _E. coli_ after exposure (post-exposure) [@pop2016individual] (\@ref(fig:experimentalDesign) Panel A).
-For the two-sample titration post-exposure samples were titrated into pre-exposure samples with $log_2$ changes in pre to post sample proportions \@ref(fig:experimenta_design) (Panel B).
+Five trial participants were selected based on the following criteria no _Escherichia coli_ detected in stool samples before exposure (pre-exposure) to Enterotoxigenic _Escherichia coli_ (ETEC)) and timepoints with the highest concentration of _E. coli_ after exposure (post-exposure) [@pop2016individual] (Fig. \@ref(fig:experimentalDesign) Panel A).
+For the two-sample titration post-exposure samples were titrated into pre-exposure samples with $log_2$ changes in pre to post sample proportions (Fig. \@ref(fig:experimentalDesign) Panel B).
 Unmixed samples were diluted to 12.5 $ng/\mu L$ in tris-EDTA buffer prior to making two-sample titrations.
 Initial DNA concentration was measured using NanoDrop ND-1000 (Thermo Fisher Scientific Inc. Waltham, MA USA).
 
-By using a two-sample titration mixture design the expected relative abundance of a feature can be determined using the following equation \@ref(eq:mixEq). Where $\theta_i$, is the proportion post-exposure sample in titration $i$, $C_{ij}$ is the relative abundance of feature $j$ in titration $i$, and $C_{post_j}$ and $C_{pre_j}$ are the relative abundance of feature $j$ in the unmixed pre- and post-exposure samples respectively.  
+By using a two-sample titration mixture design the expected relative abundance of a feature can be determined using the following equation \@ref(eq:mixEq). Where $\theta_i$, is the proportion of  post-exposure DNA in titration $i$, $C_{ij}$ is the relative abundance of feature $j$ in titration $i$, and $C_{post_j}$ and $C_{pre_j}$ are the relative abundance of feature $j$ in the unmixed pre- and post-exposure samples.  
 
 \begin{equation} 
   C_{ij} = \theta_i C_{post_j} + (1 - \theta_i) C_{pre_j}
@@ -57,92 +57,96 @@ By using a two-sample titration mixture design the expected relative abundance o
 knitr::include_graphics("img/experimental_design.png")
 ```
 
-### Titration Validation
+## Titration Validation
 
-To ensure that the two-sample titrations were correctly mixed independent ERCC plasmids were spiked into the unmixed pre- and post-exposure samples (Supplemental Table ERCC).
-The ERCC plasmids were resuspendended in 100 $ng/\mu L$ tris-EDTA buffer and 2 $ng/\mu L$ was spiked into each sample.  
+To ensure that the two-sample titrations were volumetrically mixed according to the mixture design independent ERCC plasmids were spiked into the unmixed pre- and post-exposure samples (__TODO__ Table ERCC) [@baker2005external] (NIST SRM SRM 2374).
+The ERCC plasmids were resuspendended in 100 $ng/\mu L$ tris-EDTA buffer and 2 $ng/\mu L$ was spiked into the approporiate unmixed sample.  
 Plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) specific to each ERCC plasmids using the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA).
 
-To account for differences in the proportion of bacterial DNA in the pre- and post-exposure samples, the amount of bacterial DNA was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA).
-All two-sample titrations and unmixed samples were run in triplicate along with a standard curve.
-An in-house standard curve consisting of $log_{10}$ dilutions of _E. coli_ DNA was used as the standard curve. ( __TODO__ Supplemental Material justification for using in-house instead of manufacturer provided standard curve).
+To account for differences in the proportion of bacterial DNA in the pre- and post-exposure samples, bacterial DNA concentration in the titrations was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA).
+All samples were run in triplicate along with a standard curve.
+An in-house standard curve consisting of $log_{10}$ dilutions of _E. coli_ DNA was used as the standard curve. 
 
 All qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher).
-The amplification data and Ct values were exported from the QuantStudio™ Design and Analysis Software v1.4.1 as tsv files for statistical analysis.
+The amplification data and Ct values were exported from the QuantStudio™ Design and Analysis Software v1.4.1 as tsv files for statistical analysis. 
+Statistical analysis was performed using the R programming language. 
 
-### Sequencing 
-The 45 samples (seven titrations and two unmixed samples for the five biological replicates) were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (REF).
-The protocol consisted of an initial 16S rRNA PCR followed by a separate sample indexing PCR.
+## Sequencing 
+The 45 samples (seven titrations and two unmixed samples for the five biological replicates) were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, dowloaded from https://support.illumina.com).
+The protocol consisted of an initial 16S rRNA PCR followed by a separate sample indexing PCR prior to normalization and pooling.
 
-#### 16S rDNA PCR, library preparation, and sequencing
-A total of 192 PCRs were run including four PCR replicates per sample and 12 no template controls ( __TODO__ Supplemental PCR plate figure). 
-The 16S PCR targeted the V3-V4 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
-The V3-V4 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at) ( __TODO__ Supplemental Figure Amplicon Region).
+A total of 192 PCRs were run including four PCR replicates per sample and 12 no template controls. 
+The 16S PCR targeted the V3-V5 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
+The V3-V5 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at).
 The primer sequences include additional overhang adapter sequences to facilitate library preparation (5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3') and reverse primers (GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC). 
 The 16S targeted PCR was performed according to the Illumina protocol using the KAPA HiFI HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
 The resulting PCR product was verified using agarose gel electrophoresis.
-Quality control DNA concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and after normalization. DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Mocledular Devices LLC. Sunnyvale CA, USA) flourescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Mocledular Devices LLC. Sunnyvale CA, USA). 
+Quality control DNA concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and after normalization. DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Molecular Devices LLC. Sunnyvale CA, USA) and flourescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Molecular Devices LLC. Sunnyvale CA, USA). 
 
-After the initial PCR were then used to generate libraries for sequencing. 
+The 16S rRNA PCR product was then used to generate libraries for sequencing. 
 The initial PCR product was purified using AMPure beads __TODO__ Add method info. 
 After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D ( __Check Barcodes__ Illumina Inc., San Diego CA).
-The purified sample concentration was normalized using SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA), according to the manufactuers protocol and pooled prior to sequencing.
+Prior to pooling the purified sample concentration was normalized using SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA), according to the manufactuers protocol.
 The pooled library concentration was measured using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
-Due to low concentration of the pooled amplicon library the modified protocol for low concentration libraries was used.
+Due to the low concentration of the pooled amplicon library the modified protocol for low concentration libraries was used.
 The library was run on a Illumina MiSeq and base calls were made using Illumina Real Time Analysis Software version 1.18.54.
 
-#### Sequencing Data Quality Assessment
+### Sequencing Data Quality Assessment
 To generate summaries of QA metrics for the 384 datasets in the study (192 samples with forward and reverse reads) used the bioconductor `Rqc` package (REF) to calculate the quality metrics used in the following analysis. 
 
-### Sequence Processing
-Sequence data was processed using a number of bioinformatic pipelines, Mothur [@schloss2009introducing], QIIME [@caporaso2010qiime], DADA2 [@callahan2016dada2], and an in-house pipeline with _de-novo_ clustering and phylogenetic placement.
+## Sequence Processing
+Sequence data was processed using three bioinformatic pipelines, Mothur [@schloss2009introducing], QIIME [@caporaso2010qiime], DADA2 [@callahan2016dada2]. 
+Code used to run the bioinformatic pipelines is available at https://github.com/nate-d-olson/mgtst_pipelines. 
 The Mothur (version 1.37, http://www.mothur.org/) pipeline used was based on the MiSeq SOP [@schloss2009introducing,@kozich2013development].
-As a different 16S rRNA region was sequenced than the region the SOP was developed for the procedure was modified to account for smaller overlap between the forward and reverse reads compared to the amplicons the protocol was developed for, see the Makefile in the project github repository ( __TODO__ add website).
+As a different 16S rRNA region was sequenced than the region the SOP was developed for the procedure was modified to account for smaller overlap between the forward and reverse reads compared to the amplicons the protocol was developed for.
 The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merge using the Needleman-Wunsch algorithm.
 Low quality reads, presence of ambiguous bases, reads that failed alignment to the SILVA reference database (https://www.arb-silva.de/), and chimeras were filtered from the dataset.
 Chimera filtering was performed using UChime without a reference database [@edgar2011uchime].
-Average neighbor clustering for OTU clustering using pairwise sequences distances calculated from the reference based multiple sequence alignment.
+OTU clustering was performed using the OptiClust algorithm with a clustering threshold of 0.97 [@westcott2017opticlust].
 The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set [@wang2007naive].
-The QIIME pipeline for paired-end Illumina data was performed according to the online tutorial (http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb).
-The methods included open reference clustering __TODO: ADD MORE TO THE DESCRIPTION__ [@caporaso2010qiime].
+The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb) using QIIME version 1.9.1 [@caporaso2010qiime]. 
+Briefly the QIIME pipeline uses fastq-join to merge paired-end reads [@aronesty2011ea], the Usearch algorithm  [@edgar2010search] and Greengenes database version 13.8 with a 97% similarity threshold [@desantis2006greengenes] was used for open-reference clustering. 
 DADA2 a R native pipeline was also used to process the sequencing data [@callahan2016dada2].
-The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier __REF__.
+The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier [@wang2007naive].
 
-### Data Analysis
+## Data Analysis
 * negative binomial model was used to calculate the average relative abundance across PCR replicates. 
+* log changes between titrations and pre- and post-exposure samples were calculated using EdgeR [robinson2010,@mccarthy2012].
 
 ### Theta Inference
-In-order to account for differences in the proportion of bacterial DNA in the pre- and post-exposure samples. 
-A linear model was used to estimate $\theta$ (Equation \@ref(eq:thetaInf)). 
-Equation \@ref(eq:mixEq) where $C_{obs_j}$ observed counts for mixture $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
+To account for differences in the proportion of bacterial DNA in the pre- and post-exposure samples. 
+A linear model was used to infer $\theta$ in equation \@ref(eq:thetaInf)), where $C_{obs_j}$ observed counts for titration $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
+__TODO__ Revise notation to indivate vector of relative abundance values for feature set. 
+Negative binomial relative abundance estimates were used to infer $\theta$. 
 16S rRNA sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
-Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly estimate $\theta_j$ in log-space . 
+Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly infer$\theta_j$ in log-space . 
 To address this issue we fit the model using a standard least-squares regression then obtained non-parametric 95 \% confidence intervals for the $\theta$ estimates by bootstraping with 1000 replicates. 
-To limit the impact of uninformative and low abundance features a subset of features were used to estimate $\theta$ (Table \@ref(tab:thetaFeatures)). 
+To limit the impact of uninformative and low abundance features a subset of features were used to infer $\theta$ (Table \@ref(tab:thetaFeatures)). 
 Features used were individual specific.
-To be included in the following analysis a feature was observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations), greater than 1 log2 change between the unmixed pre and post samples, and present in all four or none of the pre- and post-exposure PCR replicates.  
+To be included in the following analysis a feature was observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations), greater than 1 $log_2$ fold-change between the pre- and post-exposure samples, and present in all four or none of the pre- and post-exposure PCR replicates.  
 
 \begin{equation} 
   C_{obs_j} = \theta_j (C_{post_j} - C_{pre_j}) + C_{pre_j}
   (\#eq:thetaInf)
 \end{equation} 
 
-### Quantitative Analysis
-* Equation \@ref(eq:mixEq) and the inferred $\theta$ values were used to calculate the expected feature relative abundance. 
-* The expected relative abundance values were compared to the average relative abundance across the four PCR replicates calculated using a negative binomial linear model.  
-* The bias and variance for the relative abundance estimates were compared across pipelines and biological replicates. 
-* Bias - error rate, robust COV for variance for feature level summary metrics  
-* Outliers were observed  
-* mixed effects model was used to compare the bais and variance across pipelines accounting for individual effect 
+## Quantitative Assessment 
+To quanitatively assess the count table values the expected relative abundance and log fold-change values were compared to the relative abundance estimates calculated using a negative binomial model and the EdgeR log fold-change estimates. 
+Equation \@ref(eq:mixEq) and the inferred $\theta$ values were used to calculate the expected feature relative abundance. 
+The error rate bias and variance for the relative abundance estimates were compared across pipelines and biological replicates. 
+Error rate was defined as $|exp - obs|/exp$  
+Mixed effects models were used to compare feature-level error rate bais and variance across pipelines accounting for individual effect.
+Feature-level bias and variance were evaluated using the median error rate and robust COV, $IRQ/median$, respectively.  
+Large feature-level error rate bias and variance outliers were observed, these outliers were excluded from the mixed effects model to minimize biases in the model due to poor fit.
 
-The log fold-change estimates were compared to the expected log fold-change values for pre-specific and pre-dominant features. 
-Pre-dominant and pre-specific features were identified based on logFC between pre- and post-exposure samples and number of PCR replicates the feature was observed in for pre- and post-exposure PCR replicates (Table \@ref(tab:preCountTbl)). 
-Pre-dominant and pre-specific features were defined as features observed in all four pre-exposure PCR replicates and a logFC between pre- and post-exposure samples greater than 5.   
+
+To assess differential abundance log fold-change estimates, log fold-change between all titrations were compared to the expected logFC for the pre-specific and pre-dominant features. 
+Only individuals with consistent inferred and estimated $\theta$ values were included in the log fold-change analysis, E01JH0004, E01JH0011, and E01JH0016. 
+Pre-dominant and pre-specific features were identified based on log fold-change between pre- and post-exposure samples and number of PCR replicates the feature was observed in for pre- and post-exposure PCR replicates (Table \@ref(tab:preCountTbl)). 
+Pre-dominant and pre-specific features were defined as features observed in all four pre-exposure PCR replicates and a logFC between pre- and post-exposure samples greater than 5.  
 Pre-specific features were not observed in any of the post-exposure PCR replicates and pre-dominant features were observed in one or more of the post-exposure PCR replicates. 
-
-To assess differential abundance logFC estimates, logFC between all titrations were compared to the expected logFC for the pre-specific and pre-dominant features. 
-When assuming the feature is only present in pre-exposure samples the expected logFC is independent of the observed counts for the unmixed samples. 
-Expected logFC between titrations $i$ and $j$ is calculated using \@ref(eq:expLogFC). 
+When assuming the feature is only present in pre-exposure samples the expected log fold-change is independent of the observed counts for the unmixed samples. 
+Expected log fold-change between titrations $i$ and $j$ is calculated using \@ref(eq:expLogFC), where $\theta$ is the proportion of post-exposure bacterial DNA in a titration. 
 
 \begin{equation} 
   logFC_{ij} = log_2\left(\frac{1-\theta_i}{1-\theta_j}\right)
@@ -150,16 +154,17 @@ Expected logFC between titrations $i$ and $j$ is calculated using \@ref(eq:expLo
 \end{equation}
 
 
-### Qualitative Analysis 
-For the qualitative component of our measurement assessment we evaluated features only observed in either the unmixed pre- and post-exposure samples, unmixed-specific, or the titrations, titration-specific, for each biological replicate. 
-Features are unmixed- or titration-specific due to differences in sampling depth (number of sequences) between the unmixed samples and titrations or an artifact of the feature inference process. 
+## Qualitative Assessment 
+For the qualitative component of our measurement assessment we evaluated features only observed in either the unmixed pre- and post-exposure samples, unmixed-specific, or the titrations, titration-specific, for each individual. 
+Features are unmixed- or titration-specific due to differences in sampling depth (number of sequences) between the unmixed samples and titrations or an artifact of the feature inference process.  
+
 We tested if sampling alone could explain feature specificity. For unmixed-specific features we used a Binomial test and for titration-specific features we used Monte-Carlo simulation and a Bayesian hypothesis test. 
 For both test p-values were adjusted for multiple comparisons using the Benjamini & Hochberg method [@benjamini1995controlling]. 
 To determine if sampling alone can explain unmixed-specific features the binomial test was used to test the following hypothesis;   
 
-$H_0$ - Given no observed counts and the total abundance for a titration the true proportion of a feature is equal to the expected proportion.   
+$H_0$ - Given no observed counts and the total abundance for a titration the true proportion of a feature is __equal to__ the expected proportion.   
 
-$H_1$ - Given no observed counts and the total abundance for a titration the true proportion of a feature is less than the expected proportion.   
+$H_1$ - Given no observed counts and the total abundance for a titration the true proportion of a feature is __less than__ the expected proportion.   
 
 
 To test if titration-specific features could be explained by sampling alone we used Monte-Carlo simulation and a Bayesian hypothesis test. 
@@ -185,48 +190,45 @@ The following equations (Eq. \@ref(eq:probPi), \@ref(eq:probC)) were used to cal
 \end{equation} 
 
 __NOTE__ 
-Not sure this is appropriate due to the difference in the range of $\pi$ used for the null and alternative hypothetis. May also want to consider a different alternative hypothesis $\pi$ upper limit, potentially using the $\pi_{min_{pre}}$, and post treatment $\pi_{min_{post}}$ to calculate a more realistic upper limit._ 
+Not sure this is appropriate due to the difference in the range of $\pi$ used for the null and alternative hypothesis. May also want to consider a different alternative hypothesis $\pi$ upper limit, potentially using the $\pi_{min_{pre}}$, and post treatment $\pi_{min_{post}}$ to calculate a more realistic upper limit. 
 
 
-## Results
-### Titration Series Validation 
-In order to use information from the unmixed samples to obtain expected count values for the titrations we need to evaluate two assumptions about the mixed samples; 
-1. that the samples were mixed volumetrically in a log2 dilution series, 
-and 2. the unmixed pre and post exposure samples have the same proportion of bacterial DNA. 
-Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to expectations. 
-Total bacterial DNA in the unmixed samples was quantified using a qPCR assay targeting the 16S rRNA. 
-
-
-#### Spike-in qPCR results   
-
-```{r ercc, child="ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-```
-
-#### Bacterial DNA Concentration 
-```{r ercc, child="bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-```
-
-#### Theta Estimates
-```{r thetaEst, child="theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-```
-
-#### Dataset characteristics  
-- General summary statistics: number of reads per sample, read length, failed PCR/ bad samples 
+# Results
+## Dataset characteristics  
 
 ```{r seqChar, child="seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-### Bioinformatic Pipeline Characteristics
-
 ```{r pipeChar, child="pipeline_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-### Measurement Assessment  
+## Titration Series Validation 
+In order to use information from the unmixed samples to obtain expected count values for the titrations we need to evaluate two assumptions about the mixed samples: 
+1. The samples were mixed volumetrically in a $log_2$ dilution series.  
+2. The unmixed pre and post exposure samples have the same proportion of bacterial DNA. 
+Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to expectations. 
+Total bacterial DNA in the unmixed samples was quantified using a qPCR assay targeting the 16S rRNA gene. 
+
+
+### Spike-in qPCR results   
+
+```{r ercc, child="ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+### Bacterial DNA Concentration 
+```{r ercc, child="bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+### Theta Estimates
+```{r thetaEst, child="theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+## Measurement Assessment  
 Next we assessed the 16S rRNA measurement process using our mixture dataset. 
 We evaluated the quantitative performance of the measurement method both at the microbiome scale and at the feature level.  
 Additionally we were interested in the qualitative performance of the measurement method. 
 
-#### Quantitative Assessment
+### Quantitative Assessment
 
 <!--
 Count Error Rate Results
@@ -240,7 +242,7 @@ logFC Error Rate Results
 ```{r logFCanalysis, child="logFC_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-#### Qualitative Assessment
+### Qualitative Assessment
 
 <!--
 Proportion of titration and endpoint specific features that could not be explained by sampling alone. 
@@ -251,7 +253,7 @@ Proportion of titration and endpoint specific features that could not be explain
 
 
 
-## Discussion
+# Discussion
 
 * Sample experimental design  
 * Pipeline characterization differences  
@@ -268,13 +270,14 @@ Proportion of titration and endpoint specific features that could not be explain
       * What would you like to see a clustering method/ pipeline be able to do?  
             * What should be improved?  
 
-## Conclusions
+# Conclusions  
 
-\pagebreak
+\pagebreak  
+
 # Session information 
 
 ## Git repo commit information
-```{r}
+```{r include = FALSE}
 library(tidyverse)
 library(git2r)
 repo <- repository(path = ".")
@@ -284,19 +287,19 @@ last_commit <- commits(repo)[[1]]
 The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name`  branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit  message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
 
 
-## Platform Information
+## Platform Information  
 ```{r session_info, warning=FALSE, message=FALSE, echo = FALSE}
 s_info <- devtools::session_info()
 print(s_info$platform)
 ```
 
 
-## Package Versions
-```{r}
+## Package Versions  
+```{r warning=FALSE, message=FALSE, echo = FALSE}
 s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>%
-      knitr::kable()
+      knitr::kable(booktabs = TRUE)
 ```
 
 \pagebreak
 
-## References
+# References
