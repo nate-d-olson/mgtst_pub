@@ -74,7 +74,8 @@ Across all pipelines and individuals the estimated and expected logFC estimates 
 However, the slope of the linear relationship between the expected and estimated log fold-change estimates were less than 1 for all pipelines and individuals, with low adjusted $R^2$ values, with median and minimum-maximum of 0.0347074 (0.0004769-0.0929261)) and slope estimates (0.07528 (0.01816-0.12118)). 
 Outlier features were the primary driver of the lower than expected slope estimates. __Need to verify__ 
 The bias and variance of the log fold-change estimates were compared between pipelines. 
-Using a mixed-effects models to take into account differences in individual, there was no statistical difference in the logFC error feature-level bias (median error rate) or variance (error rate RCOV).  
+Similar to the relative abundance assessment we used a mixed-effects models to take into account differences in individuals when comparing the log fold-change error rates between pipeline. 
+There was no statistical difference in the log fold-change error feature-level median error rate or error rate RCOV.  
 An additional mixed-effects model was used to determine feature characteristics that are correlated with logFC error rate. 
 Increased estimated logFC and logCPM were significantly related to lower error rates. 
 
