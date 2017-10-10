@@ -224,9 +224,10 @@ Total bacterial DNA in the unmixed samples was quantified using a qPCR assay tar
 ```
 
 ## Measurement Assessment  
-Next we assessed the 16S rRNA measurement process using our mixture dataset. 
-We evaluated the quantitative performance of the measurement method both at the microbiome scale and at the feature level.  
-Additionally we were interested in the qualitative performance of the measurement method. 
+Next we assessed the 16S rRNA measurement process using our two-sample titration dataset. 
+We assessed the quantitative and qualitative nature of the 16S metagenomics. 
+For the quantitative assessment we looked the the relative abundance and differential abundance log fold-change estimates. 
+For the qualitative assessment we looked the relative abundance of features only observed in the unmixed samples and titrations. 
 
 ### Quantitative Assessment
 
@@ -256,12 +257,22 @@ Proportion of titration and endpoint specific features that could not be explain
 # Discussion
 
 * Sample experimental design  
+* Bacterial DNA proportion  
 * Pipeline characterization differences  
 * Why qualitative analysis is pipeline dependent?  
       - What dependency means for 16S gene surveys  
 * Why quantitative analysis is biological replicate dependent?  
-      - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?
+      - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?  
+      - what is DADA2 so high
+* Relative abundance 
+      - Outliers  
+      - Need to summarise across replicates  
+      - Noisy data  
+* log fold-change - outlier features   
 * Relationship between factors impacting quant and qual analysis  
+
+# Conclusions  
+
 * How this dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.  
 * Given study results
       * How would you analyze 16S sequencing data assuming current methods?  
@@ -269,8 +280,6 @@ Proportion of titration and endpoint specific features that could not be explain
       * What are the limitations of current methods?  
       * What would you like to see a clustering method/ pipeline be able to do?  
             * What should be improved?  
-
-# Conclusions  
 
 \pagebreak  
 
