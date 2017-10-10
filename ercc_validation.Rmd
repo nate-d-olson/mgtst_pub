@@ -61,6 +61,7 @@ ercc_sam <- qpcrERCC %>% filter(sample_type == "sam") %>%
             titration = gsub(".*\\(Post\\)", "0", titration),
             titration = as.numeric(titration),
             pre_prop = (1 - (2 ^ -titration)),
+            pre_prop = if_else(titration == 20, 1, pre_prop), 
             assay_type = if_else(ercc %in% post_assays, "Post", "Pre")
       )
 
@@ -162,7 +163,7 @@ pre_prop_values <- ercc_plot_dat %>%
 
       
 ercc_preplot <- ercc_plot_dat %>%
-      filter(treatment == "Pre", titration %in% c(1:4)) %>%
+      filter(treatment == "Pre", titration %in% c(1:4, 20)) %>%
       ggplot() +
       geom_smooth(aes(x = pre_prop, y = Ct), method = "lm") +
       geom_point(aes(x = pre_prop, y = Ct)) +
@@ -183,17 +184,19 @@ ercc_postplot <- ercc_plot_dat %>%
       theme_bw()
 ```
 
-To validate the volumetric mixing of the two-sample titration ERCC plasmids were spiked into the unmixed pre- and post-exposure samples. 
-The plasmids were quantified using qPCR. 
+The volumetric mixing of the two-sample titration was validated using qPCR to quantify ERCC plasmids were spiked into the pre- and post-exposure samples. 
 The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves (Table \@ref(tab:erccTable)). 
 The qPCR assays targeting the ERCCs spiked into the post-exposure samples had $R^2$ values and slope estimates  close to 1 (Table \@ref(tab:erccTable)). 
 The expected slope is 1, for a doubling every cycle. 
 Slope estimates less than 1 were attributed to the assay standard curve amplification factors being less than 2 (Table \@ref(tab:erccTable)). 
 The 1-4 titration factor samples had Ct values consistently above the regression line (Figure \@ref(fig:erccPlot)). 
+DNA from the unmixed samples were used to generate titrations 1 and 5 which may account for the offset in the regression line for titrations 1-4. 
+The deviation from the regression line is small and unlikely to significantly impact the quantiative and qualitative assessment. 
 For the pre-exposure ERCCs a regression line was fit to the log2 pre-exposure sample proportion for titrations 1-4 and the unmixed pre-exposure sample. 
-The change in pre-exposure sample proportion between titrations 5, 10, and 15 ($0.03$ - $3.05e^-5$) is to small for qPCR to accuratey detect changes in ERCC spike-in concentration. 
-For the ERCCs spiked into the pre-exposure samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)) when a regression line was fit to the Ct values and log2 Pre-exposure sample proportion \@ref(fig:erccPlot), with a -1 expected slope. 
-These results indicate that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
+The change in pre-exposure sample proportion between titrations 5, 10, and 15 ($0.97$ - $0.99997$) is to small for qPCR to detect changes in ERCC spike-in concentration with an expected Ct difference of `r log2((1-2^-8)/(1-2^-5))` between the titrations 5 and 15.  
+For the ERCCs spiked into the pre-exposure samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)) when a regression line was fit to the Ct values and $log_2$ pre-exposure sample proportion (Fig. \@ref(fig:erccPlot)), with a -1 expected slope.
+The deviation from the expected slope for the pre-exposure ERCC qPCR results is attributed to the small change in spike-in concentration between samples preventing the accurate quantification of spike-in concentration. 
+When taking into consideration the quantitative limitations of the qPCR assay these results indicate that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
 
 ```{r erccTable, echo=FALSE, message=FALSE}
 ercc_tbl %>% arrange(treatment) %>% 
