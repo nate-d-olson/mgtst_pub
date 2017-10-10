@@ -51,7 +51,7 @@ bac_con_plot <- bac_abu %>%
                                    titration == "Post" ~ "0"),
              titration = as.numeric(titration)) %>% 
       filter(titration != 0) %>%
-      mutate(t_group = if_else(titration < 5, "low","high")) 
+      mutate(t_group = if_else(titration <= 5, "low","high")) 
 
 ######### Model Fit data
 bac_con_fit <- bac_con_plot %>% 
@@ -82,42 +82,41 @@ r2_17_no5 <- rsquare(fit_17_no5, bac_con17_no5)
 
 
 ```{r bacConFit, warning=FALSE, message=FALSE, echo = FALSE}
+bac_con_r2 <- bac_con_fit %>% filter(t_group == "low") %>% 
+      select(biosample_id, fit_glance) %>% unnest() %>% 
+      select(biosample_id, adj.r.squared)
+
 bac_con_fit %>% select(biosample_id, t_group, fit_tdy) %>% 
+      filter(t_group == "low") %>% 
       unnest() %>% filter(term == "titration") %>% 
       add_column(adj.p.value =  p.adjust(.$p.value, method = "BH")) %>% 
-      select(biosample_id, t_group, estimate, std.error, adj.p.value) %>% 
+      select(biosample_id, estimate, std.error, adj.p.value) %>% 
       arrange(biosample_id) %>% 
+      left_join(bac_con_r2) %>% 
       rename(`Std. Error` = std.error, `Adj. p-value` = adj.p.value, 
-             `Individual` = biosample_id, Titrations = t_group,
-             Slope = estimate) %>% 
-      knitr::kable(digits = 4, caption = "Slope estimate for linear model of bacterial DNA concentration and titration factor. Separate linear models were fit for each titration series (individual) and titration group. Mix titration group includes titrations 1-4 and pre titration group 5, 10, and 15. Multiple test correction was performed using the Benjamini-Hochberg method. The expectation is for the slopes to equal 0.",  booktabs = TRUE)
+             `Individual` = biosample_id,
+             Slope = estimate,
+             `$R^2$` = adj.r.squared) %>% 
+      knitr::kable(digits = 4, caption = "Slope estimates for linear model of prokaryotic DNA concentration and titration factor. Separate linear models were fit for each titrations 1-4 for each  individual. Multiple test correction was performed using the Benjamini-Hochberg method. p-value indicates signficant difference from the expected slopes of 0.",  booktabs = TRUE)
 ```
 
 
-```{r bacPlot, fig.cap = "Bacterial DNA concentration (ng/ul) across titrations for titrations that are primarily from the pre-exposure sample (5,10, and 15) and mixed titrations (1-4).", warning=FALSE, message=FALSE, echo = FALSE}
+```{r bacPlot, fig.cap = "Prokaryotic DNA concentration (ng/ul) across titrations 1-4 measured using a 16S rRNA qPCR assay", warning=FALSE, message=FALSE, echo = FALSE}
 bac_con_plot %>% 
-      mutate(t_group = if_else(t_group == "high", "Pre", "Mixed")) %>% 
+      filter(t_group != "high") %>% 
       ggplot() +
       geom_point(aes(y = quant, x = titration)) +
-      geom_smooth(aes(x = titration, y = quant, color = t_group), method = "lm") + 
-      facet_grid(biosample_id~t_group, scales = "free") +
+      geom_smooth(aes(x = titration, y = quant), method = "lm") + 
+      facet_grid(~biosample_id, scales = "free") +
       theme_bw() + labs(x = "Titration Factor", y = "DNA concentration (ng/ul)") +
       theme(legend.position = "none")
 ```
 
-In order for the relative proportion of bacterial DNA from pre- and post-exposure samples in each titration to be consistent with the mixture design the proportion of bacterial DNA needs to be consistent between the unmixed samples. 
-A qPCR assay targeting the 16S rRNA gene was used to quantify the concentration of bacterial DNA in the titrations. 
-For the qPCR assay an in-house standard curve with standard concentrations 20 ng/ul, 2ng/ul, and 0.2 ng/ul was used. 
-Standard curve efficiency `r efficiency`, and $R^2$ `r std_r2`. 
-If the proportion of bacterial DNA is the same between pre- and post-exposure samples the slope of the concentration estimates across the two-sample titration would be equal to 0. 
-For individuals where the proportion of bacterial DNA is higher in the pre-exposure samples the slope will be negative and positive when the proporition is higher for post-exposure samples. 
-For titrations 1-4 the slope estimates are significantly different from 1 for individuals E01JH0011, E01JH00016, and E01JH00038 (Table \@ref(tab:bacConFit), Fig. \@ref(fig:bacPlot)). 
-The proportion of DNA from pre-exposure unmixed samples is greater than 0.97 for titration 5, 10, and 15 and therefore minimal difference in the bacterial DNA concentration is expected between titrations as observed for individuals E01JH0016 and E01JH0038. 
-The bacterial concentration estimates are not consistent between the lower (1-4) and higher titrations (5,10, and 15) for individuals E01JH0004, E01JH0011 and E01JH0017. 
-For these three individuals the DNA concentration estimates are higher for titrations 5,10, and 15 compared to titrations 1-4. 
-For individual E01JH0017, excluding titration 5 the two sets of titrations are consistent. 
-When a linear model is fit to the full titration series the $R^2$ value increases from `r round(r2_17_full,3)` to `r round(r2_17_no5,3)` when titration 5 is excluded from the model. 
-For individual E01JH0004 the negative slope is an artifact of noisy qPCR data with no change in bacterial DNA concentration between titrations 1-4.  
-
-__I do not have an explanation for the lack of a linear trend in the bacterial DNA concentrations between the two sets of titrtaions for E01JH0011.__
-
+The proportion of prokaryotic DNA changes across titrations, indicating the proportion of bacterial DNA from the unmixed pre- and post-exposure samples in a titration is not consistent with the mixture design.
+A qPCR assay targeting the 16S rRNA gene was used to quantify the concentration of prokaryotic DNA in the titrations. 
+An in-house standard curve with concentrations of 20 ng/ul, 2ng/ul, and 0.2 ng/ul was used. 
+Standard curve efficiency `r round(efficiency,2)`, and $R^2$ `r round(std_r2,2)`. 
+If the proportion of prokaryotic DNA is the same between pre- and post-exposure samples the slope of the concentration estimates across the two-sample titration would be 0. 
+For individuals where the proportion of prokaryotic DNA is higher in the pre-exposure samples the slope will be negative and positive when the proporition is higher for post-exposure samples. 
+For titrations 1-5 the slope estimates are significantly different from 1 for individuals E01JH00016, E01JH0017, and E01JH00038 (Table \@ref(tab:bacConFit), Fig. \@ref(fig:bacPlot)). 
+These results indicate that the proportion of prokaryotic DNA is higher in the post-exposure sample than the pre-exposure sample for E01JH0016 and E01JH0038, lower in the post-exposure sample for E01JH0017, with no detectable difference for E01JH0004 and E01JH0011. 

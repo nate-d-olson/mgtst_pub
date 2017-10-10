@@ -216,7 +216,7 @@ Total bacterial DNA in the unmixed samples was quantified using a qPCR assay tar
 ```
 
 ### Bacterial DNA Concentration 
-```{r ercc, child="bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r bacCon, child="bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
 ### Theta Estimates
