@@ -130,7 +130,6 @@ ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text
 ```
 
 There are a number of unmixed- and titration-specific features with a range of observed (titration-specific) and expected (unmix-specific) counts. (Fig. \@ref(fig:qualPlot)A-B). 
-To determine if the observed and expected counts could be explained by sampling alone a binomial test was used for titration-specific features and a bayesian hypothesis test was used for unmixed-specific features. 
 There were unmixed-specific features with expected counts that could not be explained by sampling alone for all biological replicates and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C). 
 However, the proportion of unmixed-specific features that could not be explained by sampling alone varied by bioinformatic pipeline with over half of the DADA2 unmixed-specific features could not be explained by sampling alone whereas QIIME had the lowest rate of features with 0 observed counts that could not be explained by sampling alone. 
 Consistent with the distribution of observed counts for titration-specific features more of the DADA2 features could not be explained by sampling alone compared to the other pipelines (Fig. \@ref(fig:qualPlot)D).  
