@@ -29,9 +29,8 @@ BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission
       + Similar to mock communities simulated data have an expected value that can be used for benchmarking. However, the sequencing error profile is not completely understood and therefore cannot be accurately simulated.
 
 - Alternative using mixtures of environmental samples  
-
-- Using mixtures of unknown samples  
-      + Use in microarrays and RNAseq [@parsons2015using,pine2011adaptable,thompson2005use]
+      + Using mixtures of unknown samples  
+      + Previously used to evaluate gene expression measurements microarrays and RNAseq [@parsons2015using,pine2011adaptable,thompson2005use]
 
 - Application to 16S  
       + We generated a data set using mixtures of extracted DNA from human stool samples for assessing the 16S metagenomic measurement process. 
@@ -88,7 +87,7 @@ The resulting PCR product was verified using agarose gel electrophoresis.
 Quality control DNA concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and after normalization. DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Molecular Devices LLC. Sunnyvale CA, USA) and flourescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Molecular Devices LLC. Sunnyvale CA, USA). 
 
 The 16S rRNA PCR product was then used to generate libraries for sequencing. 
-The initial PCR product was purified using AMPure beads __TODO__ Add method info. 
+The initial PCR product was purified using AMPure XP beads (Beckman Coulter Genomics, Danvers, MA) following the manufactures protocol. 
 After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D ( __Check Barcodes__ Illumina Inc., San Diego CA).
 Prior to pooling the purified sample concentration was normalized using SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA), according to the manufactuers protocol.
 The pooled library concentration was measured using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
@@ -120,7 +119,7 @@ The pipeline includes a sequence inference step and taxonomic classification usi
 ### Theta Inference
 To account for differences in the proportion of bacterial DNA in the pre- and post-exposure samples. 
 A linear model was used to infer $\theta$ in equation \@ref(eq:thetaInf)), where $C_{obs_j}$ observed counts for titration $j$, counts for unmixed $C_{pre_j}$ and $C_{post_j}$. 
-__TODO__ Revise notation to indivate vector of relative abundance values for feature set. 
+__TODO__ Revise notation to indicate vector of relative abundance values for feature set. 
 Negative binomial relative abundance estimates were used to infer $\theta$. 
 16S rRNA sequencing count data is know to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
 Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly infer$\theta_j$ in log-space . 
