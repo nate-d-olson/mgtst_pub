@@ -13,27 +13,31 @@ BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission
 -->
 
 # Introduction
-- 16S metagenomics is a complex measurement process comprised of multiple molecular laboratory and computation steps.  
-- There are numerous sources of bias in the measurement process, wetlab includes PCR and sequencing, ect. and computational includes pre-processing the feature inference or clustering. 
-- Further challenging the measurement is the compositional nature of data, that is the proporition of an organism within a sample is being measured.  
+- 16S metagenomics is a complex measurement process comprised of multiple molecular laboratory and computation steps [@goodrich2014conducting].  
+- There are numerous sources of bias in the measurement process, wetlab includes PCR and sequencing, ect. and computational includes pre-processing and sequence clustering __REF__.  
+- Further challenging the measurement is the compositional nature of data, that is the proporition of an organism within a sample is being measured [@tsilimigras2016compositional].  
 - Additionally, a key step in the measurement process the grouping of sequences into biologically relevant units or clustering, often called operational taxonomic units (OTUs).
-- Though different clustering methods generate OTUS with different characteristics.
+- Though different clustering methods generate OTUS with different characteristics.  
+      + De novo clustering [@westcott2015novo]
+      + Open reference clustering [@he2015stability] 
+      + DADA2 - sequence inference [@callahan2016dada2] 
 
 - Previous work characterizing the measurement process  
       + Evaluate a measurement process you need a dataset with an expected value. 
-      + Mock communities consisting of mixtures of cells or DNA from individual organisms and simulated data have been previously used to evaluate different  aspects of the measurement process.
-      + Limitations to using mock communities and simulated data 
-      + Alternative using mixtures of environmental samples  
+      + Mock communities consisting of mixtures of cells or DNA from individual organisms and simulated data have been previously used to evaluate different aspects of the measurement process [@bokulich2016mockrobiota,].
+      + Mock communities have an expected value but are not representative of the complexity of environmental samples in terms of number and abundance distributions of organisms. 
+      + Similar to mock communities simulated data have an expected value that can be used for benchmarking. However, the sequencing error profile is not completely understood and therefore cannot be accurately simulated.
+
+- Alternative using mixtures of environmental samples  
 
 - Using mixtures of unknown samples  
-      + Analytical chemistry history  
-      + Use in microarrays and RNAseq
+      + Use in microarrays and RNAseq [@parsons2015using,pine2011adaptable,thompson2005use]
 
 - Application to 16S  
       + We generated a data set using mixtures of extracted DNA from human stool samples for assessing the 16S metagenomic measurement process. 
       + Processed the resulting dataset with three bioinformatic pipelines
-microbiome scale quantitative and qualitative measurement assessment  
-      + Results indicate that the qualitative performance varied by bioinformatic pipeline whereas the quantitative performance varied by biological replicate. 
+ and performed a quantitative and qualitative assessment of the resulting count tables. 
+      + Results indicate that .... 
 
 # Methods  
 ## Generating Mixtures 
