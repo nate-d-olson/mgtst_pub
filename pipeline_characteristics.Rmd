@@ -12,6 +12,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(ProjectTemplate)
 load.project()
 library(Rqc)
+library(ggpubr)
 ```
 
 ```{r bioPipeQA, echo = FALSE}
@@ -109,15 +110,42 @@ filter_rate_summary <- filter_rate_df %>% group_by(pipe) %>%
                 filt_max = max(filter_rate) %>% round(2)) %>% 
       mutate(`Filter Rate` = paste0(filt_med, " (", filt_min, "-", filt_max,")")) %>% 
       select(pipe, `Filter Rate`)
+
+### Total feature counts by sample
+raw_feat_count_df <- meta_df %>% 
+      filter(Read == "R1", biosample_id != "NTC") %>%
+      dplyr::rename(id = ill_id, counts = reads) %>% 
+      mutate(pipe = "Reads") %>% 
+      select(pipe, id, counts) %>% 
+      bind_rows(count_df)
+
+
+## Observed Features per sample
+feature_counts <- mrexp %>% map(extract_samples) %>% 
+      map(MRcounts,sl = 1) %>% 
+      map(as.data.frame) %>% 
+      map(rownames_to_column, var = "feature_id") %>% 
+      map_df(gather, "id","counts", -feature_id, .id = "pipe") 
+
+obs_feat_df <- feature_counts %>% filter(counts != 0) %>% 
+      group_by(pipe, id) %>% 
+      summarise(obs_feat = n())
+
+obs_feat_df <- meta_df %>% filter(Read == "R1") %>% 
+      select(biosample_id, t_fctr, ill_id) %>% 
+      dplyr::rename(id = ill_id) %>% 
+      right_join(obs_feat_df)
 ```
 
 The sequencing dataset was processed using three bioinformatic pipelines. 
 The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA)).
-The expectation is that this mixture dataset will be more sparse relative to other datasets due to the redundant nature of the samples where 35 of the 45 samples are derived directly from the other 10 samples and that there are four PCR replicates for each sample. 
-Sparsity was lower for De-novo clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
+The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples and there are four PCR replicates for each sample. 
+Sparsity was lower for _de-novo_ clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
 Different pipelines have different approaches for handling low quality reads. 
-See individual pipeline reports for which steps reads are excluded from the datasets. 
 QIIME pipeline has the highest filter rate while the highest number of features per sample. 
+
+The number of features per sample varied by bioinformatic pipeline (Fig \@ref(fig:obsFeat)). The number of observed features by sample was more correlated between the QIIME and Mothur pipelines compared to the DADA2 pipeline (Fig \@ref(fit:obsFeat) A-C). 
+Of the four samples with low numbers of features for the QIIME pipeline, only one of the samples had low number of observed features for the other two pipelines as well. 
 
 ```{r pipeQA, echo = FALSE, message = FALSE, warning = FALSE}
 data_frame(pipe = names(mrexp), 
@@ -126,4 +154,26 @@ data_frame(pipe = names(mrexp),
       left_join(count_summary) %>% left_join(filter_rate_summary) %>% 
       dplyr::rename(Pipelines = pipe) %>% 
       knitr::kable(caption = "Summary statistics for the different bioinformatic pipeliens. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total feature abundance. Filter rate is the proportion of reads that were removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
+```
+
+```{r obsFeat, fig.cap = "Comparison of the number of observed features per sample by bioinformatic pipeline. (A) Mothur v. DADA2, (B) Mothur v. QIIME, and (C) QIIME v. DADA2", echo = FALSE, message = FALSE}
+pl1 <- obs_feat_df %>% filter(pipe %in% c("dada2","mothur")) %>% spread(pipe, obs_feat) %>% 
+      ggplot() + geom_point(aes(x = dada2, y = mothur, fill = biosample_id), shape = 21) + 
+      theme_bw() + 
+      labs(fill = "Individual")
+
+pl2 <- obs_feat_df %>% filter(pipe %in% c("dada2","qiime")) %>% spread(pipe, obs_feat) %>% 
+      ggplot() + geom_point(aes(x = dada2, y = qiime, fill = biosample_id), shape = 21) + 
+      theme_bw()
+
+pl3 <- obs_feat_df %>% filter(pipe %in% c("mothur","qiime")) %>% spread(pipe, obs_feat) %>% 
+      ggplot() + geom_point(aes(x = qiime, y = mothur, fill = biosample_id), shape = 21) + 
+      theme_bw()
+pl4 <- obs_feat_df %>% ggplot() + geom_boxplot(aes(x = pipe, y = obs_feat)) + theme_bw() + 
+      labs(x = "Pipeline", y = "# of Features")
+## Outlier features
+# obs_feat_df %>% filter(pipe == "qiime", obs_feat < 300)
+
+ggarrange(pl1, pl3, pl2, pl4, ncol = 2, nrow = 2,align = "hv",
+          common.legend = TRUE, legend = "bottom",labels = "AUTO")
 ```

@@ -68,33 +68,58 @@ meta_df <- sampleSheet %>%
 Quality assessment of sequencing run summarizing number of reads per sample.
 Two barcoded experimental samples have less than 50,000 reads \@ref(fig:readCount). 
 The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). 
-Sample E01JH0016 titration 5 position F9 of plate 1 initial 16S PCR failed.  
 Excluding the one failed reaction the total range in the observed number of sequences per sample is approximately 40,000 to 150,000 reads. 
-The low variabiltiy in number of reads per sample suggests that normalization methods are less likely to impact the results compared other datasets with larger variability in the number of reads per sample.  
 
-__TODO__ Figure out why E01JH0011 titration 3 position D2 plate 2 is also low, look at picogreen post normalization data. 
-
+```{r cycle_metrics, warning=FALSE, message=FALSE, echo = FALSE}
+## amplicon position __Cycle Level Metrics__
+# amp_pos_df <- data_frame(cycle = rep(1:300, 2), 
+#                          Read = rep(c("R1","R2"), each = 300),
+#                          amp_pos = c(1:300,c(460 - 1:300)))
+# 
+# qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>% 
+#     as_data_frame() %>% 
+#     mutate(cycle = as.numeric(as.character(cycle))) %>% 
+#     filter(count != 0) %>% # not sure if this impacts the smoothing function ...
+#     left_join(meta_df) %>% left_join(amp_pos_df)
+```
 
 ```{r tableCount, warning=FALSE, message=FALSE, echo = FALSE}
-meta_df %>% mutate(exp_ntc = ifelse(biosample_id == "NTC", "NTC","EXP")) %>% 
-    filter(Read == "R1", ill_id != "1-F9") %>% 
-    group_by(biosample_id) %>% 
-    summarise(median = median(reads),
-              min_lib_size = min(reads),
-              max_lib_size = max(reads)) %>% 
-    kable(caption = "Summary statistics for number of reads per sample by biological replicate.", booktab = TRUE)
+# meta_df %>% mutate(exp_ntc = ifelse(biosample_id == "NTC", "NTC","EXP")) %>% 
+#     filter(Read == "R1", ill_id != "1-F9") %>% 
+#     group_by(biosample_id) %>% 
+#     summarise(median = median(reads),
+#               min_lib_size = min(reads),
+#               max_lib_size = max(reads)) %>% 
+#     kable(caption = "Summary statistics for number of reads per sample by biological replicate.", booktab = TRUE)
 ```
 
 
-```{r readCount, fig.cap="Number of reads per barcoded sample (Library Size), by read direction (X-facet) and replicate 16S PCR plate (Y-facet). Vertical line indicates 50,000 reads per barcoded sample.", fig.lp = "fig:", warning=FALSE, message=FALSE, echo = FALSE }
-meta_df %>% # filter(Read == "R1") %>%
+```{r readCount, fig.cap="Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates 50,000 reads per barcoded sample.", fig.lp = "fig:", warning=FALSE, message=FALSE, echo = FALSE }
+meta_df %>% filter(Read == "R1") %>%
     ggplot() + 
-        geom_histogram(aes(x = reads), position = "dodge") + 
-        facet_grid(plate~.) + scale_x_log10() + 
-        geom_rug(aes(x = reads, color = biosample_id)) +
-        geom_vline(aes(xintercept = 50000), color = "grey80") +
-        theme_bw() + labs(x = "Library Size (log10)", 
-                          y = "Count", color = "Sample ID") +
-        theme(legend.position = "bottom")
+        geom_boxplot(aes(x = biosample_id, y = reads)) + 
+      scale_y_log10() + 
+        geom_hline(aes(yintercept = 50000), color = "grey60", linetype = 2) +
+        theme_bw() + labs(y = "Library Size (log10)", 
+                          x = "Individual")
 ```
 
+
+
+```{r lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads."}
+## Text -------
+## For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read \@ref(fig:lowcycleq). 
+
+# qa_cycle_q_df %>% filter(biosample_id != "NTC", ill_id != "1-F9") %>% 
+#       ggplot(aes(x = amp_pos, y = score)) + 
+#     geom_vline(aes(xintercept = 300), color = "grey60") +
+#     geom_vline(aes(xintercept = 160), color = "grey60") +
+#     # geom_smooth(aes(weight = count, color = biosample_id, group = filename)) + 
+#     geom_smooth(aes(weight = count,group = Read)) +
+#     geom_vline(aes(xintercept = 280), color = "grey40", linetype = 2) +
+#     theme_bw() + 
+#     scale_x_continuous(breaks = c(0,150,300, 450)) +
+#     labs(x = "Amplicon Position", 
+#          y = "Base Quality Score", color = "Individual") + 
+#     theme(legend.position = "bottom")
+```
