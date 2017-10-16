@@ -208,7 +208,7 @@ ercc_tbl %>% arrange(treatment) %>%
 ```
 
 ```{r erccPlot, fig.cap = "qPCR ERCC spike-in results for ERCC spiked into unmixed (A) Post-exposure samples and (B) Pre-exposure samples (titrations 1-4 only). X-axis is on a log2 scale with expected slope of 1 and -1 for Post-exposure and Pre-exposure spike-ins respectively. ", fig.height = 6, echo=FALSE, message=FALSE}
-ggarrange(ercc_postplot, 
+ggarrange(ercc_postplot,
           ercc_preplot,
           labels = c("A", "B"),
           nrow = 1, ncol = 2)

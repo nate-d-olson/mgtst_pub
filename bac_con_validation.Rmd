@@ -97,7 +97,7 @@ bac_con_fit %>% select(biosample_id, t_group, fit_tdy) %>%
              `Individual` = biosample_id,
              Slope = estimate,
              `$R^2$` = adj.r.squared) %>% 
-      knitr::kable(digits = 4, caption = "Slope estimates for linear model of prokaryotic DNA concentration and titration factor. Separate linear models were fit for each titrations 1-4 for each  individual. Multiple test correction was performed using the Benjamini-Hochberg method. p-value indicates signficant difference from the expected slopes of 0.",  booktabs = TRUE)
+      knitr::kable(digits = 4, caption = "Slope estimates for linear model of prokaryotic DNA concentration and titration factor. Separate linear models were fit for each titrations 1-4 for each  individual. Multiple test correction was performed using the Benjamini-Hochberg method. p-value indicates signficant difference from the expected slopes of 0.",  booktabs = TRUE, escape = FALSE)
 ```
 
 
