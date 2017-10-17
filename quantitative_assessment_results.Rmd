@@ -61,7 +61,7 @@ prop_inferred <- theta_est %>%
 pa_filter <- pa_summary_anno_df %>% 
       filter(pa_specific == "unspecific") %>% 
       select(biosample_id, pipe, feature_id, full_pre, T00, T20, pa_mixed) %>% 
-      filter(T00 %in% c(0,4), T20 %in% c(04))
+      filter(T00 %in% c(0,4), T20 %in% c(0,4))
 
 prop_inferred <- prop_inferred %>% 
       right_join(pa_filter) %>% 
