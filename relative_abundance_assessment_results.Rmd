@@ -8,6 +8,11 @@ output:
 ---
 
 ```{r relAbuSetup, include=FALSE}
+## TODO 
+## - define error rate as (exp - obs)/exp - not absolute value, better fit and allows for positive and negative errors to cancel eachother out. 
+library(nlme)
+library(ape)
+library(multcomp)
 library(tidyverse)
 library(forcats)
 library(ggpubr)
@@ -30,10 +35,10 @@ Next we evaluated the quantitative accuracy of the relative abundance values by 
 Feature-level median error rates and RCOV were compared across pipelines and individuals using a mixed effects model. 
 Large error rates were observed with all pipelines for E01JH0016 (Table  \@ref(tab:relAbuErrorTbl)). 
 Features with large error rates, defined as $1.5\times IQR$ from the median, were excluded from the analysis to prevent outliers from biasing the comparison. 
-When accounting for biological replicate effect DADA2 had a lower feature-level error rate compalred to mothur and qiime, qiime and mothur are not different from each other.  
+When accounting for biological replicate effect DADA2 had a lower feature-level error rate compared to Mothur and QIIME, and method was lower than QIIME (p-value <1e-09).  
 Unlike feature-level error rates, large RCOV was observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)). 
 Outlier values were also excluded from the RCOV analysis. 
-The feature-level RCOV was higher for DADA2 compared to Mothur and QIIME though not significantly (Fig. \@ref(fig:relAbuError)C). 
+The feature-level RCOV was lower for Mothur compared to DADA2 and QIIME though not significantly (Fig. \@ref(fig:relAbuError)C). 
 
 
 ```{r relAbuMunge, echo = FALSE, message = FALSE, warning = FALSE}
@@ -41,7 +46,7 @@ pre_post_prop <- nb_counts %>%
       ungroup() %>% 
       filter(t_fctr %in% c(0,20)) %>% 
       mutate(end_point = if_else(t_fctr == 0 , "post", "pre")) %>% 
-      select(-t_fctr) %>% 
+      dplyr::select(-t_fctr) %>% 
       ## setting values to 0 when one or more of the PCR replicates are 0 for titration end-points
       spread(end_point,nb_prop, fill = 0)
 
@@ -49,7 +54,7 @@ prop_inferred <- theta_est %>%
       filter(pipe == "unclustered") %>% 
       ungroup() %>%
       mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
-      select(biosample_id, theta_hat_mean, t_fctr) %>% 
+      dplyr::select(biosample_id, theta_hat_mean, t_fctr) %>% 
       right_join(nb_counts) %>% right_join(pre_post_prop) %>% 
       filter(t_fctr %in% c(1:5,10,15)) %>% 
       ## Using inferred theta estimates to calculate expected values
@@ -61,7 +66,7 @@ prop_inferred <- theta_est %>%
 ## Excluding titrations where the inferred theta values are less than 1
 pa_filter <- pa_summary_anno_df %>% 
       filter(pa_specific == "unspecific") %>% 
-      select(biosample_id, pipe, feature_id, full_pre, T00, T20, pa_mixed) %>% 
+      dplyr::select(biosample_id, pipe, feature_id, full_pre, T00, T20, pa_mixed) %>% 
       filter(T00 %in% c(0,4), T20 %in% c(0,4))
 
 prop_inferred <- prop_inferred %>% 
@@ -175,7 +180,37 @@ rcov_boxplot <- rcov_boxplot + coord_cartesian(ylim = c(ymin, ymax))
 
 
 ```{r relAbuStats, echo = FALSE, message = FALSE, warning = FALSE}
+## Bias - Error rate
+error_fit_dat <- rel_error_outlier_cat %>% 
+      ungroup() %>% 
+      filter(outlier_cat == "inlier", pipe != "unclustered") %>% 
+      mutate(pipe = factor(pipe))
 
+# Fitting mixed effects model with individual as the fixed effect
+error_fit <- nlme::lme(median_error ~ pipe, random =  ~ 1 | biosample_id, 
+                 data = error_fit_dat)  
+
+# Post-hoc test to check for pipeline differences
+error_post_hoc <- glht(error_fit, linfct=mcp(pipe="Tukey")) 
+
+# Checking whether indiviudal or pipeline contributes more to the overal vaiance
+error_var <- ape::varcomp(error_fit)
+
+## Variance - RCOV
+rcov_fit_dat <- rcov_outlier_cat %>% 
+      ungroup() %>% 
+      filter(outlier_cat == "inlier", pipe != "unclustered") %>% 
+      mutate(pipe = factor(pipe))
+
+# Fitting mixed effects model with individual as the fixed effect
+rcov_fit <- nlme::lme(rcov_error ~ pipe, random =  ~ 1 | biosample_id, 
+                 data = rcov_fit_dat)
+
+# Post-hoc test to check for pipeline differences
+rcov_post_hoc <- glht(rcov_fit, linfct=mcp(pipe="Tukey")) 
+
+# Checking whether indiviudal or pipeline contributes more to the overal vaiance
+rcov_var <- ape::varcomp(rcov_fit)
 ```
 
 ```{r relAbuError, fig.cap = "(A) Expected and observed count relationship. Orange line indicates expected 1-to-1 relationship. Blue line a smoothed regression line of the observed and expected value relationship. Distribution of feature-level relative abundance (B) median error rates and (C) robust coefficient of variation (RCOV) by individual and pipeline.", echo = FALSE, warning=FALSE, message = FALSE, fig.height = 8}

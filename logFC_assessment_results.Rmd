@@ -10,6 +10,9 @@ output:
 
 
 ```{r logFCsetup, include=FALSE}
+library(nlme)
+library(ape)
+library(multcomp)
 library(tidyverse)
 library(stringr)
 library(ggpubr)
@@ -35,6 +38,7 @@ logFCestVexp <- logFC_pre %>%
       labs(x = "Expected", y = "Estimates") 
 
 ### Median logFC Error Rate  
+# Note filtering slope < 4 is a bit arbitrary
 slope_logFC <- filter(logFC_feature_summary, slope < 4) %>% ggplot() + 
       geom_boxplot(aes(x = pipe, y = slope)) + 
       facet_wrap(~biosample_id) +
@@ -49,6 +53,34 @@ r2_logFC <- filter(logFC_feature_summary, slope < 4) %>% ggplot() +
       labs(x = "Individual", y = "Adjusted R2")
 ```
 
+
+```{r logFCstats, echo = FALSE, message = FALSE, warning = FALSE}
+fit_dat <- filter(logFC_feature_summary, slope < 4) %>% 
+      filter(pipe != "unclustered") %>% 
+      mutate(pipe = factor(pipe))
+
+## Bias - Error rate -----------------------------------------------------------
+# Fitting mixed effects model with individual as the fixed effect
+slope_fit <- nlme::lme(slope ~ pipe, random =  ~ 1 | biosample_id, 
+                 data = fit_dat)  
+
+# Post-hoc test to check for pipeline differences
+slope_post_hoc <- glht(slope_fit, linfct=mcp(pipe="Tukey")) 
+
+# Checking whether indiviudal or pipeline contributes more to the overal vaiance
+slope_var <- ape::varcomp(slope_fit)
+
+## Variance - RCOV -------------------------------------------------------------
+# Fitting mixed effects model with individual as the fixed effect
+r2_fit <- nlme::lme(adj.r.squared ~ pipe, random =  ~ 1 | biosample_id, 
+                 data = fit_dat)
+
+# Post-hoc test to check for pipeline differences
+r2_post_hoc <- glht(r2_fit, linfct=mcp(pipe="Tukey")) 
+
+# Checking whether indiviudal or pipeline contributes more to the overal vaiance
+r2_var <- ape::varcomp(r2_fit)
+```
 __TODO__ Revise text  
 
 * excluding features with slope > 4 from error plots.
