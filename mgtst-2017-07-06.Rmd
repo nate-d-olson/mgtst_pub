@@ -265,7 +265,7 @@ Proportion of titration and endpoint specific features that could not be explain
 <!--
 Count Error Rate Results
 -->
-```{r quantAnalysis, child="quantitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r quantAnalysis, child="relative_abundance_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
 <!--
