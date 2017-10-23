@@ -7,7 +7,7 @@ output:
     toc: FALSE
 ---
 
-```{r setup, include=FALSE}
+```{r relAbuSetup, include=FALSE}
 library(tidyverse)
 library(forcats)
 library(ggpubr)
@@ -36,7 +36,7 @@ Outlier values were also excluded from the RCOV analysis.
 The feature-level RCOV was higher for DADA2 compared to Mothur and QIIME though not significantly (Fig. \@ref(fig:relAbuError)C). 
 
 
-```{r data_munge, echo = FALSE, message = FALSE, warning = FALSE}
+```{r relAbuMunge, echo = FALSE, message = FALSE, warning = FALSE}
 pre_post_prop <- nb_counts %>% 
       ungroup() %>% 
       filter(t_fctr %in% c(0,20)) %>% 
@@ -173,6 +173,10 @@ rcov_boxplot <- rcov_boxplot + coord_cartesian(ylim = c(ymin, ymax))
 # ggsave(rcov_boxplot, "~/Desktop/quant_variance.png", dpi = 450)
 ```
 
+
+```{r relAbuStats, echo = FALSE, message = FALSE, warning = FALSE}
+
+```
 
 ```{r relAbuError, fig.cap = "(A) Expected and observed count relationship. Orange line indicates expected 1-to-1 relationship. Blue line a smoothed regression line of the observed and expected value relationship. Distribution of feature-level relative abundance (B) median error rates and (C) robust coefficient of variation (RCOV) by individual and pipeline.", echo = FALSE, warning=FALSE, message = FALSE, fig.height = 8}
 ggarrange(relAbuOvE, 

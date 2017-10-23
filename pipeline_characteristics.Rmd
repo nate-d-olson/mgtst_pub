@@ -7,7 +7,7 @@ output:
       toc: FALSE
 --- 
 
-```{r pipe_setup, warning=FALSE, message=FALSE, echo = FALSE}
+```{r pipeSteup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 library(ProjectTemplate)
 load.project()
@@ -15,7 +15,7 @@ library(Rqc)
 library(ggpubr)
 ```
 
-```{r bioPipeQA, echo = FALSE}
+```{r pipeMunge, echo = FALSE}
 pipeline_dir <- "../mgtst_pipelines"
 mrexp_files <- list(
       dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),

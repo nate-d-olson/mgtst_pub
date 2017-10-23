@@ -7,14 +7,14 @@ output:
     toc: FALSE
 ---
 
-```{r theta_setup, warning=FALSE, message=FALSE, echo = FALSE}
+```{r thetaSetup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 library(tidyverse)
 library(stringr)
 library(modelr)
 ```
 
-```{r loadData, warning=FALSE, message=FALSE, echo = FALSE}
+```{r thetaMunge, warning=FALSE, message=FALSE, echo = FALSE}
 ## Raw counts 
 raw_counts <- readRDS("~/Desktop/raw_counts.RDS")
 
