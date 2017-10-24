@@ -1,8 +1,0 @@
-## Sequence Processing
-
-### Pipeline characteristics
-
-__Section objectives__
-* make non-quantitative statements
-* capturing differences in quality across samples 
-* Statements/ Figures showing how datasets behave
