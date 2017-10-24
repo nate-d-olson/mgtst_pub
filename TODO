@@ -2,43 +2,23 @@ Next Steps
 ==========
 * Submit data to SRA
 
+Manuscript
+=========
+1. Supplemental table ERCC
+1. Supplemental - justification for in-house bacterial DNA standard curve 
+1. Supplemental - PCR plate layour figure 
+1. Supplemental - 16S PCR figure
+
 Open Questions
 ==============
 Dealing with NTC
 
-ERCC qPCR
------------------------------------------------------
-* Use a mixed effects model to account for qPCR plate effects   
-* Add test (t-test) to test whether slopes are significantly different from expectation (1,-1)  
-* Compare model fix results for different titration subsets (only relevant to support conclusions regarding titration specific differences.)
-
-
-
-NOTES
-=======================================================
-* Libraries no longer automatically loaded with project template - DESeq, DESeq2, edgeR, phyloseq, Rqc, savR, vegan, sads
-
-
-Note from chat with Hector
-look at est_div_theta as input proportion of the feature  
-
-
-
-use variance of estimates for comparison
-
-var b1/theta != var(b1)/theta^2
-dont have same variance
- 
-normalize by z-score, to remove theta
-
-
-T-value
-b1/sb(b1)
-
-
-Only look at higher theta titrations
-
-b1/theta = post - pre
-expectation same Z-score for non-intercept (T20) estimates
-For simulated data - sanity check 
-Plot (post-pre) * theta vs. b1 form count ~ TF
+## Meeting with Hector Follow-up 10/19/2017
+* calculate negative binomial logFC estimates 
+* Theta corrected log fold-change expected values  
+* Test for pipeline and estimator effect on error bias (slope) and variance (R2)
+* log fold-change estimate sensitivity using PCR replicates
+      * TP - log fold-change for PCR combinantions between titrations 
+      * FP - log fold-change for PCR combinations within titrations 
+            * Include terms in model for PCR plate and plate half
+      * for edgeR - feature dispersion is the variance estimate
