@@ -1,0 +1,218 @@
+---
+title: "Titration Validation - Spike-in qPCR"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+--- 
+
+```{r ercc_setup, warning=FALSE, message=FALSE, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(ProjectTemplate)
+load.project()
+library(modelr)
+library(ggpubr)
+```
+
+
+```{r echo=FALSE, message=FALSE}
+############################# Standard Curve ###################################
+ercc_std <- qpcrERCC %>%
+      filter(sample_type == "std",!grepl("NTC", sampleID)) %>%
+      mutate(
+            sampleID = gsub("\\(.*", "", sampleID),
+            Ct = as.numeric(Ct),
+            quat = as.numeric(quant),
+            log_quant = log10(quant)
+      )
+
+fit_mod <- ercc_std %>% mutate(ercc = as.numeric(ercc)) %>%
+      group_by(ercc) %>% nest() %>%
+      mutate(fit = map(data, ~ lm(Ct ~ log_quant, data = .)))
+fit_list <- fit_mod$fit %>% set_names(fit_mod$ercc)
+
+fit_coefs <- fit_list %>% map_df(coefficients) %>%
+      add_column(coefs = c("intercept", "slope")) %>%
+      gather("ercc", "stat", -coefs) %>% spread(coefs, stat)
+
+std_fit <- fit_list %>% map_df(broom::glance, .id = "ercc") %>%
+      select(ercc, adj.r.squared) %>%
+      left_join(fit_coefs) %>%
+      mutate(
+            amplification_factor = 10 ^ (-1 / slope),
+            efficiency = (amplification_factor - 1) * 100
+      )
+
+################## Pre and Post Quant #########################################
+ercc_meta <-
+      erccMeta %>% select(ercc_id, biosample_id, treatment) %>%
+      mutate(ercc = str_replace(ercc_id, "ERCC-", ""),
+             ercc = as.numeric(ercc) %>% as.character())
+
+post_assays <- c(108, 12, 157, 2, 35)
+ercc_sam <- qpcrERCC %>% filter(sample_type == "sam") %>%
+      mutate(
+            Ct = as.numeric(Ct),
+            quant = as.numeric(quant),
+            ercc = as.numeric(ercc),
+            titration = gsub("._M", "", sampleID),
+            titration = gsub(".*\\(Pre\\)", "20", titration),
+            titration = gsub(".*\\(Post\\)", "0", titration),
+            titration = as.numeric(titration),
+            pre_prop = (1 - (2 ^ -titration)),
+            pre_prop = if_else(titration == 20, 1, pre_prop), 
+            assay_type = if_else(ercc %in% post_assays, "Post", "Pre")
+      )
+
+post_fit_mod <- ercc_sam %>% filter(assay_type == "Post") %>%
+      group_by(ercc, assay_type) %>% nest() %>%
+      mutate(fit = map(data, ~ lm(Ct ~ titration, data = .)))
+
+post_fit_list <- post_fit_mod$fit %>% set_names(post_fit_mod$ercc)
+
+# Extract fit parameters and calculate efficiency
+post_fit_coefs <- post_fit_list %>% map_df(coefficients) %>%
+      add_column(coefs = c("intercept", "slope")) %>%
+      gather("ercc", "stat", -coefs) %>% spread(coefs, stat)
+
+post_fit <-
+      post_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
+      select(ercc, adj.r.squared) %>%
+      left_join(post_fit_coefs) %>%
+      mutate(
+            amplification_factor = 10 ^ (-1 / slope),
+            efficiency = (amplification_factor - 1) * 100
+      )
+
+## Pre-treatment sample fit
+pre_fit_mod <- ercc_sam %>%
+      filter(assay_type == "Pre", titration %in% c(1:4, 20)) %>%
+      mutate(pre_log2 = log2(pre_prop)) %>%
+      group_by(ercc, assay_type) %>% nest() %>%
+      mutate(fit = map(data, ~ lm(Ct ~ pre_log2, data = .)))
+
+pre_fit_list <- pre_fit_mod$fit %>% set_names(pre_fit_mod$ercc)
+
+# Extract fit parameters and calculate efficiency
+pre_fit_coefs <- pre_fit_list %>% map_df(coefficients) %>%
+      add_column(coefs = c("intercept", "slope")) %>%
+      gather("ercc", "stat", -coefs) %>% spread(coefs, stat)
+
+pre_fit <- pre_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
+      select(ercc, adj.r.squared) %>%
+      left_join(pre_fit_coefs) %>%
+      mutate(
+            amplification_factor = 10 ^ (-1 / slope),
+            efficiency = (amplification_factor - 1) * 100
+      )
+
+####################### Data for qPCR summary Table ############################
+ercc_stdtbl <- ercc_meta %>%
+      right_join(std_fit) %>%
+      mutate(
+            std_R2 = round(adj.r.squared, 4),
+            E = round(efficiency, 2),
+            AF = round(amplification_factor, 2)
+      ) %>%
+      select(biosample_id, treatment, std_R2, E, AF)
+
+ercc_vldtbl <- bind_rows(post_fit, pre_fit) %>%
+      left_join(ercc_meta) %>%
+      mutate(R2 = round(adj.r.squared, 2), Slope = round(slope, 2)) %>%
+      select(biosample_id, treatment, R2, Slope)
+
+ercc_tbl <- left_join(ercc_stdtbl, ercc_vldtbl)
+
+
+#### Code for t-tests to check slopes equal to -1 and 1 #######################
+# fit_tdy <- post_fit_mod$fit[[1]] %>% tidy()
+# fit_glance <- post_fit_mod$fit[[1]] %>% glance()
+# resid_df <- fit_glance$df.residuals
+# slope_est <- fit_tdy[2,2]
+# slope_stderror <- fit_tdy[2,3]
+# t_val <- (slope_est - 1)/slope_stderror
+# p_val <-pt(t_val, resid_df)
+# p_val
+
+# fit_tdy <- pre_fit_mod$fit[[1]] %>% tidy()
+# fit_glance <- pre_fit_mod$fit[[1]] %>% glance()
+# resid_df <- fit_glance$df.residual
+# slope_est <- fit_tdy[2,2]
+# slope_stderror <- fit_tdy[2,3]
+#
+# t_val <- (slope_est + 1)/slope_stderror
+# p_val <-pt(t_val, resid_df)
+# p_val
+
+
+### Code for independent Pre and Post Plots ###################################
+ercc_sam <- ercc_sam %>%
+      mutate(ercc = as.character(ercc)) %>%
+      left_join(ercc_meta)
+
+
+ercc_plot_dat <- ercc_sam %>% mutate(ercc = as.character(ercc)) %>%
+      left_join(ercc_meta) %>%
+      mutate(pre_log2 = log2(pre_prop))
+
+pre_prop_values <- ercc_plot_dat %>%
+      filter(treatment == "Pre", titration %in% c(1:4)) %>% 
+      .$pre_prop %>% unique() %>% round(2)
+
+
+      
+ercc_preplot <- ercc_plot_dat %>%
+      filter(treatment == "Pre", titration %in% c(1:4, 20)) %>%
+      ggplot() +
+      geom_smooth(aes(x = pre_prop, y = Ct), method = "lm") +
+      geom_point(aes(x = pre_prop, y = Ct)) +
+      facet_wrap( ~ biosample_id, ncol = 1) +
+      labs(x = "Pre-Exposure Proportion", y = "Ct")  +
+      scale_x_continuous(breaks = pre_prop_values, 
+                         labels = pre_prop_values, 
+                         trans = "log2") +     
+      theme_bw()
+
+ercc_postplot <- ercc_plot_dat %>%
+      filter(treatment == "Post") %>%
+      ggplot() +
+      geom_smooth(aes(x = titration, y = Ct), method = "lm") +
+      geom_point(aes(x = titration, y = Ct)) +
+      facet_wrap( ~ biosample_id, ncol = 1) +
+      labs(x = "Titration Factor", y = "Ct") +
+      theme_bw()
+```
+
+The volumetric mixing of the two-sample titration was validated using qPCR to quantify ERCC plasmids were spiked into the pre- and post-exposure samples. 
+The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves (Table \@ref(tab:erccTable)). 
+The qPCR assays targeting the ERCCs spiked into the post-exposure samples had $R^2$ values and slope estimates  close to 1 (Table \@ref(tab:erccTable)). 
+The expected slope is 1, for a doubling every cycle. 
+Slope estimates less than 1 were attributed to the assay standard curve amplification factors being less than 2 (Table \@ref(tab:erccTable)). 
+The 1-4 titration factor samples had Ct values consistently above the regression line (Figure \@ref(fig:erccPlot)). 
+DNA from the unmixed samples were used to generate titrations 1 and 5 which may account for the offset in the regression line for titrations 1-4. 
+The deviation from the regression line is small and unlikely to significantly impact the quantiative and qualitative assessment. 
+For the pre-exposure ERCCs a regression line was fit to the log2 pre-exposure sample proportion for titrations 1-4 and the unmixed pre-exposure sample. 
+The change in pre-exposure sample proportion between titrations 5, 10, and 15 ($0.97$ - $0.99997$) is to small for qPCR to detect changes in ERCC spike-in concentration with an expected Ct difference of `r log2((1-2^-8)/(1-2^-5))` between the titrations 5 and 15.  
+For the ERCCs spiked into the pre-exposure samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)) when a regression line was fit to the Ct values and $log_2$ pre-exposure sample proportion (Fig. \@ref(fig:erccPlot)), with a -1 expected slope.
+The deviation from the expected slope for the pre-exposure ERCC qPCR results is attributed to the small change in spike-in concentration between samples preventing the accurate quantification of spike-in concentration. 
+When taking into consideration the quantitative limitations of the qPCR assay these results indicate that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
+
+```{r erccTable, echo=FALSE, message=FALSE}
+ercc_tbl %>% arrange(treatment) %>% 
+      rename(Individual = biosample_id, 
+             Treatment = treatment, 
+             `Std. $R^2$` = std_R2,
+             `$R^2$` = R2) %>% 
+    knitr::kable(caption = "ERCC Spike-in qPCR summary statistics. $R^2$, Efficiency (E), and amplification factor (AF) for standard curves. $R^2$ and slope for titration qPCR results for the titration series.", booktabs = TRUE, 'pandoc', escape = FALSE)
+```
+
+```{r erccPlot, fig.cap = "qPCR ERCC spike-in results for ERCC spiked into unmixed (A) Post-exposure samples and (B) Pre-exposure samples (titrations 1-4 only). X-axis is on a log2 scale with expected slope of 1 and -1 for Post-exposure and Pre-exposure spike-ins respectively. ", fig.height = 6, echo=FALSE, message=FALSE}
+ggarrange(ercc_postplot,
+          ercc_preplot,
+          labels = c("A", "B"),
+          nrow = 1, ncol = 2)
+```
+
+
+
