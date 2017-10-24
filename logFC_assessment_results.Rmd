@@ -23,7 +23,8 @@ library(ggpubr)
 ### RDS file generated in 2017-10-19_logFC-error-metrics.RDS 
 logFC_pre <- readRDS("~/Desktop/logFC_pre.RDS")
 
-logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS")
+logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>% 
+      mutate(slope_error = 1 - slope)
 
 
 ### logFC Error Rate Plot Code ------------------------------------------------
@@ -35,15 +36,15 @@ logFCestVexp <- logFC_pre %>%
       geom_smooth(aes(x = exp_logFC, y = logFC), method = "lm") +
       geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
       facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw()  +
-      labs(x = "Expected", y = "Estimates") 
+      labs(x = "Expected", y = "Estimate") 
 
 ### Median logFC Error Rate  
 # Note filtering slope < 4 is a bit arbitrary
 slope_logFC <- filter(logFC_feature_summary, slope < 4) %>% ggplot() + 
-      geom_boxplot(aes(x = pipe, y = slope)) + 
+      geom_boxplot(aes(x = pipe, y = slope_error)) + 
       facet_wrap(~biosample_id) +
       theme_bw() +
-      labs(x = "Individual", y = "Slope") 
+      labs(x = "Individual", y = "1 - Slope") 
 
 ### RCOV logFC Error Rate  
 r2_logFC <- filter(logFC_feature_summary, slope < 4) %>% ggplot() + 
@@ -55,17 +56,26 @@ r2_logFC <- filter(logFC_feature_summary, slope < 4) %>% ggplot() +
 
 
 ```{r logFCstats, echo = FALSE, message = FALSE, warning = FALSE}
-fit_dat <- filter(logFC_feature_summary, slope < 4) %>% 
+fit_dat <- logFC_feature_summary %>% 
+      filter(slope < 4) %>%
       filter(pipe != "unclustered") %>% 
       mutate(pipe = factor(pipe))
 
 ## Bias - Error rate -----------------------------------------------------------
 # Fitting mixed effects model with individual as the fixed effect
-slope_fit <- nlme::lme(slope ~ pipe, random =  ~ 1 | biosample_id, 
+slope_fit <- nlme::lme(slope_error ~ pipe, random =  ~ 1 | biosample_id, 
                  data = fit_dat)  
+## Residual check
+# qqnorm(slope_fit$residuals) + abline(a = 0, b =  1, col = 'red')
 
-# Post-hoc test to check for pipeline differences
-slope_post_hoc <- glht(slope_fit, linfct=mcp(pipe="Tukey")) 
+# Pipe 1-slope estimates
+dada_slope <- slope_fit$coefficients$fixed['(Intercept)']
+mothur_slope <- dada_slope + slope_fit$coefficients$fixed['pipemothur']
+qiime_slope <- dada_slope + slope_fit$coefficients$fixed['pipeqiime']
+
+slope_anova <- anova(slope_fit)
+slope_f <- slope_anova$`F-value`
+slope_p <- slope_anova$`p-value`
 
 # Checking whether indiviudal or pipeline contributes more to the overal vaiance
 slope_var <- ape::varcomp(slope_fit)
@@ -75,36 +85,20 @@ slope_var <- ape::varcomp(slope_fit)
 r2_fit <- nlme::lme(adj.r.squared ~ pipe, random =  ~ 1 | biosample_id, 
                  data = fit_dat)
 
-# Post-hoc test to check for pipeline differences
-r2_post_hoc <- glht(r2_fit, linfct=mcp(pipe="Tukey")) 
+# qqnorm(r2_fit$residuals) + abline(a = 0, b =  1, col = 'red')
+
+# Pipe R2 estimates
+dada_r2 <- r2_fit$coefficients$fixed['(Intercept)']
+mothur_r2 <- dada_r2 + r2_fit$coefficients$fixed['pipemothur']
+qiime_r2 <- dada_r2 + r2_fit$coefficients$fixed['pipeqiime']
+
+r2_anova <- anova(r2_fit)
+r2_f <- r2_anova$`F-value`
+r2_p <- r2_anova$`p-value`
 
 # Checking whether indiviudal or pipeline contributes more to the overal vaiance
 r2_var <- ape::varcomp(r2_fit)
 ```
-__TODO__ Revise text  
-
-* excluding features with slope > 4 from error plots.
- 
-Across all pipelines and individuals the estimated and expected logFC estimates were positively correlated (Fig. \@ref(fig:logFCerror)A). 
-However, the slope of the linear relationship between the expected and estimated log fold-change estimates were less than 1 for all pipelines and individuals, with low adjusted $R^2$ values, with median and minimum-maximum of 0.035 (0.00048-0.093)) and slope estimates (0.075 (0.018-0.12)). 
-Outlier features were the primary driver of the lower than expected slope estimates. __Need to verify__ 
-The bias and variance of the log fold-change estimates were compared between pipelines. 
-Similar to the relative abundance assessment we used a mixed-effects models to take into account differences in individuals when comparing the log fold-change error rates between pipeline. 
-There was no statistical difference in the log fold-change error feature-level median error rate \@ref(fig:logFCerror)B) or error rate RCOV \@ref(fig:logFCerror)C). 
-An additional mixed-effects model was used to determine feature characteristics that are correlated with logFC error rate. 
-Increased estimated logFC and logCPM were significantly related to lower error rates. 
-
-Overall poor agreement between expected and estimated log fold-change estimates. 
-Which is inconsistent with the relative abundance error assessment (Fig. \@ref(fig:relAbuErrorPre))
-
-__TODO__ Need to figure out how to present the results for this statement 
-
-While some the poor agreement can be attributed to low abundance (noisy data), or smaller differences in the log fold-change between pre- and post-exposure samples.
-
-
-Analysis of the log fold-change error results indicated a feature specific performance effect (Fig. \@ref(fig:logFCfeat)). 
-
-
 
 ```{r preCountTbl, echo = FALSE}
 logFC_pre %>% filter(T1 == 0, T2 == 20) %>%
@@ -125,3 +119,25 @@ ggarrange(logFCestVexp,
           ncol = 1, nrow = 3, 
           heights = c(0.5,0.2,0.3))
 ```
+
+__NOTE__ Need reasoning for excluding slope > 4
+
+__Summary statement about the overall agreement between log fold-change estimates and expected values.__
+
+The slope and $R^2$ values for linear models of the estimated and expected log fold-change for individual features, all titration comparison, were used to characterize the log fold-change bias and variance across pipelines. 
+Features with with slope > 4 were excluded from the log fold-change bias and variance analysis. 
+A error metric of $1 - slope$ was used, where 0 is the desired value (i.e. log fold-change estimate = log fold-change expected), negative and positive values indicate the log-fold change was consistently under and over estimated. 
+The linear model $R^2$ value was used to characterize the feature-level log fold-change variance as it indicates how consistent the relationship between the log fold-change estimates and expected values are across titration comparisons. 
+Similar to the relative abundance assessment we used a mixed-effects models to take into account differences in individuals when comparing the log fold-change error rates between pipeline. 
+The log fold-change bias metric was not significantly different between pipelines (F = `r round(slope_f,2)`, p = `r round(slope_p,2)`, DADA2 `r round(dada_slope,2)`, Mothur `r round(mothur_slope,2)`, QIIME `r round(qiime_slope,2)`, \@ref(fig:logFCerror)B). 
+The log fold-change variance metric was not significantly different between pipelines (F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, DADA2 `r round(dada_r2,2)`, Mothur `r round(mothur_r2,2)`, QIIME `r round(qiime_r2,2)` \@ref(fig:logFCerror)C).
+
+__TODO__ Incorporate analysis into text   
+
+While some of the poor agreement can be attributed to low abundance (noisy data), or smaller differences in the log fold-change between pre- and post-exposure samples.
+An additional mixed-effects model was used to determine feature characteristics that are correlated with logFC error rate. 
+Increased estimated logFC and logCPM were significantly related to lower error rates. 
+Analysis of the log fold-change error results indicated a feature specific performance effect. 
+
+
+
