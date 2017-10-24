@@ -30,8 +30,9 @@ Pipelines:
 
 Differential Abundance Methods:  
 1. metagenomeSeq - fitFeatureModel  
-2. DESeq2  
+2. DESeq2 - To Do...
 3. EdgeR  
+4. Negative binomial
 
 ## Approach 
 Use a data_frame object and list columns to apply differential abundance methods to different datasets  
@@ -325,6 +326,27 @@ logFC_edgeR_unclustered_coefs_tidy <- logFC_edgeR_unclustered_coefs_df %>%
 ```
 
 
+## Negative Binomial 
+* Use titration comparisons  
+* Precomputated negative binomial values 
+* Calculate log fold-change estimates
+```{r}
+nb_counts <- readRDS("~/Desktop/nb_counts_titrations.RDS")
+## data frames with relative abundance estimates for T1 and T2 - values will be used to calculate log fold-changes
+T1_nb_counts <- nb_counts %>% mutate(T1 = t_fctr, T1_nb = nb_prop) %>% 
+      select(-t_fctr, -nb_prop)
+T2_nb_counts <- nb_counts %>% mutate(T2 = t_fctr, T2_nb = nb_prop) %>% 
+      select(-t_fctr, -nb_prop)
+
+## Calculating NB logFC
+logFC_nb <- titration_comp_df %>% 
+      select(-sam_names, -n_sams) %>% 
+      left_join(T1_nb_counts) %>% 
+      left_join(T2_nb_counts) %>% 
+      mutate(logFC = log2(T2_nb/T1_nb))
+```
+The logFC estimate is NaN when both T1 and T2 are 0, -Inf when T2 is 0 and Inf when T1 is 0. 
+
 ## Save logFC tables 
 Combine tables for the different pipelines into individual data frames for each differential abundance methods and save as RDS files.  
 ```{r}
@@ -339,6 +361,8 @@ list(dada2 = logFC_edgeR_dada2_coefs_tidy,
      qiime = logFC_edgeR_qiime_coefs_tidy,
      unclustered = logFC_edgeR_unclustered_coefs_tidy) %>%
       bind_rows(.id = "pipe") %>% saveRDS("~/Desktop/logFC_edgeR_df.rds")
+
+saveRDS(logFC_nb, "~/Desktop/logFC_nb_df.rds")
 ```
 
 
