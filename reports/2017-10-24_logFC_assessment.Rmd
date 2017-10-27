@@ -3,10 +3,11 @@ title: "logFC assessment results"
 output: html_notebook
 ---
 
-* Looking at both NB and edgeR log fold-change 
-* Pipeline comparisons
-* Parameters impacting error metrics 
-* Feature-level exploration
+## Conclusions
+* agreement between negative binomial and edgeR log fold-change estimates. edgeR provides estimates (extreme values in plots below) when a feature is not observed in one of the two titrations being compared. 
+* Agreement between the log fold-change estimates and expected values are individual and not pipeline dependent
+* Parameters impacting error metrics - features not observed in one to the two titrations being compared, others ... extreme log fold-change estimates cannot be explained by abundance alone
+* Feature-level exploration - need to look for consistency in taxonomy of feature with poor metrics across pipelines and biological replicates
 
 ```{r logFCsetup, include=FALSE}
 library(nlme)
@@ -15,6 +16,9 @@ library(multcomp)
 library(tidyverse)
 library(stringr)
 library(ggpubr)
+library(ggridges)
+library(ggfortify)
+library(modelr)
 ```
 
 ```{r logFCmunge, include = FALSE}
@@ -27,20 +31,36 @@ logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>%
 ```
 
 ### Agreement between logFC methods 
+The log fold-change estimates were strongly correlated between the two methods (\@ref(fig:logFCestCor)) 
 NB log fold-change estimates or -Inf and Inf are consistent with the tails distribution of the EdgeR estimates. 
-```{r }
-logFC_pre %>% filter(T1 != 0, T2 != 0) %>% 
+
+```{r logFCestCor, fig.cap = "Log fold-change estimates using EdgeR and negative binomial relative abundance values were strongly correlated for pre-specific and pre-dominant features. The blue linear indicates a linear model of the relationship between the two estimators and the orange line is the expected 1-to-1 relationship., The titration comparisons with positive and negative infinity negative log fold-change estimates, points along the left and right y-axis, were excluded from the Pearson correlation estimate."}
+pearson_cor <- logFC_pre %>% filter(T1 != 0, T2 != 20) %>% 
+      filter(nb_logFC != Inf, nb_logFC != -Inf) %>%
+      {cor(.$logFC, .$nb_logFC)} %>% 
+      {paste0("Pearson: ",round(.,2))}
+
+spearman_cor <- logFC_pre %>% filter(T1 != 0, T2 != 20) %>% 
+      {cor(.$logFC, .$nb_logFC, use = "complete.obs", method = "spearman")} %>%
+      {paste0("Spearman: ",round(.,2))}
+
+logFC_pre %>% filter(T1 != 0, T2 != 20) %>% 
       ggplot() + 
       geom_point(aes(x = nb_logFC, y = logFC), alpha = 0.05) + 
-      geom_smooth(aes(x = nb_logFC, y = logFC)) + 
+      geom_smooth(aes(x = nb_logFC, y = logFC), method = "lm") + 
       geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
+      geom_text(aes(x = -3.5, y = 9, label = paste0(pearson_cor,"\n",spearman_cor))) + 
       theme_bw() + 
       labs(x = "Negative Binomial", y = "EdgeR", title = "log fold-change estimate comparison")
 ```
 
 
-### Summarize agreement between logFC estimates and expected values 
-```{r}
+
+### Agreement between logFC estimates and expected values 
+The log fold-change values ranged from $\pm 10$ for EdgeR estimates and $\pm \infty$ for negative binomial estimates \@ref(fig:logFCestVexp). 
+For pre-specific and pre-dominant features the expeted log fold-change values range from 0 to 1. 
+When the relationship between the log fold-change estimates and expected values is summarized using a linear model the estimates are consistent with the expected values (Fig. \@ref(fig:logFCestVexp)).
+```{r logFCestVexp, fig.cap = "Relationship between the log fold-change estimates and expected values. Blue line represents a linear model summarising the relationship and the orange line is the expected 1-to-1 relationship."}
 logFC_pre %>% 
       filter(T1 != 0, T2 != 20) %>% 
       dplyr::select(biosample_id, pipe, feature_id, exp_logFC, logFC, nb_logFC) %>% 
@@ -48,24 +68,68 @@ logFC_pre %>%
       gather("Method","logFC", -biosample_id, -pipe, -feature_id, -exp_logFC) %>% 
       ggplot() + 
       geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) + 
+      geom_smooth(aes(x = exp_logFC, y = logFC), method = "lm") + 
+      geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
       facet_wrap(~Method) + theme_bw()
 ```
 
-Individual effect with best agreement between the estimated and expected log fold-change values for E01JH0016.
-```{r}
+## Demonstrate individual and pipeline effect
+* Next we wanted to see how the relationship between the expected and estimated log-fold change varies by pipeline and individual.  
+* The relationship between the log fold-change estimates and expected values is more dependent on the individual than the pipeline (Fig \@ref(fig:logFCestVexpLM)).  
+* For the E01JH0011 and the Mothur pipeline the log-fold change estimates were more consistent with the expected values for the edgeR estimates than the negative binomial estiamtes. Though the Mothur results are inconsistent with the other pipelines. 
+
+```{r logFCestVexpLM}
 logFC_pre %>% 
       filter(T1 != 0, T2 != 20) %>% 
       dplyr::select(biosample_id, pipe, feature_id, exp_logFC, logFC, nb_logFC) %>% 
       rename(nb = nb_logFC, edgeR = logFC) %>% 
-      gather("Method","logFC", -biosample_id, -pipe, -feature_id, -exp_logFC) %>% 
+      gather("Method","logFC", -biosample_id, -pipe, -feature_id, -exp_logFC) %>%
       ggplot() + 
-      geom_smooth(aes(x = exp_logFC, y = logFC, color = Method), method = "lm") + 
-      geom_abline(aes(intercept = 0, slope = 1), linetype = 2) +
-      theme_bw() + facet_grid(~biosample_id)
+      geom_smooth(aes(x = exp_logFC, y = logFC, color = pipe), method = "lm") + 
+      geom_abline(aes(intercept = 0, slope = 1), linetype = 2) + 
+      facet_grid(Method~biosample_id) + theme_bw() 
 ```
 
 
-Using a linear model to evaluaute overall agreement between the expected and estimated log fold-changes.
+## Evaluate parameters impacting error
+* The log fold-change estimate error was used to evaluate what if any abundance paramters were associated with the extreme/ outlier log-fold change estimates. 
+* Only the log fold-change estimate was strongly correlated with the log-fold error, therefore none of the relative abundance parameters could be attributed to the extreme log fold-change estimates. 
+* For edgeR log negative binomial estimates for titration 2 had more negative error rates, potentially due to unobserved count data. 
+* Interestingly the error rate increased with higher titration 1 negative binomial estimates, though this is likely an artifact of the experimental design and not an indicator that log fold-change estimates for higher relative abundance features are less accuracte than lower relative abundance features. 
+* These results indicate that the extreme log fold-change estimates are either a feature specific effect or due to an unaccounted for parameter.  
+* Consistent deviation from the expected value by individual indicates that differences in proportion of bacterial DNA does account for some of the disagrement between the log fold-change estimates and expected values.  
+* The consistency in the deviation of the log fold-change estimates from the expected values across pipelines and log fold-change methods indicates the deviation is due to biases in sample preparation, specifically PCR amplification. 
+* We next performed an assessed the consistency of the log fold-change estimates with the expected values in an attempt to identify specific feature characteristics that might attribute to poor quantitative performance. 
+
+
+```{r}
+logFC_error <- logFC_pre %>% 
+      filter(T1 != 0, T2 != 20) %>% 
+      dplyr::select(biosample_id, pipe, feature_id, exp_logFC, logFC, 
+                    nb_logFC, pre_nb, post_nb, T1_nb, T2_nb) %>% 
+      rename(nb = nb_logFC, edgeR = logFC) %>% 
+      gather("Method","logFC", -biosample_id, -pipe, -feature_id, 
+             -exp_logFC, -pre_nb, -post_nb, -T1_nb, -T2_nb) %>% 
+      filter(biosample_id == "E01JH0016") %>% 
+      mutate(error = logFC - exp_logFC) %>% 
+      group_by(biosample_id, pipe, Method, error) %>% 
+      select(exp_logFC, logFC, post_nb, pre_nb, T1_nb, T2_nb) %>% 
+      gather("key", "value", -biosample_id, -pipe, -Method, -error)
+
+logFC_error %>% ggplot() + 
+      geom_point(aes(x = value, y = error)) + 
+      geom_smooth(aes(x = value, y = error)) + 
+      facet_grid(Method~key, scales = "free")
+```
+
+## NEXT STEPS
+* Results to support assumption that the log fold-change errors are 
+* Look at relative abundance estimate outlier features to see if they are consistent with poor log-fold change performance. 
+
+
+### Extra
+
+Using a linear model to evalaute overall agreement between the expected and estimated log fold-changes.
 ```{r}
 logFC_fit <- logFC_pre %>% 
       filter(T1 != 0, T2 != 20) %>% 
@@ -80,10 +144,17 @@ logFC_fit <- logFC_pre %>%
       mutate(fit = map(data, ~lm(logFC~exp_logFC + 0, data = .)))
 ```
 
-* Based on the model fit coefficients and RMSE of the residuals, 
-* individual E01JH0016 log fold-change estimates were more consistent with the expected values (slope closer to 1), but had greater variability (higher RMSE).  
-* The RMSE for the linear models were consistent when comparing individual and pipeline pairs, except for E01JH0011 with consistenty higher RMSE edgeR values compared to the negative binomial log fold-change estimates.  
-* The slope were inconsistent between methods for QIIME. 
+Example model fit summary plots - heavy tail in model fit
+```{r}
+autoplot(logFC_fit$fit[[1]])
+```
+
+* Based on the model fit coefficient (slope) and RMSE, individual E01JH0016 log fold-change estimates were more consistent with the expected values (slope closer to 1), but had greater variability (higher RMSE) (Tables ....).  
+* The RMSE for the linear models were consistent when comparing individual and pipeline pairs, except for E01JH0011 with consistenty higher RMSE edgeR values compared to the negative binomial log fold-change estimates (Fig. \@ref(logFCcoefPairs)).    
+* The slope estimates were inconsistent between log fold-change estimate methods for QIIME (Fig. \@ref(logFCrmsePairs)).  
+* The model fit residuls had long tails, especially for E01JH0016 which likely accounted for the higher RMSE (Fig. \@ref(logFCresid)).  
+* __QUESTIONS__ While the expected relationship is linear is it the appropriate model for analysis when poor model fit?
+* removing features with pre_nb < 0.01 removes most outliers, but does not address issue for thoes conducting a 16S study how do they know which feauters to exclude??
 
 ```{r}
 logFC_fit %>% mutate(fit_coef = map_dbl(fit, coefficients)) %>% 
@@ -92,7 +163,7 @@ logFC_fit %>% mutate(fit_coef = map_dbl(fit, coefficients)) %>%
       arrange(pipe)
 ```
 
-```{r}
+```{r logFCcoefPairs}
 logFC_fit %>% mutate(fit_coef = map_dbl(fit, coefficients)) %>% 
       dplyr::select(biosample_id, pipe, Method, fit_coef) %>% 
       spread(Method, fit_coef) %>% 
@@ -109,7 +180,7 @@ logFC_fit %>% mutate(fit_rmse = map2_dbl(fit,data, modelr::rmse)) %>%
       arrange(pipe)
 ```
 
-```{r}
+```{r logFCrmsePairs}
 logFC_fit %>% mutate(fit_rmse = map2_dbl(fit,data, modelr::rmse)) %>% 
       dplyr::select(biosample_id, pipe, Method, fit_rmse) %>% 
       spread(Method, fit_rmse) %>% 
@@ -119,9 +190,9 @@ logFC_fit %>% mutate(fit_rmse = map2_dbl(fit,data, modelr::rmse)) %>%
       theme_bw() 
 ```
 
-The model fit residuls had long tails, especially for E01JH0016 which likely accounted for the higher RMSE. 
+ 
 
-```{r}
+```{r logFCresid}
 logFC_fit %>% mutate(resids = map(fit, residuals)) %>% 
       dplyr::select(pipe, Method, biosample_id, resids) %>% 
       unnest() %>% 
@@ -130,13 +201,65 @@ logFC_fit %>% mutate(resids = map(fit, residuals)) %>%
       labs(x = "Residuals")
 ```
 
-Poor model fit ... 
+### Attributing outliers to specific characteristics
+Looking only at E01JH0016 which had the best slope estimate and longest residual tail. 
+
+__Maybe use error instead of logFC~exp_logFC so that residuals better represent the desired error?
 ```{r}
-logFC_fit %>% mutate(data = map2(data, fit, modelr::add_predictions),
-                     data = map2(data, fit, modelr::add_residuals)) %>% 
-      dplyr::select(-fit) %>% 
+logFC_pre_meta <- logFC_pre %>% 
+      select(biosample_id, pipe, feature_id, post_nb, pre_nb, pa_mixed, T1, T2, T1_nb, T2_nb, exp_logFC) %>% 
+      unique()
+
+logFC_resid <- logFC_fit %>% 
+      mutate(data = map2(data, fit, add_residuals)) %>% 
+      select(-fit) %>% 
       unnest() %>% 
-      ggplot() + geom_point(aes(x = logFC, y = resid)) + facet_wrap(~biosample_id)
+      filter(biosample_id == "E01JH0016") %>% 
+      left_join(logFC_pre_meta) %>% 
+      group_by(biosample_id, pipe, Method, resid) %>% 
+      select(exp_logFC, logFC, post_nb, pre_nb, T1_nb, T2_nb) %>% 
+      gather("key", "value", -biosample_id, -pipe, -Method, -resid)
+```
+
+```{r}
+logFC_resid %>% ggplot() + 
+      geom_point(aes(x = value, y = resid)) + 
+      geom_smooth(aes(x = value, y = resid)) + 
+      facet_grid(Method~key, scales = "free")
+```
+
+```{r}
+logFC_error <- logFC_fit %>% 
+      mutate(data = map2(data, fit, add_residuals)) %>% 
+      select(-fit) %>% 
+      unnest() %>% 
+      filter(biosample_id == "E01JH0016") %>% 
+      left_join(logFC_pre_meta) %>% 
+      mutate(error = logFC - exp_logFC) %>% 
+      group_by(biosample_id, pipe, Method, error) %>% 
+      select(exp_logFC, logFC, post_nb, pre_nb, T1_nb, T2_nb) %>% 
+      gather("key", "value", -biosample_id, -pipe, -Method, -error)
+```
+
+```{r}
+logFC_error %>% ggplot() + 
+      geom_point(aes(x = value, y = error)) + 
+      geom_smooth(aes(x = value, y = error)) + 
+      facet_grid(Method~key, scales = "free")
+```
+
+```{r}
+logFC_fit %>% 
+      mutate(data = map2(data, fit, add_residuals)) %>% 
+      select(-fit) %>% 
+      unnest() %>% 
+      filter(biosample_id == "E01JH0016") %>% 
+      left_join(logFC_pre_meta) %>% 
+      mutate(error = logFC - exp_logFC) %>% 
+      group_by(biosample_id, pipe, Method, error) %>% 
+      ggplot() + geom_point(aes(x = T1_nb, y = T2_nb, color = error)) + 
+      facet_grid(Method~pipe) + 
+      scale_color_gradient2()
 ```
 
 
@@ -147,7 +270,7 @@ logFC_feature_summary %>%
       mutate(slope_metric = 1 - slope) %>% 
       ggplot() + geom_density_ridges(aes(x = slope_metric, y = pipe), alpha = 0.5) + 
       geom_vline(aes(xintercept = 0), color = "darkorange") + 
-      facet_grid(logFC_est~biosample_id)
+      facet_grid(logFC_est~biosample_id) + theme_bw()
 ```
 
 
