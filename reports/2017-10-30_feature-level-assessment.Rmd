@@ -5,29 +5,40 @@ output: html_notebook
 
 ```{r logFCsetup, include=FALSE}
 library(tidyverse)
+library(stringr)
 library(ggridges)
 library(phylosignal)
 library(adephylo)
 library(ape)
 library(phylobase)
+library(ggtree)
 ```
 
 ```{r}
+### RDS file generated in 2017-10-19_logFC-error-metrics.RDS 
+logFC_pre_taxa <- readRDS("~/Desktop/logFC_pre.RDS") %>% 
+      select(pipe, feature_id, Rank1, Rank2, Rank3, Rank4, Rank5, Rank6) %>% unique()
+
 logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>% 
-      mutate(slope_error = 1 - slope)
+      mutate(slope_metric = 1 - slope)
+
+feature_metrics <- logFC_feature_summary %>% filter(logFC_est == "edgeR")
 ```
 
-* Consistent deviation from the expected value by individual indicates that differences in proportion of bacterial DNA does account for some of the disagrement between the log fold-change estimates and expected values.  
-* The consistency in the deviation of the log fold-change estimates from the expected values across pipelines and log fold-change methods indicates the deviation is due to biases in sample preparation, specifically PCR amplification. 
-```{r}
+
+## Feature-Level Metrics 
+
+
+```{r message = FALSE}
 logFC_feature_summary %>% 
-      ggplot() + geom_density_ridges(aes(x = slope_error, y = pipe), alpha = 0.5) + 
+      ggplot() + geom_density_ridges(aes(x = slope_metric, y = pipe), alpha = 0.5) + 
       geom_vline(aes(xintercept = 0), color = "darkorange") + 
       facet_grid(logFC_est~biosample_id) + theme_bw()
 ```
 
+Bimodal distribution of R2 value 
 
-```{r}
+```{r message = FALSE}
 logFC_feature_summary %>% 
       ggplot() + geom_density_ridges(aes(x = adj.r.squared, y = pipe), alpha = 0.5) + 
       geom_vline(aes(xintercept = 1), color = "darkorange") + 
@@ -36,27 +47,12 @@ logFC_feature_summary %>%
 
 
 
-### Phylogenetic signal
-```{r}
-
-```
-
-```{r}
-dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
-mothur_tree <- read.tree("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.tre")
-```
-
-
-```{r}
-### RDS file generated in 2017-10-19_logFC-error-metrics.RDS 
-logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>% 
-      mutate(slope_metric = 1 - slope)
-
-feature_metrics <- logFC_feature_summary %>% filter(logFC_est == "edgeR")
-```
+### Phylogenetic signal  
 
 __TODO__ Add Taxonomic levels to tree
-```{r}
+```{r message = FALSE}
+dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
+
 dada_metrics <- feature_metrics %>%  
       filter(feature_id %in% dada_tree$tip.label) %>% 
       filter(biosample_id == "E01JH0016")
@@ -67,7 +63,7 @@ dada_trim <- drop.tip(dada_tree,tip = tips_to_drop)
 
 dada_labels <-  data_frame(tip.label = dada_trim$tip.label)
 dada_dat <- list()
-dada_dat$slope_error <- dada_metrics$slope_error
+dada_dat$slope_metric <- dada_metrics$slope_metric
 dada_dat$adj.r.squared <- dada_metrics$adj.r.squared 
 dada_dat$tip.label <- dada_metrics$feature_id
 dada_dat <- as.data.frame(dada_dat) %>% right_join(dada_labels) %>% 
@@ -77,14 +73,45 @@ dada_lipa <- lipaMoran(dada_p4d)
 barplot.phylo4d(dada_p4d, bar.col=(dada_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
 ```
 
-
 a significant phylogenetic signal was detected
-```{r}
+```{r message = FALSE}
 phyloSignal(p4d = dada_p4d, method = c("I","Cmean"))
 ``` 
 
+```{r message = FALSE}
+dada_tax <- logFC_pre_taxa %>% 
+      filter(pipe == "dada2") %>% 
+      rename(id = feature_id)
+
+dada_labels <-  data_frame(id = dada_trim$tip.label)
+dada_dat <- dada_metrics %>% 
+      rename(id = feature_id) %>% 
+      right_join(dada_labels) %>% 
+      dplyr::select(id, slope_metric, adj.r.squared) 
+
+dada_tax <- logFC_pre_taxa %>% 
+      filter(pipe == "dada2") %>% 
+      rename(id = feature_id) %>% 
+      left_join(dada_labels)
+
+dada_trim <- groupOTU(dada_trim, split(dada_tax$id, dada_tax$Rank3), group_name = "Class")
+
+
+
+p <- ggtree(dada_trim, aes(color = Class))
+
+p <- facet_plot(p, panel = 'Slope Metric', data = dada_dat, 
+                geom=geom_segment, aes(x=0, xend=slope_metric, y=y, yend=y), size=1)
+
+facet_plot(p, panel = 'R2', data = dada_dat, 
+           geom=geom_segment, aes(x=0, xend=adj.r.squared, y=y, yend=y), size=1) +
+      theme_tree2() + theme(legend.position = "bottom")
+```
+
+
+
 ## QIIME
-```{r}
+```{r message = FALSE}
 qiime_tree <- read.tree("~/Projects/mgtst_pipelines/qiime/otus_uc_fast/rep_set.tre")
 qiime_metrics <- feature_metrics %>%
       # filter(feature_id %in% qiime_tree$tip.label) %>%
@@ -98,7 +125,7 @@ qiime_trim <- drop.tip(qiime_tree,tip = tips_to_drop)
 qiime_labels <-  data_frame(tip.label = qiime_trim$tip.label)
 qiime_dat <- qiime_metrics %>% rename(tip.label = feature_id) %>% 
       right_join(qiime_labels) %>% 
-      dplyr::select(tip.label, slope_error, adj.r.squared) %>% 
+      dplyr::select(tip.label, slope_metric, adj.r.squared) %>% 
       as.data.frame() %>% dplyr::select(-tip.label)
 
 qiime_p4d <- phylo4d(qiime_trim, qiime_dat)
@@ -106,36 +133,110 @@ qiime_lipa <- lipaMoran(qiime_p4d)
 barplot.phylo4d(qiime_p4d, bar.col=(qiime_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
 ```
 
-```{r}
+```{r message = FALSE}
 phyloSignal(p4d = qiime_p4d, method = c("I","Cmean"))
 ``` 
 
+```{r message = FALSE}
+qiime_labels <-  data_frame(id = qiime_trim$tip.label)
+qiime_dat <- qiime_metrics %>% 
+      rename(id = feature_id) %>% 
+      right_join(qiime_labels) %>% 
+      dplyr::select(id, slope_metric, adj.r.squared) 
+
+qiime_tax <- logFC_pre_taxa %>% 
+      filter(pipe == "qiime") %>% 
+      rename(id = feature_id) %>% 
+      left_join(qiime_labels)
+
+qiime_trim <- groupOTU(qiime_trim, split(qiime_tax$id, qiime_tax$Rank3), group_name = "Class")
+
+
+
+p <- ggtree(qiime_trim, aes(color = Class))
+
+p <- facet_plot(p, panel = 'Slope Metric', data = qiime_dat, 
+                geom=geom_segment, aes(x=0, xend=slope_metric, y=y, yend=y), size=1)
+
+facet_plot(p, panel = 'R2', data = qiime_dat, 
+           geom=geom_segment, aes(x=0, xend=adj.r.squared, y=y, yend=y), size=1) +
+      theme_tree2() + theme(legend.position = "bottom")
+```
+
 ## Mothur
 Mothur tree node ids and cluster ids do not match up....
+```{r message = FALSE}
+seq_id_df <- read_lines("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.fasta") %>% grep(pattern = ">", value = TRUE) %>% 
+      str_replace("\\|.*","") %>% 
+      str_replace(">","") %>% 
+      enframe(name = "X", value = "seq_id") %>% 
+      select(-X) %>% 
+      separate(seq_id, into = c("seq_id", "feature_id"),sep = "\t")
+
+
+mothur_tree <- read.tree("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.tre")
+
+seq_tree_ids <- data_frame(seq_id = mothur_tree$tip.label) %>% 
+      left_join(seq_id_df)
+
+mothur_tree$tip.label <- seq_tree_ids$feature_id
+
+mothur_metrics <- feature_metrics %>%
+      filter(feature_id %in% mothur_tree$tip.label) %>%
+      filter(biosample_id == "E01JH0016")
+
+tips_to_drop <- mothur_tree$tip.label[!(mothur_tree$tip.label %in% mothur_metrics$feature_id)]
+
+mothur_trim <- drop.tip(mothur_tree,tip = tips_to_drop)
+
+mothur_labels <-  data_frame(tip.label = mothur_trim$tip.label)
+mothur_dat <- list()
+mothur_dat$slope_metric <- mothur_metrics$slope_metric
+mothur_dat$adj.r.squared <- mothur_metrics$adj.r.squared
+mothur_dat$tip.label <- mothur_metrics$feature_id
+mothur_dat <- as.data.frame(mothur_dat) %>% right_join(mothur_labels) %>%
+      column_to_rownames(var = "tip.label")
+mothur_p4d <- phylo4d(mothur_trim, mothur_dat)
+mothur_lipa <- lipaMoran(mothur_p4d)
+barplot.phylo4d(mothur_p4d, bar.col=(mothur_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```
+
 ```{r}
-# mothur_metrics <- feature_metrics %>%  
-#       filter(feature_id %in% mothur_tree$tip.label) %>% 
-#       filter(biosample_id == "E01JH0016")
-# 
-# tips_to_drop <- mothur_tree$tip.label[!(mothur_tree$tip.label %in% mothur_metrics$feature_id)] 
-# 
-# mothur_trim <- drop.tip(mothur_tree,tip = tips_to_drop)
-# 
-# mothur_labels <-  data_frame(tip.label = mothur_trim$tip.label)
-# mothur_dat <- list()
-# mothur_dat$slope_error <- mothur_metrics$slope_error
-# mothur_dat$adj.r.squared <- mothur_metrics$adj.r.squared 
-# mothur_dat$tip.label <- mothur_metrics$feature_id
-# mothur_dat <- as.data.frame(mothur_dat) %>% right_join(mothur_labels) %>% 
-#       column_to_rownames(var = "tip.label")
-# mothur_p4d <- phylo4d(mothur_trim, mothur_dat)
+phyloSignal(p4d = mothur_p4d, method = c("I","Cmean"))
 ``` 
 
+```{r message = FALSE}
+mothur_labels <-  data_frame(id = mothur_trim$tip.label)
+mothur_dat <- mothur_metrics %>% 
+      rename(id = feature_id) %>% 
+      right_join(mothur_labels) %>% 
+      dplyr::select(id, slope_metric, adj.r.squared) 
+
+mothur_tax <- logFC_pre_taxa %>% 
+      filter(pipe == "mothur") %>% 
+      rename(id = feature_id) %>% 
+      left_join(mothur_labels)
+
+mothur_trim <- groupOTU(mothur_trim, split(mothur_tax$id, mothur_tax$Rank3), group_name = "Class")
+
+
+
+p <- ggtree(mothur_trim, aes(color = Class))
+
+p <- facet_plot(p, panel = 'Slope Metric', data = mothur_dat, 
+                geom=geom_segment, aes(x=0, xend=slope_metric, y=y, yend=y), size=1)
+
+facet_plot(p, panel = 'R2', data = mothur_dat, 
+           geom=geom_segment, aes(x=0, xend=adj.r.squared, y=y, yend=y), size=1) +
+      theme_tree2() + theme(legend.position = "bottom")
+```
+
+
+
 ## Unclustered 
-```{r}
+```{r message = FALSE}
 unclustered_tree <- read.tree("~/Projects/mgtst_pipelines/unclustered/unclustered_seqs_set.tre")
 unclustered_metrics <- feature_metrics %>%
-      # filter(feature_id %in% unclustered_tree$tip.label) %>%
       filter(pipe == "unclustered", biosample_id == "E01JH0016")
 
 ## Only including tips in logFC feature summary (pre)
@@ -146,7 +247,7 @@ unclustered_trim <- drop.tip(unclustered_tree,tip = tips_to_drop)
 unclustered_labels <-  data_frame(tip.label = unclustered_trim$tip.label)
 unclustered_dat <- unclustered_metrics %>% rename(tip.label = feature_id) %>% 
       right_join(unclustered_labels) %>% 
-      dplyr::select(tip.label, slope_error, adj.r.squared) %>% 
+      dplyr::select(tip.label, slope_metric, adj.r.squared) %>% 
       as.data.frame() %>% dplyr::select(-tip.label)
 
 unclustered_p4d <- phylo4d(unclustered_trim, unclustered_dat)
@@ -157,3 +258,34 @@ barplot.phylo4d(unclustered_p4d, bar.col=(unclustered_lipa$p.value < 0.05) + 1, 
 ```{r}
 phyloSignal(p4d = unclustered_p4d, method = c("I","Cmean"))
 ``` 
+
+
+```{r message = FALSE}
+unclustered_labels <-  data_frame(id = unclustered_trim$tip.label)
+unclustered_dat <- unclustered_metrics %>% 
+      rename(id = feature_id) %>% 
+      right_join(unclustered_labels) %>% 
+      dplyr::select(id, slope_metric, adj.r.squared) 
+
+unclustered_tax <- logFC_pre_taxa %>% 
+      filter(pipe == "unclustered") %>% 
+      rename(id = feature_id) %>% 
+      left_join(unclustered_labels)
+
+unclustered_trim <- groupOTU(unclustered_trim, split(unclustered_tax$id, unclustered_tax$Rank3), group_name = "Class")
+
+p <- ggtree(unclustered_trim)
+
+p <- facet_plot(p, panel = 'Slope Metric', data = unclustered_dat, 
+                geom=geom_segment, aes(x=0, xend=slope_metric, y=y, yend=y, color = Class), size=1)
+
+facet_plot(p, panel = 'R2', data = unclustered_dat, 
+           geom=geom_segment, aes(x=0, xend=adj.r.squared, y=y, yend=y, color = Class), size=1) +
+      theme_tree2() + theme(legend.position = "bottom")
+```
+
+
+
+
+
+
