@@ -1,0 +1,159 @@
+---
+title: "logFC Feature-Level Assessment"
+output: html_notebook
+---
+
+```{r logFCsetup, include=FALSE}
+library(tidyverse)
+library(ggridges)
+library(phylosignal)
+library(adephylo)
+library(ape)
+library(phylobase)
+```
+
+```{r}
+logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>% 
+      mutate(slope_error = 1 - slope)
+```
+
+* Consistent deviation from the expected value by individual indicates that differences in proportion of bacterial DNA does account for some of the disagrement between the log fold-change estimates and expected values.  
+* The consistency in the deviation of the log fold-change estimates from the expected values across pipelines and log fold-change methods indicates the deviation is due to biases in sample preparation, specifically PCR amplification. 
+```{r}
+logFC_feature_summary %>% 
+      ggplot() + geom_density_ridges(aes(x = slope_error, y = pipe), alpha = 0.5) + 
+      geom_vline(aes(xintercept = 0), color = "darkorange") + 
+      facet_grid(logFC_est~biosample_id) + theme_bw()
+```
+
+
+```{r}
+logFC_feature_summary %>% 
+      ggplot() + geom_density_ridges(aes(x = adj.r.squared, y = pipe), alpha = 0.5) + 
+      geom_vline(aes(xintercept = 1), color = "darkorange") + 
+      facet_grid(logFC_est~biosample_id) + theme_bw()
+```
+
+
+
+### Phylogenetic signal
+```{r}
+
+```
+
+```{r}
+dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
+mothur_tree <- read.tree("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.tre")
+```
+
+
+```{r}
+### RDS file generated in 2017-10-19_logFC-error-metrics.RDS 
+logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>% 
+      mutate(slope_metric = 1 - slope)
+
+feature_metrics <- logFC_feature_summary %>% filter(logFC_est == "edgeR")
+```
+
+__TODO__ Add Taxonomic levels to tree
+```{r}
+dada_metrics <- feature_metrics %>%  
+      filter(feature_id %in% dada_tree$tip.label) %>% 
+      filter(biosample_id == "E01JH0016")
+
+tips_to_drop <- dada_tree$tip.label[!(dada_tree$tip.label %in% dada_metrics$feature_id)] 
+
+dada_trim <- drop.tip(dada_tree,tip = tips_to_drop)
+
+dada_labels <-  data_frame(tip.label = dada_trim$tip.label)
+dada_dat <- list()
+dada_dat$slope_error <- dada_metrics$slope_error
+dada_dat$adj.r.squared <- dada_metrics$adj.r.squared 
+dada_dat$tip.label <- dada_metrics$feature_id
+dada_dat <- as.data.frame(dada_dat) %>% right_join(dada_labels) %>% 
+      column_to_rownames(var = "tip.label")
+dada_p4d <- phylo4d(dada_trim, dada_dat)
+dada_lipa <- lipaMoran(dada_p4d)
+barplot.phylo4d(dada_p4d, bar.col=(dada_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```
+
+
+a significant phylogenetic signal was detected
+```{r}
+phyloSignal(p4d = dada_p4d, method = c("I","Cmean"))
+``` 
+
+## QIIME
+```{r}
+qiime_tree <- read.tree("~/Projects/mgtst_pipelines/qiime/otus_uc_fast/rep_set.tre")
+qiime_metrics <- feature_metrics %>%
+      # filter(feature_id %in% qiime_tree$tip.label) %>%
+      filter(pipe == "qiime", biosample_id == "E01JH0016")
+
+## Only including tips in logFC feature summary (pre)
+tips_to_drop <- qiime_tree$tip.label[!(qiime_tree$tip.label %in% qiime_metrics$feature_id)]
+qiime_trim <- drop.tip(qiime_tree,tip = tips_to_drop)
+
+## Data frame with metrics for comparison
+qiime_labels <-  data_frame(tip.label = qiime_trim$tip.label)
+qiime_dat <- qiime_metrics %>% rename(tip.label = feature_id) %>% 
+      right_join(qiime_labels) %>% 
+      dplyr::select(tip.label, slope_error, adj.r.squared) %>% 
+      as.data.frame() %>% dplyr::select(-tip.label)
+
+qiime_p4d <- phylo4d(qiime_trim, qiime_dat)
+qiime_lipa <- lipaMoran(qiime_p4d)
+barplot.phylo4d(qiime_p4d, bar.col=(qiime_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```
+
+```{r}
+phyloSignal(p4d = qiime_p4d, method = c("I","Cmean"))
+``` 
+
+## Mothur
+Mothur tree node ids and cluster ids do not match up....
+```{r}
+# mothur_metrics <- feature_metrics %>%  
+#       filter(feature_id %in% mothur_tree$tip.label) %>% 
+#       filter(biosample_id == "E01JH0016")
+# 
+# tips_to_drop <- mothur_tree$tip.label[!(mothur_tree$tip.label %in% mothur_metrics$feature_id)] 
+# 
+# mothur_trim <- drop.tip(mothur_tree,tip = tips_to_drop)
+# 
+# mothur_labels <-  data_frame(tip.label = mothur_trim$tip.label)
+# mothur_dat <- list()
+# mothur_dat$slope_error <- mothur_metrics$slope_error
+# mothur_dat$adj.r.squared <- mothur_metrics$adj.r.squared 
+# mothur_dat$tip.label <- mothur_metrics$feature_id
+# mothur_dat <- as.data.frame(mothur_dat) %>% right_join(mothur_labels) %>% 
+#       column_to_rownames(var = "tip.label")
+# mothur_p4d <- phylo4d(mothur_trim, mothur_dat)
+``` 
+
+## Unclustered 
+```{r}
+unclustered_tree <- read.tree("~/Projects/mgtst_pipelines/unclustered/unclustered_seqs_set.tre")
+unclustered_metrics <- feature_metrics %>%
+      # filter(feature_id %in% unclustered_tree$tip.label) %>%
+      filter(pipe == "unclustered", biosample_id == "E01JH0016")
+
+## Only including tips in logFC feature summary (pre)
+tips_to_drop <- unclustered_tree$tip.label[!(unclustered_tree$tip.label %in% unclustered_metrics$feature_id)]
+unclustered_trim <- drop.tip(unclustered_tree,tip = tips_to_drop)
+
+## Data frame with metrics for comparison
+unclustered_labels <-  data_frame(tip.label = unclustered_trim$tip.label)
+unclustered_dat <- unclustered_metrics %>% rename(tip.label = feature_id) %>% 
+      right_join(unclustered_labels) %>% 
+      dplyr::select(tip.label, slope_error, adj.r.squared) %>% 
+      as.data.frame() %>% dplyr::select(-tip.label)
+
+unclustered_p4d <- phylo4d(unclustered_trim, unclustered_dat)
+unclustered_lipa <- lipaMoran(unclustered_p4d)
+barplot.phylo4d(unclustered_p4d, bar.col=(unclustered_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```
+
+```{r}
+phyloSignal(p4d = unclustered_p4d, method = c("I","Cmean"))
+``` 
