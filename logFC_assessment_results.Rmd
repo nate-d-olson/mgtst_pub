@@ -130,7 +130,7 @@ A error metric of $1 - slope$ was used, where 0 is the desired value (i.e. log f
 The linear model $R^2$ value was used to characterize the feature-level log fold-change variance as it indicates how consistent the relationship between the log fold-change estimates and expected values are across titration comparisons. 
 Similar to the relative abundance assessment we used a mixed-effects models to take into account differences in individuals when comparing the log fold-change error rates between pipeline. 
 The log fold-change bias metric was not significantly different between pipelines (F = `r round(slope_f,2)`, p = `r round(slope_p,2)`, DADA2 `r round(dada_slope,2)`, Mothur `r round(mothur_slope,2)`, QIIME `r round(qiime_slope,2)`, \@ref(fig:logFCerror)B). 
-The log fold-change variance metric was not significantly different between pipelines (F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, DADA2 `r round(dada_r2,2)`, Mothur `r round(mothur_r2,2)`, QIIME `r round(qiime_r2,2)` \@ref(fig:logFCerror)C).
+The log fold-change variance metric was not significantly different between pipelines (F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, DADA2 `r round(dada_r2,2)`, Mothur `r round(mothur_r2,2)`, QIIME `r round(qiime_r2,2)`, Fig. \@ref(fig:logFCerror)C).
 
 __TODO__ Incorporate analysis into text   
 
