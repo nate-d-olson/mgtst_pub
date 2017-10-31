@@ -37,7 +37,7 @@ fit_coefs <- fit_list %>% map_df(coefficients) %>%
       gather("ercc", "stat", -coefs) %>% spread(coefs, stat)
 
 std_fit <- fit_list %>% map_df(broom::glance, .id = "ercc") %>%
-      select(ercc, adj.r.squared) %>%
+      dplyr::select(ercc, adj.r.squared) %>%
       left_join(fit_coefs) %>%
       mutate(
             amplification_factor = 10 ^ (-1 / slope),
@@ -46,7 +46,7 @@ std_fit <- fit_list %>% map_df(broom::glance, .id = "ercc") %>%
 
 ################## Pre and Post Quant #########################################
 ercc_meta <-
-      erccMeta %>% select(ercc_id, biosample_id, treatment) %>%
+      erccMeta %>% dplyr::select(ercc_id, biosample_id, treatment) %>%
       mutate(ercc = str_replace(ercc_id, "ERCC-", ""),
              ercc = as.numeric(ercc) %>% as.character())
 
@@ -78,7 +78,7 @@ post_fit_coefs <- post_fit_list %>% map_df(coefficients) %>%
 
 post_fit <-
       post_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
-      select(ercc, adj.r.squared) %>%
+      dplyr::select(ercc, adj.r.squared) %>%
       left_join(post_fit_coefs) %>%
       mutate(
             amplification_factor = 10 ^ (-1 / slope),
@@ -100,7 +100,7 @@ pre_fit_coefs <- pre_fit_list %>% map_df(coefficients) %>%
       gather("ercc", "stat", -coefs) %>% spread(coefs, stat)
 
 pre_fit <- pre_fit_list %>% map_df(broom::glance, .id = "ercc") %>%
-      select(ercc, adj.r.squared) %>%
+      dplyr::select(ercc, adj.r.squared) %>%
       left_join(pre_fit_coefs) %>%
       mutate(
             amplification_factor = 10 ^ (-1 / slope),
@@ -115,12 +115,12 @@ ercc_stdtbl <- ercc_meta %>%
             E = round(efficiency, 2),
             AF = round(amplification_factor, 2)
       ) %>%
-      select(biosample_id, treatment, std_R2, E, AF)
+      dplyr::select(biosample_id, treatment, std_R2, E, AF)
 
 ercc_vldtbl <- bind_rows(post_fit, pre_fit) %>%
       left_join(ercc_meta) %>%
       mutate(R2 = round(adj.r.squared, 2), Slope = round(slope, 2)) %>%
-      select(biosample_id, treatment, R2, Slope)
+      dplyr::select(biosample_id, treatment, R2, Slope)
 
 ercc_tbl <- left_join(ercc_stdtbl, ercc_vldtbl)
 

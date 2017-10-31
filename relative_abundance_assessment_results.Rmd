@@ -230,12 +230,12 @@ rel_abu_error_summary %>%
       #                      round(min_rcov_error,2),")")) %>% 
       # Max values only 
       mutate(Median = max_med_error, RCOV = max_rcov_error) %>% 
-      select(pipe, biosample_id, Median, RCOV) %>%
+     dplyr::select(pipe, biosample_id, Median, RCOV) %>%
       dplyr::rename(Pipeline = pipe, Individual = biosample_id) %>%
       gather("Metric","value", -Pipeline, -Individual) %>% 
       spread(Individual, value) %>% 
       arrange(Metric) %>% 
-      select(Metric, Pipeline, E01JH0004, E01JH0011, E01JH0016, E01JH0017, E01JH0038) %>% 
+     dplyr::select(Metric, Pipeline, E01JH0004, E01JH0011, E01JH0016, E01JH0017, E01JH0038) %>% 
       knitr::kable(booktabs = TRUE, caption = "Maximum feature-level error rate bias (median error rate) and variance (robust COV) by pipeline and individual.", digits = 2) %>% 
       collapse_rows(columns = 1)
 ```
