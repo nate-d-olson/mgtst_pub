@@ -1,0 +1,74 @@
+---
+title: "PCR Replicate Characterization"
+output: html_notebook
+---
+
+Cannot attribute unexpected log fold-change values to large variability in PCR counts. 
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+raw_count_df <- readRDS("~/Desktop/raw_counts.RDS") %>%       
+      group_by(pipe, id) %>% 
+      mutate(total_count = sum(count))
+```
+
+Pre-specific and pre-dominant feature
+```{r}
+pre_logFC <- readRDS("~/Desktop/logFC_pre.RDS") %>% 
+      select(biosample_id, pipe, feature_id) %>% 
+      unique()
+```
+
+```{r}
+pre_counts <- pre_logFC %>% left_join(raw_count_df)
+```
+
+```{r}
+pre_unmix_counts <- pre_counts %>% filter(t_fctr %in% c(0, 20)) %>% 
+      mutate(rel_abu = count/total_count) %>% 
+      group_by(pipe, biosample_id, feature_id, t_fctr) %>% 
+      summarise(mean_abu = mean(rel_abu),
+                var_abu = var(rel_abu),
+                range_abu = max(rel_abu) - min(rel_abu)) 
+
+logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>% 
+      right_join(pre_unmix_counts)
+```
+
+
+```{r}
+pre_unmix_counts %>% ggplot() + 
+      geom_point(aes(x = mean_abu, y = var_abu/mean_abu, color = pipe)) + 
+      facet_wrap(~biosample_id) + geom_hline(aes(yintercept = 0.001))
+
+```
+
+
+```{r}
+logFC_feature_summary %>% 
+      filter(logFC_est == "edgeR") %>% 
+      mutate(norm_var = var_abu/mean_abu) %>% 
+      ggplot() + 
+      geom_point(aes(y = norm_var, x = 1-slope, color = t_fctr)) +
+      facet_grid(biosample_id~pipe) + 
+      scale_y_log10()
+```
+
+No clear relationship between relative abundance variance and slope
+```{r}
+logFC_feature_summary %>% 
+      filter(logFC_est == "edgeR") %>% 
+      ggplot() + 
+      geom_point(aes(y = var_abu, x = 1-slope, color = t_fctr)) +
+      scale_y_log10()
+```
+```{r}
+logFC_feature_summary %>% 
+      filter(logFC_est == "edgeR") %>% 
+      ggplot() + 
+      geom_point(aes(y = range_abu, x = 1-slope, color = t_fctr)) +
+      scale_y_log10()
+```
