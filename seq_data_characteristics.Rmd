@@ -106,7 +106,7 @@ meta_df %>% filter(Read == "R1") %>%
 
 
 
-```{r lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads."}
+```{r lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads.", include = FALSE}
 ## Text -------
 ## For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read \@ref(fig:lowcycleq). 
 
