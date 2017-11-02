@@ -1,5 +1,5 @@
 ---
-title: "Microbiome-Scale Mixture Use Demonstration"
+title: "Introduction"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 output:
@@ -12,7 +12,6 @@ bibliography: [mgtst.bib, packages.bib]
 BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
 -->
 
-# Introduction
 Metagenomics, sequencing the DNA from a microibal community, has greatly advanced our understanding of the microbial world. 
 Targeted sequencing of the 16S rRNA gene, 16S metagenomics, is a commonly used method for sequencing a microbial community, as the targeted approach allows for a more in-depth exploration of a microbial community taxonomic compositions compared to shotgun metagenomics where whole genomes are sequenced. 
 16S metagenomics is a complex measurement process comprised of multiple molecular laboratory and computation steps [@goodrich2014conducting;@kim2017optimizing]. 
