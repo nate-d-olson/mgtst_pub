@@ -23,7 +23,7 @@ There are a number of different clustering methods.
 The two most commonly used clustering methods are _de-novo_ clustering and open-reference clustering. 
 _de-novo_ clustering algorithms group sequences based on a defined similarity threshold [@westcott2015novo]. 
 Open-reference clustering matches sequences to a set of previously clustered reference sequences (_de-novo_) then perform _de-novo_ clustering on the sequences in the dataset that do not match to sequences in the reference dataset with the desired similarity threshold [@he2015stability]. 
-A third methods for clustering, sequence inference, uses statistical models or algorithms to differentiate true biological sequences within a dataset from sequencing errors [@callahan2016dada2].  
+A third methods for clustering, sequence inference, uses statistical models or algorithms to differentiate true biological sequences within a dataset from sequencing errors [@callahan2016dada2;@amir2017deblur;].  __TODO: Add MED__
 
 Further challenging the measurement process is the compositional nature of the 16S data, that is the proporition of an organism within a sample is being measured and not the absolute abundance [@tsilimigras2016compositional]. 
 Sequencing data only provide information regarding the relative abundance of organisms within a samples to other organisms within the same sample. 
