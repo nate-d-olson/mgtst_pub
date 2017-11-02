@@ -85,29 +85,29 @@ logFC Error Rate Results
 # Discussion
 
 * Sample experimental design  
-      - Limitation: number of features with differentially abundant between pre- and post-exposure  
+    - Limitation: number of features with differentially abundant between pre- and post-exposure  
 
 * Bacterial DNA proportion  
-      - Limitation: additional uncertainty in expected values  
+    - Limitation: additional uncertainty in expected values  
 
 * Pipeline characterization differences  
-      - Number of features per sample and total abundance  
-      - DADA2 has higher feature abundance due to fewer features and lower filter rate. Resulting in increased statistical power.
+    - Number of features per sample and total abundance  
+    - DADA2 has higher feature abundance due to fewer features and lower filter rate. Resulting in increased statistical power.
 
 * Why qualitative analysis is pipeline dependent?  
-      - What dependency means for 16S gene surveys  
-      - DADA2 spurious OTUs a result of higher counts and therefore increased statistical power.  
+    - What dependency means for 16S gene surveys  
+    - DADA2 spurious OTUs a result of higher counts and therefore increased statistical power.  
 
 * Why quantitative analysis is biological replicate dependent?  
-      - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?  
-      - Differences in proportion of bacterial DNA between the pre- and post-exposure samples drives individual specific results.  
-      - The proportion of non-prokaryotic DNA in a sample is not taken into considering for nearly all 16S studies.  
-      - How do differences impact inferences drawn from statistical analyses?
+    - What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter?  
+    - Differences in proportion of bacterial DNA between the pre- and post-exposure samples drives individual specific results.  
+    - The proportion of non-prokaryotic DNA in a sample is not taken into considering for nearly all 16S studies.  
+    - How do differences impact inferences drawn from statistical analyses?
 
 * Relative abundance  
-      - Outliers  
-      - Need to summarise across replicates  
-      - Noisy data  
+    - Outliers  
+    - Need to summarise across replicates  
+    - Noisy data  
 
 * log fold-change - outlier features   
 * Relationship between factors impacting quant and qual analysis  
@@ -116,11 +116,11 @@ logFC Error Rate Results
 
 * How this dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.  
 * Given study results  
-      - How would you analyze 16S sequencing data assuming current methods?  
-      - How would you like to analyze 16S sequencing data?  
-      - What are the limitations of current methods?  
-      - What would you like to see a clustering method/ pipeline be able to do?   
-            + What should be improved?  
+    - How would you analyze 16S sequencing data assuming current methods?  
+    - How would you like to analyze 16S sequencing data?  
+    - What are the limitations of current methods?  
+    - What would you like to see a clustering method/ pipeline be able to do?   
+        + What should be improved?  
 
 
 \pagebreak  
