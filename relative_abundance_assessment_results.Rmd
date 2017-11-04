@@ -66,7 +66,7 @@ rel_abu_error_summary <-  rel_abu_error %>%
       group_by(pipe, biosample_id, feature_id) %>% 
       summarise(median_error = median(inferred_error_rate),
                 iqr_error = IQR(inferred_error_rate),
-                rcov_error = iqr_error/median_error, 
+                rcov_error = iqr_error/abs(median_error), 
                 mean_error = mean(inferred_error_rate),
                 var_error = var(inferred_error_rate),
                 cov_error = var_error/mean_error) 
@@ -126,7 +126,7 @@ outlier_rcov_dat <- rcov_plot_dat %>%
 
 rcov_outlier_cat <- rel_abu_error_summary %>% 
       left_join(outlier_rcov_dat) %>% 
-      mutate(outlier_cat = if_else(median_error < ymin | median_error > ymax, "outlier","inlier"))
+      mutate(outlier_cat = if_else(rcov_error < ymin | rcov_error > ymax, "outlier","inlier"))
 
 ### Plot Code -----------------------------------------------------------------
 ## Observed v. Expected Scatter plot
@@ -251,7 +251,7 @@ There is lower confidence in the relative abundance of a feature in the pre- or 
 The deviation from the expected value on the low end varies by biological replicate and pipeline. 
 Outliers are observed for all pipelines and individuals.  
 
-Next we evaluated the quantitative accuracy of the relative abundance values by comparing the distribution of the feature-level median error and feature-level robust coefficient (RCOV=(maximum - minimum)/median) of variation for the relative abundance error rate across pipelines (Fig. \@ref(fig:relAbuError)). 
+Next we evaluated the quantitative accuracy of the relative abundance values by comparing the distribution of the feature-level median error and feature-level robust coefficient (RCOV=(IQR)/|median|) of variation for the relative abundance error rate across pipelines (Fig. \@ref(fig:relAbuError)). 
 Feature-level median error rates and RCOV were compared across pipelines and individuals using a mixed effects model. 
 Large error rates and RCOV values were observed for all pipelines (Table  \@ref(tab:relAbuErrorTbl)). 
 Features with large error rates, defined as $1.5\times IQR$ from the median, were excluded from the analysis to prevent outliers from biasing the comparison. 
