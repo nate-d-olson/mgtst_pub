@@ -240,26 +240,23 @@ rel_abu_error_summary %>%
       collapse_rows(columns = 1)
 ```
 
-__NOTE__  Not sure about interpretation of RCOV when using non-absolute feature-level error rate, how to interpret positive and negative values.  
-
-
 Overall aggreement between the inferred and observed relative abundance was high for all individuals and bioinformatic pipelines (Fig. \@ref(fig:relAbuError)A). 
-The pre- and post-exposure estimated relative abundance and inferred theta values were used to calculate titration and feature level error rates. 
+The pre- and post-exposure estimated relative abundance and inferred $\theta$ values were used to calculate titration and feature level error rates. 
+To prevent over-fitting, $\theta$ estimates for the unclustered pipeline were used to calculate the error rates for the other three pipelines.  
 Only features observed in all pre- and post-exposure PCR replicates and pre- and post-exposure specific features were included in the analysis (Table \@ref(tab:relAbuFeatTbl)). 
 Pre- and post-exposure specific features were defined as present in all four PCR replicates of the pre-exposure or post-exposure PCR replicates, respectively, but none of the PCR replicates for the other unmixed sample.
 There is lower confidence in the relative abundance of a feature in the pre- or post-exposure unmixed samples when the feature is observed in some of the 4 PCR replicates, therefore these features were not included in the error analysis.
 The deviation from the expected value on the low end varies by biological replicate and pipeline. 
-Outliers are observed for all pipelines and individuals.  
 
-Next we evaluated the quantitative accuracy of the relative abundance values by comparing the distribution of the feature-level median error and feature-level robust coefficient (RCOV=(IQR)/|median|) of variation for the relative abundance error rate across pipelines (Fig. \@ref(fig:relAbuError)). 
+Next we evaluated the feature-level quantitative accuracy of the relative abundance values by comparing the distribution of the median error and robust coefficient of variation ($RCOV=(IQR)/|median|$)for the relative abundance error rate (Fig. \@ref(fig:relAbuError)). 
 Feature-level median error rates and RCOV were compared across pipelines and individuals using a mixed effects model. 
 Large error rates and RCOV values were observed for all pipelines (Table  \@ref(tab:relAbuErrorTbl)). 
 Features with large error rates, defined as $1.5\times IQR$ from the median, were excluded from the analysis to prevent outliers from biasing the comparison. 
 The mean feature-level error rate by pipeline was negative for all three pipelines (DADA2 `r round(dada_error,2)`, Mothur `r round(mothur_error,2)`, and QIIME `r round(qiime_error,2)`). 
 Multiple comparisons test (Tukey) was used to test for significant differences in feature-level error between pipelines. 
 A one-sided alternative hypothesis to determine which pipelines had a smaller, closer to zero, feature-level error rate. 
-The Mothur and DADA2 mean feature-level error rate were closer to zero and signficantly different from the QIIME pipeline, (Mothur v. QIIME t = `r  round(error_tukey_t['qiime - mothur'],2)`, p = `r round(error_tukey_p['qiime - mothur'],2)`; DADA2 v. QIIME t = `r  round(error_tukey_t['qiime - dada2'],2)`, p = `r round(error_tukey_p['qiime - dada2'],2)`). 
-Though the Mothur and DADA2 mean feature-level error rates were not significantly different from eachother, t = `r  round(error_tukey_t['mothur - dada2'],2)`, p = `r round(error_tukey_p['mothur - dada2'],2)`.
+The Mothur and DADA2 mean feature-level error rates were closer to zero and signficantly different from the QIIME pipeline, (Mothur v. QIIME t = `r  round(error_tukey_t['qiime - mothur'],2)`, p = `r round(error_tukey_p[error_tukey_t == error_tukey_t['qiime - mothur']],2)`; DADA2 v. QIIME t = `r  round(error_tukey_t['qiime - dada2'],2)`, p = `r round(error_tukey_p[error_tukey_t == error_tukey_t['qiime - dada2']],2)`). 
+Though the Mothur and DADA2 mean feature-level error rates were not significantly different from eachother, (t = `r  round(error_tukey_t['mothur - dada2'],2)`, p = `r round(error_tukey_p[error_tukey_t == error_tukey_t['mothur - dada2']],2)`).
 Unlike feature-level error rates, large RCOV was observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)). 
 Outlier values were also excluded from the RCOV analysis. 
 The feature-level RCOV was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuError)C). 

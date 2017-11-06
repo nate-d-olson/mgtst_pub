@@ -52,9 +52,8 @@ Total bacterial DNA in the unmixed samples was quantified using a qPCR assay tar
 ```
 
 ## Measurement Assessment  
-Next we assessed the 16S rRNA measurement process using our two-sample titration dataset. 
-We assessed the qualitative and quanitative nature of the 16S metagenomics measurement process. 
-For the qualitative assessment we looked the relative abundance of features only observed in the unmixed samples and titrations. 
+Next we assessed the qualitative and quanitative nature of 16S rRNA measurement process using our two-sample titration dataset. 
+For the qualitative assessment we analyzed the relative abundance of features only observed in the unmixed samples and titrations. 
 For the quantitative assessment we looked the the relative abundance and differential abundance log fold-change estimates. 
 
 ### Qualitative Assessment
