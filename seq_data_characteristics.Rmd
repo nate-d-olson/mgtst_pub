@@ -63,12 +63,15 @@ meta_df <- sampleSheet %>%
     filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
     mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
     left_join(grp_df) %>% left_join(qa_file_info)
+
+## Library sizes
+lib_size <- meta_df %>% filter(Read == "R1", biosample_id != "NTC", reads != 2700) %>% .$reads
 ```
 
 Quality assessment of sequencing run summarizing number of reads per sample.
-Two barcoded experimental samples have less than 50,000 reads \@ref(fig:readCount). 
-The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). 
-Excluding the one failed reaction the total range in the observed number of sequences per sample is approximately 40,000 to 150,000 reads. 
+Two barcoded experimental samples have less than 35,000 reads \@ref(fig:readCount). 
+The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
+Excluding the one failed reaction with 2,700 reads and the NTCs, the total range in the observed number of sequences per samples is `r min(lib_size)` to `r max(lib_size)` reads with a median library size of `r median(lib_size)`. 
 
 ```{r cycle_metrics, warning=FALSE, message=FALSE, echo = FALSE}
 ## amplicon position __Cycle Level Metrics__
@@ -93,14 +96,13 @@ Excluding the one failed reaction the total range in the observed number of sequ
 #     kable(caption = "Summary statistics for number of reads per sample by biological replicate.", booktab = TRUE)
 ```
 
-
-```{r readCount, fig.cap="Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates 50,000 reads per barcoded sample.", fig.lp = "fig:", warning=FALSE, message=FALSE, echo = FALSE }
-meta_df %>% filter(Read == "R1") %>%
+```{r readCount, fig.cap="Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates 35,000 reads per barcoded sample.", fig.lp = "fig:", warning=FALSE, message=FALSE, echo = FALSE }
+meta_df %>% filter(Read == "R1") %>% unique() %>% 
     ggplot() + 
         geom_boxplot(aes(x = biosample_id, y = reads)) + 
       scale_y_log10() + 
         geom_hline(aes(yintercept = 50000), color = "grey60", linetype = 2) +
-        theme_bw() + labs(y = "Library Size (log10)", 
+        theme_bw() + labs(y = "Library Size", 
                           x = "Individual")
 ```
 
