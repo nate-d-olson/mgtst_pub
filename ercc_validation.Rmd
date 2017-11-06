@@ -13,6 +13,7 @@ library(ProjectTemplate)
 load.project()
 library(modelr)
 library(ggpubr)
+library(kableExtra)
 ```
 
 
@@ -184,24 +185,26 @@ ercc_tbl <- left_join(ercc_stdtbl, ercc_vldtbl)
 #       theme_bw()
 ```
 
-The volumetric mixing of the two-sample titration was validated using qPCR to quantify ERCC plasmids were spiked into the pre- and post-exposure samples. 
+The volumetric mixing of the two-sample titration was validated using qPCR to quantify ERCC plasmids spiked into the pre- and post-exposure samples. 
 The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves (Table \@ref(tab:erccTable)). 
 The qPCR assays targeting the ERCCs spiked into the post-exposure samples had $R^2$ values and slope estimates  close to 1 (Table \@ref(tab:erccTable)). 
-The expected slope is 1, for a doubling every cycle. 
+Because of the $log_2$ two-sample-titration mixture design the expected slope is 1, for a doubling in template DNA every PCR cycle. 
 Slope estimates less than 1 were attributed to the assay standard curve amplification factors being less than 2 (Table \@ref(tab:erccTable)). 
 For the pre-exposure ERCCs a regression line was fit to the $log_2$ pre-exposure sample proportion for titrations 1-4 and the unmixed pre-exposure sample. 
-The change in pre-exposure sample proportion between titrations 5, 10, and 15 ($0.97$ - $0.99997$) is to small for qPCR to detect changes in ERCC spike-in concentration with an expected Ct difference of `r log2((1-2^-8)/(1-2^-5))` between the titrations 5 and 15.  
-For the ERCCs spiked into the pre-exposure samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)) when a regression line was fit to the Ct values and $log_2$ pre-exposure sample proportion, with a -1 expected slope.
+The change in pre-exposure sample proportion between titrations 5, 10, and 15 ($0.97$ - $0.99997$) is to small for qPCR to detect changes in ERCC spike-in concentration with an expected Ct difference of `r round(log2((1-2^-8)/(1-2^-5)),2)` between the titrations 5 and 15. 
+For the ERCCs spiked into the pre-exposure samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)) when a regression line was fit to the Ct values and $log_2$ pre-exposure sample proportion with a -1 expected slope as the spike-in concentration is expected to increase linearly with the proportion of pre-exposure sample and both Ct and pre-exposure sample proportions are on $log_2$ scales. 
 The deviation from the expected slope for the pre-exposure ERCC qPCR results is attributed to the small change in spike-in concentration between samples preventing the accurate quantification of spike-in concentration. 
 When taking into consideration the quantitative limitations of the qPCR assay these results indicate that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
 
 ```{r erccTable, echo=FALSE, message=FALSE}
 ercc_tbl %>% arrange(treatment) %>% 
-      rename(Individual = biosample_id, 
+      dplyr::rename(Individual = biosample_id, 
              Treatment = treatment, 
              `Std. $R^2$` = std_R2,
              `$R^2$` = R2) %>% 
-    knitr::kable(caption = "ERCC Spike-in qPCR summary statistics. $R^2$, Efficiency (E), and amplification factor (AF) for standard curves. $R^2$ and slope for titration qPCR results for the titration series.", booktabs = TRUE, 'pandoc', escape = FALSE)
+      select(Treatment, Individual, `Std. $R^2$`, E, AF, `$R^2$`, Slope) %>% 
+    knitr::kable(caption = "ERCC Spike-in qPCR summary statistics. $R^2$, Efficiency (E), and amplification factor (AF) for standard curves. $R^2$ and slope for titration qPCR results for the titration series.", escape = FALSE,  booktabs = TRUE) %>% 
+      collapse_rows(columns = 1)
 ```
 
 ```{r erccPlot, fig.cap = "qPCR ERCC spike-in results for ERCC spiked into unmixed (A) Post-exposure samples and (B) Pre-exposure samples (titrations 1-4 only). X-axis is on a log2 scale with expected slope of 1 and -1 for Post-exposure and Pre-exposure spike-ins respectively. ", fig.height = 6, echo=FALSE, message=FALSE}
