@@ -137,14 +137,18 @@ obs_feat_df <- meta_df %>% filter(Read == "R1") %>%
       right_join(obs_feat_df)
 ```
 
-The sequencing dataset was processed using three bioinformatic pipelines. 
+The sequencing dataset was processed using four bioinformatic pipelines. 
 The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA)).
+Different pipelines have different approaches for handling low quality reads resulting in the large variability in filter rate (Table \@ref(tab:pipeQA)). 
+QIIME pipeline has the highest filter rate while the highest number of features per sample. 
+The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired end reads. 
+The high filtration rate is to the drop in base calling accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:lowcycleq)). 
+Additionally, to remove potential sequencing artifacts from the dataset QIIME excludes singletons, OTUs only observed once in the dataset. 
 The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples and there are four PCR replicates for each sample. 
 Sparsity was lower for _de-novo_ clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
-Different pipelines have different approaches for handling low quality reads. 
-QIIME pipeline has the highest filter rate while the highest number of features per sample. 
+With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts. 
 
-The number of features per sample varied by bioinformatic pipeline (Fig \@ref(fig:obsFeat)). The number of observed features by sample was more correlated between the QIIME and Mothur pipelines compared to the DADA2 pipeline (Fig \@ref(fit:obsFeat) A-C). 
+The number of features per sample varied by bioinformatic pipeline (Fig. \@ref(fig:obsFeat)). The number of observed features by sample was more correlated between the QIIME and Mothur pipelines compared to the DADA2 pipeline (Fig. \@ref(fig:obsFeat) A-C). 
 Of the four samples with low numbers of features for the QIIME pipeline, only one of the samples had low number of observed features for the other two pipelines as well. 
 
 ```{r pipeQA, echo = FALSE, message = FALSE, warning = FALSE}
