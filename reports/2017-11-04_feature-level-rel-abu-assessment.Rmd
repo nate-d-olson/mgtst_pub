@@ -6,6 +6,7 @@ output:
 ---
 
 * Address issues with var-mean: NA cats, and 0 values for rcov_error 
+* For phylo -show heatmap indicating outliers
 * summarize results
 
 ```{r fLevelRelAbuSetup, include=FALSE}
@@ -170,6 +171,23 @@ rel_error_summary <- rel_error_outlier_cat %>%
       dplyr::rename(rcov_cat = outlier_cat)
 ```
 
+```{r errorMeanVarTidy, message = FALSE, echo = FALSE}
+rel_abu_count_df <- readRDS("~/Desktop/raw_counts.RDS") %>%       
+      group_by(pipe, id) %>% 
+      mutate(total_count = sum(count)) %>% 
+      right_join(rel_error_summary)
+
+unmix_counts <- rel_abu_count_df %>% 
+      filter(t_fctr %in% c(0, 20)) %>% 
+      mutate(rel_abu = count/total_count) %>% 
+      group_by(pipe, biosample_id, feature_id, t_fctr) %>% 
+      summarise(mean_abu = mean(rel_abu),
+                var_abu = var(rel_abu),
+                range_abu = max(rel_abu) - min(rel_abu)) %>%
+      mutate(var_mean = var_abu/mean_abu) %>% 
+      left_join(rel_error_summary)
+```
+
 ### Overview
 Feature-level characterization of relative abundance outlier features.
 
@@ -186,10 +204,14 @@ Feature-level characterization of relative abundance outlier features.
 Outlier feature-level error-rates had lower median relative abundance, but not RCOV (Fig. \@ref(fig:errorOut)). 
 The median relative abundance was significantly lower for features identified as outliers based on the feature-level error rate, but only when considering features with positive error rates. 
 This is likely due to the more extreme error rates all being positive. 
-For the RCOV the feature-level median relative abundance values were not significantly different between the outlier and non-outlier features. 
-* 
+For the RCOV the feature-level median relative abundance values were not significantly different between the outlier and non-outlier features.  
 
-```{r errorOut, warning = FALSE, message = FALSE, fig.cap = "Feature-level median relative abundance is lower for error rate outlier features but not for RCOV outlier features. (A) Relationship between median relative abundance to the feature-level (A) median error rate and (B) error RCOV. Boxplots summarizing the feature-level median relative abundance between (C) error rate and (D) RCOV outlier and non-outlier features for features. Only features with median error rates greater than 0 included in the error rate boxplot."}
+The error rate is dependent on the accuracy of the relative abundance estimates for the unmixed pre- and post-exposure samples. 
+The feature-level median error-rate and RCOV was compared to the the unmixed sample variance/mean relative abundance to determine if extreme error-rate and RCOV values coulbe be attributed to variability in relative abundance between PCR replicates for the unmixed samples. 
+The variance/mean for the unmixed samples was lower for the outliers compared to the non-outliers for both the feature-level error rate and 
+
+
+```{r errorOut, warning = FALSE, message = FALSE, echo = FALSE, fig.cap = "Feature-level median relative abundance is lower for error rate outlier features but not for RCOV outlier features. (A) Relationship between median relative abundance to the feature-level (A) median error rate and (B) error RCOV. Boxplots summarizing the feature-level median relative abundance between (C) error rate and (D) RCOV outlier and non-outlier features for features. Only features with median error rates greater than 0 included in the error rate boxplot."}
 error_scatter <- rel_error_summary %>% 
       ggplot() + 
       geom_point(aes(x = median_rel_abu, y = median_error, fill = error_cat), shape = 21) + 
@@ -225,6 +247,48 @@ rcov_box <- rel_error_summary %>%
       theme_bw() + 
       scale_y_log10() + 
       labs(x = "Error RCOV Outlier", y = "Median Relative Abundance", fill = "Boxplot Outlier") + 
+      coord_flip()
+
+ggarrange(error_scatter + rremove("x.text"), rcov_scatter + rremove("x.text"), 
+          error_box, rcov_box, 
+          ncol = 2, nrow = 2, align = "v",labels = "AUTO",
+      common.legend = TRUE, legend = "bottom")
+```
+
+
+Comparison of feature-level error rate and RCOV to the relative abundance mean/variance for the unmixed pre and post treatment samples. 
+
+```{r errorMeanVarOut, warning = FALSE, message = FALSE, fig.cap = "The variance-mean relationship for the unmixed sample relative abundance values does not explain outlier median and RCOV features. (A) Relationship between unmixed sample relative abundance variance/mean to the feature-level (A) median error rate and (B) error RCOV. Boxplots summarizing the unmixed sample relative abundance variance/mean between (C) error rate and (D) RCOV outlier and non-outlier features for features. Only features with median error rates greater than 0 included in the error rate boxplot."}
+## TODO - figure out filtering, NA cat values and rcov_error = 0
+unmix_filt <- unmix_counts %>% 
+      filter(!is.na(rcov_cat), !is.na(var_mean), var_abu != 0, mean_abu != 0, rcov_error != 0)
+
+error_scatter <- ggplot(unmix_filt) + 
+      geom_point(aes(x = var_mean, y = median_error, fill = error_cat), shape = 21) + 
+      theme_bw() + scale_x_log10() +       
+      labs(x = "", y = "Error Rate", fill = "Boxplot Outlier")
+
+error_box <- ggplot(unmix_filt, aes(x = error_cat, y = var_mean, fill = error_cat)) + 
+      geom_boxplot(width = 0.35) + 
+      stat_compare_means(label.x.npc = "center", label.y.npc = "center") + 
+      theme_bw() +
+      scale_y_log10() + 
+      labs(x = "Error Rate Outlier", y = "Unmixed Var/Mean") + 
+      coord_flip()
+
+
+## excluding features with rcov_error == 0 - artifacts and not real....
+rcov_scatter <- ggplot(unmix_filt) +
+      geom_point(aes(x = var_mean, y = rcov_error, fill = rcov_cat), shape = 21) + 
+      theme_bw() + scale_x_log10() + scale_y_log10() +    
+      labs(x = "", y = "Error RCOV", fill = "Boxplot Outlier")
+
+rcov_box <- ggplot(unmix_filt, aes(x = rcov_cat, y = var_mean, fill = rcov_cat)) + 
+      geom_boxplot(width = 0.35) + 
+      stat_compare_means(label.x.npc = "center", label.y.npc = "center") + 
+      theme_bw() + 
+      scale_y_log10() + 
+      labs(x = "Error RCOV Outlier", y = "Unmixed Var/Mean", fill = "Boxplot Outlier") + 
       coord_flip()
 
 ggarrange(error_scatter + rremove("x.text"), rcov_scatter + rremove("x.text"), 
@@ -362,55 +426,272 @@ facet_plot(p, panel = 'RCOV', data = mothur_dat,
       labs(title = "QIIME Relative Abundance E01JH0011")
 ```
 
-# Mean-variance
-Comparison of feature-level error rate and RCOV to the relative abundance mean/variance for the unmixed pre and post treatment samples. 
-The Mean
 ```{r}
-rel_abu_count_df <- readRDS("~/Desktop/raw_counts.RDS") %>%       
-      group_by(pipe, id) %>% 
-      mutate(total_count = sum(count)) %>% 
-      right_join(rel_error_summary)
+dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
+dada_metrics <- rel_error_summary %>%  
+      filter(feature_id %in% dada_tree$tip.label)
 
-unmix_counts <- rel_abu_count_df %>% 
-      filter(t_fctr %in% c(0, 20)) %>% 
-      mutate(rel_abu = count/total_count) %>% 
-      group_by(pipe, biosample_id, feature_id, t_fctr) %>% 
-      summarise(mean_abu = mean(rel_abu),
-                var_abu = var(rel_abu),
-                range_abu = max(rel_abu) - min(rel_abu)) %>%
-      mutate(var_mean = var_abu/mean_abu) %>% 
-      left_join(rel_error_summary)
+tips_to_drop <- dada_tree$tip.label[!(dada_tree$tip.label %in% dada_metrics$feature_id)] 
+dada_trim <- drop.tip(dada_tree,tip = tips_to_drop)
+
+dada_fData <- readRDS("../../mgtst_pipelines/dada2/dada_mrexp.rds") %>% .@featureData
+
+dada_tax <- dada_fData@data %>% 
+      as.data.frame() %>% 
+      dplyr::rename(id = OTUname) %>% 
+      filter(id %in% dada_trim$tip.label)
+
+dada_labels <-  data_frame(id = dada_trim$tip.label)
+dada_dat <- dada_metrics %>%
+      dplyr::rename(id = feature_id) %>%
+      right_join(dada_labels) %>%
+      ungroup() %>% 
+      dplyr::select(id, median_error, rcov_error)
+
+dada_trim <- groupOTU(dada_trim, split(dada_tax$id, dada_tax$Rank3), group_name = "Class")
+
+p <- ggtree(dada_trim, aes(color = Class)) + theme(legend.position = "right")
+
+p <- facet_plot(p, panel = 'Median Error', data = dada_dat,
+                geom=geom_segment, aes(x=0, xend=median_error, y=y, yend=y), size=1)
+
+
+facet_plot(p, panel = 'RCOV', data = dada_dat,
+           geom=geom_segment, aes(x=0, xend=rcov_error, y=y, yend=y), size=1) +
+      theme_tree2() + theme(legend.position = "bottom") + 
+      labs(title = "DADA2 Relative Abundance E01JH0011")
+```
+
+## Tree Viz
+### DADA2
+```{r}
+dada_metrics <- rel_error_summary %>% filter(pipe == "dada2")
+## Tree data
+dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
+
+# trimming tree
+tips_to_drop <- dada_tree$tip.label[!(dada_tree$tip.label %in% dada_metrics$feature_id)] 
+dada_trim <- drop.tip(dada_tree,tip = tips_to_drop) 
+
+## Getting Taxonomic assignment data
+dada_fData <- readRDS("../../mgtst_pipelines/dada2/dada_mrexp.rds") %>% .@featureData
+
+dada_tax <- dada_fData@data %>% 
+      as.data.frame() %>% 
+      dplyr::rename(id = OTUname) %>% 
+      filter(id %in% dada_trim$tip.label)  
+
+# Adding taxonomic groupings to tree 
+# dada_trim <- groupOTU(dada_trim, split(dada_tax$id, dada_tax$Rank3), group_name = "Class")
+dada_trim <- groupOTU(dada_trim, split(dada_tax$id, dada_tax$Rank2), group_name = "Phylum")
+
 ```
 
 ```{r}
-## Need to figure out why NA
-unmix_counts %>% filter(!is.na(error_cat), 
-                        median_rel_abu != 0, 
-                        !is.na(var_mean)) %>% 
-      ggplot() + 
-      geom_point(aes(x = var_mean, y = median_error, fill = error_cat), shape = 21) + 
-      theme_bw() + scale_x_log10()
+## Outlier category data frame
+dada_error <- dada_metrics %>% 
+      ungroup() %>% 
+      select(biosample_id, feature_id, median_error) %>% 
+      mutate(median_error = log2(abs(median_error)+ 1)) %>% 
+      spread(biosample_id, median_error)
+
+
+## Reordering cat data frame and converting to a matrix
+dada_mat <- dada_error %>% 
+      right_join(data.frame(feature_id = dada_trim$tip.label)) %>% 
+      as.data.frame() %>% 
+      column_to_rownames(var = "feature_id") %>% 
+      as.matrix()
+
+# ggtree(dada_trim, aes(color = Class), layout="circular", branch.length="none") %>%
+ggtree(dada_trim, aes(color = Phylum), layout="circular", branch.length="none") %>%
+      gheatmap(dada_mat, width=0.5, font.size=3, colnames_angle=-45) + 
+      scale_fill_gradient(low = "#56B1F7", high = "#132B43", na.value = "white") +
+      theme(legend.position = "bottom") + 
+      labs(title = "DADA2 Feature-level Error")
 ```
 
 ```{r}
-unmix_counts %>% 
-      filter(!is.na(error_cat), !is.na(var_mean)) %>% 
-      ggplot() + 
-      geom_boxplot(aes(x = error_cat, y = var_mean, fill = error_cat), shape = 21) + 
-      theme_bw() + scale_y_log10()
+## Outlier category data frame
+dada_rcov <- dada_metrics %>% 
+      ungroup() %>% 
+      select(biosample_id, feature_id, rcov_error) %>% 
+      mutate(rcov_error = log10(abs(rcov_error)+ 1)) %>% 
+      spread(biosample_id, rcov_error)
+
+
+## Reordering cat data frame and converting to a matrix
+dada_mat <- dada_rcov %>% 
+      right_join(data.frame(feature_id = dada_trim$tip.label)) %>% 
+      as.data.frame() %>% 
+      column_to_rownames(var = "feature_id") %>% 
+      as.matrix()
+
+# ggtree(dada_trim, aes(color = Class), layout="circular", branch.length="none") %>%
+ggtree(dada_trim, aes(color = Phylum), layout="circular", branch.length="none") %>%
+      gheatmap(dada_mat, width=0.5, font.size=2, colnames_angle=-45) + 
+      coord_polar(theta='y') + 
+      scale_fill_gradient(low = "#56B1F7", high = "#132B43", na.value = "white") +
+      theme(legend.position = "bottom") + 
+      labs(title = "DADA2 Feature-level RCOV")
 ```
 
-
+### QIIME
 ```{r}
-unmix_counts %>% filter(!is.na(rcov_cat), !is.na(var_mean), rcov_error != 0) %>% 
-      ggplot() + 
-      geom_point(aes(x = var_mean, y = rcov_error, fill = rcov_cat), shape = 21) + 
-      theme_bw() + scale_x_log10() + scale_y_log10()
+qiime_metrics <- rel_error_summary %>% filter(pipe == "qiime")
+## Tree data
+qiime_tree <- read.tree("~/Projects/mgtst_pipelines/qiime/otus_uc_fast/rep_set.tre")
+
+# trimming tree
+tips_to_drop <- qiime_tree$tip.label[!(qiime_tree$tip.label %in% qiime_metrics$feature_id)] 
+qiime_trim <- drop.tip(qiime_tree,tip = tips_to_drop) 
+
+## Getting Taxonomic assignment data
+qiime_fData <- readRDS("../../mgtst_pipelines/qiime/qiime_mrexp.rds") %>% .@featureData
+
+qiime_tax <- qiime_fData@data %>% 
+      as.data.frame() %>% 
+      dplyr::rename(id = OTUname) %>% 
+      filter(id %in% qiime_trim$tip.label) %>% 
+      mutate(Rank3 = str_replace(Rank3, "c__","")) %>% 
+      mutate(Rank2 = str_replace(Rank2, "p__",""))
+
+# Adding taxonomic groupings to tree 
+# qiime_trim <- groupOTU(qiime_trim, split(qiime_tax$id, qiime_tax$Rank3), group_name = "Class")
+qiime_trim <- groupOTU(qiime_trim, split(qiime_tax$id, qiime_tax$Rank2), group_name = "Phylum")
+
 ```
 
 ```{r}
-unmix_counts %>% filter(!is.na(rcov_cat), !is.na(var_mean), rcov_error != 0) %>% 
-      ggplot() + 
-      geom_boxplot(aes(x = rcov_cat, y = var_mean, fill = rcov_cat), shape = 21) + 
-      theme_bw() + scale_y_log10()
+## Outlier category data frame
+qiime_error <- qiime_metrics %>% 
+      ungroup() %>% 
+      select(biosample_id, feature_id, median_error) %>% 
+      mutate(median_error = log2(abs(median_error)+ 1)) %>% 
+      spread(biosample_id, median_error)
+
+
+## Reordering cat data frame and converting to a matrix
+qiime_mat <- qiime_error %>% 
+      right_join(data.frame(feature_id = qiime_trim$tip.label)) %>% 
+      as.data.frame() %>% 
+      column_to_rownames(var = "feature_id") %>% 
+      as.matrix()
+
+# ggtree(qiime_trim, aes(color = Class), layout="circular", branch.length="none") %>%
+ggtree(qiime_trim, aes(color = Phylum), layout="circular", branch.length="none") %>%
+      gheatmap(qiime_mat, width=0.5, font.size=2) + 
+      coord_polar(theta='y') +
+      scale_fill_gradient(low = "#56B1F7", high = "#132B43", na.value = "white") +
+      theme(legend.position = "bottom") + 
+      labs(title = "QIIME Feature-level Error")
+```
+
+```{r}
+## Outlier category data frame
+qiime_rcov <- qiime_metrics %>% 
+      ungroup() %>% 
+      select(biosample_id, feature_id, rcov_error) %>% 
+      mutate(rcov_error = log10(abs(rcov_error)+ 1)) %>% 
+      spread(biosample_id, rcov_error)
+
+
+## Reordering cat data frame and converting to a matrix
+qiime_mat <- qiime_rcov %>% 
+      right_join(data.frame(feature_id = qiime_trim$tip.label)) %>% 
+      as.data.frame() %>% 
+      column_to_rownames(var = "feature_id") %>% 
+      as.matrix()
+
+# ggtree(qiime_trim, aes(color = Class), layout="circular", branch.length="none") %>%
+ggtree(qiime_trim, aes(color = Phylum), layout="circular", branch.length="none") %>%
+      gheatmap(qiime_mat, width=0.5, font.size=2) + 
+      coord_polar(theta='y') + 
+      scale_fill_gradient(low = "#56B1F7", high = "#132B43", na.value = "white") +
+      theme(legend.position = "bottom") + 
+      labs(title = "QIIME Feature-level RCOV")
+```
+
+## Mothur
+```{r}
+mothur_metrics <- rel_error_summary %>%  
+      filter(pipe == "mothur")
+
+seq_id_df <- read_lines("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.fasta") %>% grep(pattern = ">", value = TRUE) %>%
+      str_replace("\\|.*","") %>%
+      str_replace(">","") %>%
+      enframe(name = "X", value = "seq_id") %>%
+      select(-X) %>%
+      separate(seq_id, into = c("seq_id", "feature_id"),sep = "\t")
+
+
+mothur_tree <- read.tree("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.tre")
+
+seq_tree_ids <- data_frame(seq_id = mothur_tree$tip.label) %>%
+      left_join(seq_id_df)
+
+mothur_tree$tip.label <- seq_tree_ids$feature_id
+
+
+
+tips_to_drop <- mothur_tree$tip.label[!(mothur_tree$tip.label %in% mothur_metrics$feature_id)] 
+mothur_trim <- drop.tip(mothur_tree,tip = tips_to_drop)
+
+mothur_fData <- readRDS("../../mgtst_pipelines/mothur/mothur_mrexp.rds") %>% .@featureData
+
+mothur_tax <- mothur_fData@data %>% 
+      as.data.frame() %>% 
+      dplyr::rename(id = OTUname) %>% 
+      filter(id %in% mothur_trim$tip.label)
+
+mothur_trim <- groupOTU(mothur_trim, split(mothur_tax$id, mothur_tax$Rank2), group_name = "Phylum")
+```
+
+```{r}
+## Outlier category data frame
+mothur_error <- mothur_metrics %>% 
+      ungroup() %>% 
+      select(biosample_id, feature_id, median_error) %>% 
+      mutate(median_error = log2(abs(median_error)+ 1)) %>% 
+      spread(biosample_id, median_error)
+
+
+## Reordering cat data frame and converting to a matrix
+mothur_mat <- mothur_error %>% 
+      right_join(data.frame(feature_id = mothur_trim$tip.label)) %>% 
+      as.data.frame() %>% 
+      column_to_rownames(var = "feature_id") %>% 
+      as.matrix()
+
+# ggtree(mothur_trim, aes(color = Class), layout="circular", branch.length="none") %>%
+ggtree(mothur_trim, aes(color = Phylum), layout="circular", branch.length="none") %>%
+      gheatmap(mothur_mat, width=0.5, font.size=3, colnames_angle=-45) + 
+      scale_fill_gradient(low = "#56B1F7", high = "#132B43", na.value = "white") +
+      theme(legend.position = "bottom") + 
+      labs(title = "Mothur Feature-level Error")
+```
+
+```{r}
+## Outlier category data frame
+mothur_rcov <- mothur_metrics %>% 
+      ungroup() %>% 
+      select(biosample_id, feature_id, rcov_error) %>% 
+      mutate(rcov_error = log10(abs(rcov_error)+ 1)) %>% 
+      spread(biosample_id, rcov_error)
+
+
+## Reordering cat data frame and converting to a matrix
+mothur_mat <- mothur_rcov %>% 
+      right_join(data.frame(feature_id = mothur_trim$tip.label)) %>% 
+      as.data.frame() %>% 
+      column_to_rownames(var = "feature_id") %>% 
+      as.matrix()
+
+# ggtree(mothur_trim, aes(color = Class), layout="circular", branch.length="none") %>%
+ggtree(mothur_trim, aes(color = Phylum), layout="circular", branch.length="none") %>%
+      gheatmap(mothur_mat, width=0.5, font.size=2, colnames_angle=-45) + 
+      coord_polar(theta='y') + 
+      scale_fill_gradient(low = "#56B1F7", high = "#132B43", na.value = "white") +
+      theme(legend.position = "bottom") + 
+      labs(title = "Mothur Feature-level RCOV")
 ```
