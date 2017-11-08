@@ -7,8 +7,6 @@ output:
     fig_caption: yes
 ---
 
-
-
 ```{r fLevelRelAbuSetup, include=FALSE} 
 # * Address issues with var-mean: NA cats, and 0 values for rcov_error 
 # * summarize results
@@ -433,7 +431,6 @@ error_box <- ggplot(unmix_filt, aes(x = error_cat, y = var_mean, fill = error_ca
       labs(x = "Error Rate Outlier", y = "Unmixed Var/Mean") + 
       coord_flip()
 
-
 ## excluding features with rcov_error == 0 - artifacts and not real....
 rcov_scatter <- ggplot(unmix_filt) +
       geom_point(aes(x = var_mean, y = rcov_error, fill = rcov_cat), shape = 21) + 
@@ -459,4 +456,28 @@ ggarrange(dada_fig_tree, qiime_fig_tree, mothur_fig_tree,
           labels = "AUTO", ncol = 1, nrow = 3, common.legend = TRUE)
 ```
 
+```{r}
+## Outlier category data frame
+dada_rcov <- dada_metrics %>% 
+      ungroup() %>% 
+      select(biosample_id, feature_id, rcov_error) %>% 
+      mutate(rcov_error = log10(abs(rcov_error)+ 1)) %>% 
+      spread(biosample_id, rcov_error)
+
+
+## Reordering cat data frame and converting to a matrix
+dada_mat <- dada_rcov %>% 
+      right_join(data.frame(feature_id = dada_trim$tip.label)) %>% 
+      as.data.frame() %>% 
+      column_to_rownames(var = "feature_id") %>% 
+      as.matrix()
+
+# ggtree(dada_trim, aes(color = Class), layout="circular", branch.length="none") %>%
+ggtree(dada_trim, aes(color = Phylum), layout="circular", branch.length="none") %>%
+      gheatmap(dada_mat, width=0.5, font.size=2, colnames_angle=-45) + 
+      coord_polar(theta='y') + 
+      scale_fill_gradient(low = "#56B1F7", high = "#132B43", na.value = "white") +
+      theme(legend.position = "bottom") + 
+      labs(title = "DADA2 Feature-level RCOV")
+```
 
