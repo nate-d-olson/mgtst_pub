@@ -75,7 +75,7 @@ The RDP classifier implemented in mothur was used for taxonomic classification a
 The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb) using QIIME version 1.9.1 [@caporaso2010qiime]. 
 Briefly the QIIME pipeline uses fastq-join to merge paired-end reads [@aronesty2011ea], the Usearch algorithm  [@edgar2010search] and Greengenes database version 13.8 with a 97% similarity threshold [@desantis2006greengenes] was used for open-reference clustering. 
 DADA2 a R native pipeline was also used to process the sequencing data [@callahan2016dada2].
-The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier [@wang2007naive] and the SILVA database V123 provided by the DADA2 developers [@quast2012silva, https://benjjneb.github.io/dada2/training.html].  
+The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier [@wang2007naive] and the SILVA database V123 provided by the DADA2 developers [@quast2012silva, https://benjjneb.github.io/dada2/training.html]. 
 The unclustered pipeline was based on the mothur _de-novo_ clustering pipeline, where the paired-end reads were merged and filtered using the `make.contigs` command and then dereplicated. 
 Reads were aligned to the reference Silva alignment (V119, https://www.arb-silva.de/) and reads failing alignment were excluded from the dataset. 
 To limit the size of the dataset the most abundant 40,000 OTUs (comparable to the mothur dataset), across all samples, were used as the unclustered dataset. 
@@ -118,7 +118,7 @@ Large feature-level error rate bias and variance outliers were observed, these o
 To assess differential abundance log fold-change estimates, log fold-change between all titrations were compared to the expected log fold-change values for the pre-specific and pre-dominant features. 
 When assuming the feature is only present in pre-exposure samples the expected log fold-change is independent of the observed counts for the unmixed samples. 
 Expected log fold-change between titrations $i$ and $j$ is calculated using \@ref(eq:expLogFC), where $\theta$ is the proportion of post-exposure bacterial DNA in a titration. 
-Pre-dominant and pre-specific features were defined as features observed in all four pre-exposure PCR replicates and a log fold-change between pre- and post-exposure samples greater than 5.  
+Pre-dominant and pre-specific features were defined as features observed in all four pre-exposure PCR replicates and a log fold-change between pre- and post-exposure samples greater than 5. 
 Pre-specific features were not observed in any of the post-exposure PCR replicates and pre-dominant features were observed in one or more of the post-exposure PCR replicates. 
 Only individuals with consistent inferred and estimated $\theta$ values were included in the log fold-change analysis, E01JH0004, E01JH0011, and E01JH0016. 
 
@@ -151,7 +151,7 @@ We formulated our null and alternative hypothesis for the Bayesian test as follo
 $H_0$ - Given the total abundance for a sample and minimum expected proportion the true proportion of a feature is __less than__ the minimum expected observed proportion.   
 $H_1$ - Given the total abundance for a sample and minimum expected proportion the true proportion of a feature is __greater than or equal to__ the minimum expected proportion.  
 
-The following equations \@ref(eq:probPi, eq:probC) were used to calculate the p-value for the Bayesian hypothesis test assuming equal priors, i.e. $P(\pi < \pi_{min_{exp}}) = P(\pi \geq \pi_{min_{exp}})$.  
+The following equations \@ref(eq:probPi;eq:probC) were used to calculate the p-value for the Bayesian hypothesis test assuming equal priors, i.e. $P(\pi < \pi_{min_{exp}}) = P(\pi \geq \pi_{min_{exp}})$.  
 
 \begin{equation} 
   p =P(\pi < \pi_{min_{exp}} | C \geq C_{obs}) = \frac{P(C \geq C_{obs}| \pi < \pi_{min_{exp}})P(\pi < \pi_{min_{exp}})}{P(C \geq C_{obs})}

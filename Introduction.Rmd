@@ -12,40 +12,43 @@ bibliography: [mgtst.bib, packages.bib]
 BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
 -->
 
-Metagenomics, sequencing the DNA from a microibal community, has greatly advanced our understanding of the microbial world. 
-Targeted sequencing of the 16S rRNA gene, 16S metagenomics, is a commonly used method for sequencing a microbial community, as the targeted approach allows for a more in-depth exploration of a microbial community taxonomic compositions compared to shotgun metagenomics where whole genomes are sequenced. 
-16S metagenomics is a complex measurement process comprised of multiple molecular laboratory and computation steps [@goodrich2014conducting;@kim2017optimizing]. 
-There are numerous sources of error and bias in the measurement process, for both the molecular laboratory (e.g. PCR and sequencing) and computational steps (e.g. sequence clustering) [@Amore2016;@Goodrich2014;@brooks2015truth]. 
-Appropriate methods are needed to evaluate the 16S measurement process inorder to characterize how these sources of bias and error impact the measurement results and determine where to focus communities efforts for improving the measurement process.
-
-A key step in the measurement process is clustering, the grouping of sequences into biologically relevant units, or operational taxonomic units (OTUs). 
-There are a number of different clustering methods.  
-The two most commonly used clustering methods are _de-novo_ clustering and open-reference clustering. 
-_de-novo_ clustering algorithms group sequences based on a defined similarity threshold [@westcott2015novo]. 
-Open-reference clustering matches sequences to a set of previously clustered reference sequences (_de-novo_) then perform _de-novo_ clustering on the sequences in the dataset that do not match to sequences in the reference dataset with the desired similarity threshold [@he2015stability]. 
-A third methods for clustering, sequence inference, uses statistical models or algorithms to differentiate true biological sequences within a dataset from sequencing errors [@callahan2016dada2;@amir2017deblur;@eren2015minimum].
-
-Further challenging the measurement process is the compositional nature of the 16S data, that is the proporition of an organism within a sample is being measured and not the absolute abundance [@tsilimigras2016compositional]. 
-Sequencing data only provide information regarding the relative abundance of organisms within a samples to other organisms within the same sample. 
-When comparing the relative abundance of an organism across samples you are comparing organismal abundance relative to the rest of the organisms within the sample. 
-As a result an organism can have the same absolute abundance in two samples but due to differences in either the microbial community composition or for targeted assays such as 16S metagenomics differences in the proportion of human DNA in the sample. 
+Metagenomics, sequencing microbial community DNA, has greatly advanced our understanding of the microbial world. 
+Targeted sequencing of the 16S rRNA gene, 16S metagenomics, is a commonly used method for sequencing a microbial community. 
+16S metagenomics is a complex measurement process comprised of multiple molecular laboratory and computational steps [@goodrich2014conducting;@kim2017optimizing]. 
+There are numerous sources of error and bias in the measurement process, for both the molecular (e.g. PCR and sequencing) and computational steps (e.g. sequence clustering) [@Amore2016;@Goodrich2014;@brooks2015truth]. 
+Appropriate datasets and methods are needed to evaluate the 16S measurement process inorder to characterize how these sources of bias and error impact the measurement results and determine where to focus efforts for improving the measurement process.
 
 In order to characterize the accuracy of a measurement process you need a sample or dataset with an expected value to benchmark against. 
-There have been a number of studies characterizing and evaluating different steps in the 16S rRNA metagenomics measurement process all of which use mock communities, simulated data, or environmental samples. 
-Mock communities consisting of mixtures of cells or DNA from individual organisms and simulated data have been previously used to evaluate different aspects of the measurement process [@bokulich2016mockrobiota]. 
-Mock communities have an expected value but are not representative of the complexity of environmental samples in terms of the of number or abundance distributions of organisms. 
+There have been a number of studies characterizing and evaluating different steps in the 16S rRNA metagenomics measurement process which use mock communities, simulated data, or environmental samples. 
+Mock communities consisting of mixtures of cells or DNA from individual organisms have an expected value but are not representative of the complexity of environmental samples in terms of the of number or abundance distributions of organisms [@bokulich2016mockrobiota]. 
 Similar to mock communities simulated data have an expected value that can be used for benchmarking. 
 However, the sequencing error profile is not completely understood and therefore simulated sequencing data does not recapitulate the complexity of sequencing data generated from an environmental sample. 
-While simulated data and mock communities are usefull in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities are not necessarily optimized to handle the additional biases,  noise, and diversity present in real samples. 
-Data generated from environmental samples, which include the biase, error, and diversity of real samples, are often used to benchmark new molecular laboratory and computational methods. 
-However, without an expected value to compare to only measurement precision can be evaluated.  
-
-An alternative to these types of data is sequencing data generated from mixtures of environmental samples. 
+While simulated data and mock communities are usefull in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities and simulated data are not necessarily optimized to handle the biases, noise, and diversity present in real samples. 
+Data generated from environmental samples, which include the biases, error, and diversity of real samples, are often used to benchmark new molecular laboratory and computational methods. 
+However, without an expected value to compare to only measurement precision, similarity of results to thoes generated using a different method, can be evaluated. An alternative to these types of data is sequencing data generated from mixtures of environmental samples. 
 By mixing environmental samples at known proportions you can use information obtained from the unmixed samples and how they were mixed to obtain an expected value for use in assessing the measurement process. 
 Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq [@parsons2015using;@pine2011adaptable;@thompson2005use]
 
-- Application to 16S   
-    + We generated a data set using mixtures of extracted DNA from human stool samples for assessing the 16S metagenomic measurement process.  
-    + Processed the resulting dataset with three bioinformatic pipelines
- and performed a quantitative and qualitative assessment of the resulting count tables.  
-    + Results indicate that .... 
+In the present study we developed a mixture dataset of extracted DNA from human stool samples for assessing the 16S metagenomic measurement process. 
+The mixture datasets was processed using three bioinformatic pipelines. 
+We developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results. 
+The quantitative results were similar across pipelines but the qualitative results varied across pipelines. 
+Additionally, the dataset and metrics developed in this study can be used to evaluate new bioinformatic pipelines. 
+
+
+```{r include = FALSE}
+### -------------------------- Old text to save --------------------------------
+# A key step in the measurement process is clustering, the grouping of sequences into biologically relevant units, or operational taxonomic units (OTUs). 
+# There are a number of different clustering methods.  
+# The two most commonly used clustering methods are _de-novo_ clustering and open-reference clustering. 
+# _de-novo_ clustering algorithms group sequences based on a defined similarity threshold [@westcott2015novo]. 
+# Open-reference clustering matches sequences to a set of previously clustered reference sequences (_de-novo_) then perform _de-novo_ clustering on the sequences in the dataset that do not match to sequences in the reference dataset with the desired similarity threshold [@he2015stability]. 
+# A third methods for clustering, sequence inference, uses statistical models or algorithms to differentiate true biological sequences within a dataset from sequencing errors [@callahan2016dada2;@amir2017deblur;@eren2015minimum].
+# 
+# Further challenging the measurement process is the compositional nature of the 16S data, that is the proporition of an organism within a sample is being measured and not the absolute abundance [@tsilimigras2016compositional]. 
+# Sequencing data only provide information regarding the relative abundance of organisms within a samples to other organisms within the same sample. 
+# When comparing the relative abundance of an organism across samples you are comparing organismal abundance relative to the rest of the organisms within the sample. 
+# As a result an organism can have the same absolute abundance in two samples but due to differences in either the microbial community composition or for targeted assays such as 16S metagenomics differences in the proportion of human DNA in the sample. 
+```
+ 
+ 
