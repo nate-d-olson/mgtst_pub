@@ -8,29 +8,19 @@ output:
 bibliography: [mgtst.bib, packages.bib]
 ---
 
-By using mixtures of environmental samples we were able to generate a 16S metagenomic benchmarking dataset with the diversity, relative abundance dynamic range, and sequencing artifacts of a real dataset. 
+We generated a 16S metagenomic benchmarking dataset with the diversity, relative abundance dynamic range, and sequencing artifacts of a real dataset using mixtures of environmental samples 
 We used the dataset to assess the feature presence/ absence, relative abundance, and log fold-change for count tables generated using four different bioinformatic pipelines
-There were two primary limitations of the study that were a product of the experimental design. 
-Only features that were differentially abundant between the pre- and post-exposure were used in the assessment. 
-Using samples from the vaccine trial provided a specific features, _E. coli_ that could be used during method development. 
-However, only a limited number of features were differentially abundant between the pre- and post-exposure samples resulting in a smaller set of features that could be used in our assessment. 
-Generating mixtures of samples with less similarity would increase the number of features used in the assessment. 
-Additionally, using samples from other environments would increase the taxonomic diversity of features used in the assessment and potentially allowing for a more rigorus evaluation of the relationship between the assessment metrics and phylogeny. 
-The second limitation of the experimental design was the difference in the proportion of bacterial DNA between the pre- and post-exposure samples. 
-We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentation of bacterial DNA across titration but we were unable to estimate the proportion of bacterial DNA in the unmixed samples using the qPCR data. 
-Using the 16S sequencing data we inferred the proportion of bacterial DNA from the post-exposure sample in each titration. 
-However, the uncertainty and accuracy of the inferrence method is not known resulting in an unaccounted for error source. 
-A better method for estimating the proportion of bacterial DNA in the unmixed samples would increase the accuracy of the error metrics. 
 
-Evaluated the performance of four different bioinformatic pipelines, open-clustering, de-novo clustering, sequencing inference, and unclustered. 
-Running these pipelines on the same dataset resulted in a range of total feature abundance and features per sample. 
-Despite the wide range in number of features the pipelines all generated datasets with similar levels of sparsity. 
-As the dataset is highly redundant, 180 samples derived from 10 envirnomental samples lower sparsity was expected. 
-The qualitative assessment results indicate that the sequence inference method had a high rate of false negative features. 
+We assessed the performance of three bioinformatic pipelines, open-clustering, _de-novo_ clustering, sequencing inference, and unclustered. 
+Running these pipelines on our mixture dataset resulted in a range of total feature abundance and features per sample. 
+Despite the wide range in number of features the pipelines all generated similarly sparse datasets. 
+As the dataset is highly redundant, 180 samples derived from 10 environmental samples lower sparsity was expected. 
+__Paulson metagenomeSeq paper supplemental figure 4 1-3% features detected per sample__  
+The qualitative assessmen results, specifically the high proportion of titration and unmixed sample specific features that could not be explained by sampling alone, indicates that the sequence inference method had a high false negative feature detection rate 
 This high false negative rate likey resulted in higher sparsity. 
-For the other pipelines the high sparsity is attributed to features that were artifacts of the sequencing process, false positives. 
-The high rate of false positive features have been observed in benchmarking studies using mock communities.
-The 16S region sequenced in the study is larger than the region the de-novo and open clustering pipelines were initially developed for. 
+For the other pipelines the high sparsity is attributed to features that were artifacts of the sequencing process, false positives.  
+The high rate of false positive features have been observed in benchmarking studies using mock communities __REF__.
+The 16S region sequenced in the study is larger than the region the de-novo and open clustering pipelines were initially developed for __REF-Schloss__. 
 The larger region has a smaller overlap between the forward and reverse reads as a result in our study the merging of the forward and reverse reads did not allow for the sequence error correction that occurs when their is greater overlap. 
 
 As the qualitative assessment results were pipeline dependent the implications for 16S metagenomic studies vary by pipeline. 
@@ -54,7 +44,7 @@ In general low abundance features are noisier but high abundance features are no
 
 __Outliers as a product of artificial merging or splitting of features__
 
-Compositionality nature of 16S metagenomic data is well known within the field. 
+Compositional nature of 16S metagenomic data is well known within the field. 
 The proportion of prokaryotic DNA in a sample is rarely taken into consideration in 16S studies. 
 Our error metrics decrease when using our inferred $\theta$ values to correct for difference in prokaryotic DNA proportions. 
 The extent to which the impact of differences in the proportion of prokaryotic DNA between sets of samples compared in a 16S studies is not well known. 
@@ -69,3 +59,20 @@ The objective of any pipeline is to differentiate true biological sequences in a
 Users should consider whether a pipeline is minimizes false positives (DADA2) or false negatives (Mothur). 
 Continued effort to improve the 16S metagenomic measurement process to better understand and account for differences in the proportion of prokaryotic DNA in the samples and sequence artifacts. 
 Addressing both of these issues requires advances in both the molecular biology and computational components of the measurement process. 
+
+```{r include = FALSE}
+### -------------------------------- Old text that was cut ---------------------
+# There were two primary limitations of the study that were a product of the experimental design. 
+# Only features that were differentially abundant between the pre- and post-exposure were used in the assessment. 
+# Using samples from the vaccine trial provided a specific features, _E. coli_ that could be used during method development. 
+# However, only a limited number of features were differentially abundant between the pre- and post-exposure samples resulting in a smaller set of features that could be used in our assessment. 
+# Generating mixtures of samples with less similarity would increase the number of features used in the assessment. 
+# Additionally, using samples from other environments would increase the taxonomic diversity of features used in the assessment and potentially allowing for a more rigorus evaluation of the relationship between the assessment metrics and phylogeny. 
+# The second limitation of the experimental design was the difference in the proportion of bacterial DNA between the pre- and post-exposure samples. 
+# We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentation of bacterial DNA across titration but we were unable to estimate the proportion of bacterial DNA in the unmixed samples using the qPCR data. 
+# Using the 16S sequencing data we inferred the proportion of bacterial DNA from the post-exposure sample in each titration. 
+# However, the uncertainty and accuracy of the inferrence method is not known resulting in an unaccounted for error source. 
+# A better method for estimating the proportion of bacterial DNA in the unmixed samples would increase the accuracy of the error metrics. 
+# Alternatively samples that are primarily prokaryotic DNA could be used
+```
+
