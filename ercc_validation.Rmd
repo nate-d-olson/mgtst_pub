@@ -11,6 +11,7 @@ output:
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 library(ProjectTemplate)
 load.project()
+library(stringr)
 library(modelr)
 library(ggpubr)
 library(kableExtra)
@@ -197,13 +198,19 @@ The deviation from the expected slope for the pre-exposure ERCC qPCR results is 
 When taking into consideration the quantitative limitations of the qPCR assay these results indicate that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
 
 ```{r erccTable, echo=FALSE, message=FALSE}
-ercc_tbl %>% arrange(treatment) %>% 
+ercc_tbl %>% 
+      left_join(erccMeta) %>% 
+      arrange(treatment) %>% 
       dplyr::rename(Individual = biosample_id, 
              Treatment = treatment, 
              `Std. $R^2$` = std_R2,
-             `$R^2$` = R2) %>% 
-      select(Treatment, Individual, `Std. $R^2$`, E, AF, `$R^2$`, Slope) %>% 
-    knitr::kable(caption = "ERCC Spike-in qPCR summary statistics. $R^2$, Efficiency (E), and amplification factor (AF) for standard curves. $R^2$ and slope for titration qPCR results for the titration series.", escape = FALSE,  booktabs = TRUE) %>% 
+             `$R^2$` = R2,
+             ERCC = ercc_id,
+             Assay = assay_id,
+             Length = amplicon_length) %>% 
+      mutate(Assay = str_replace(Assay, "_a1", "-a1")) %>% 
+      dplyr::select(Treatment, Individual, ERCC, Assay, Length, `Std. $R^2$`, E, `$R^2$`, Slope) %>% 
+    knitr::kable(caption = "ERCC Spike-in qPCR assay information and summary statistics. ERCC is the ERCC identifier for the ERCC spike-in, Assay is TaqMan assay, and Length and GC are the size and GC contenct of the qPCR amplicon.  The Std. $R^2$ and Efficiency (E) statistics were computed for the standard curves. $R^2$ and slope for titration qPCR results for the titration series.", escape = FALSE,  booktabs = TRUE) %>% 
       collapse_rows(columns = 1)
 ```
 
