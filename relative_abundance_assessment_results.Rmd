@@ -148,7 +148,7 @@ relAbuOvE <- prop_inferred %>%
       ggplot() + 
       geom_point(aes(x = inferred_prop, y = nb_prop), alpha = 0.15) +
       geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") +
-      geom_smooth(aes(x = inferred_prop, y = nb_prop)) +
+      geom_smooth(aes(x = inferred_prop, y = nb_prop), method = "lm") +
       facet_grid(pipe~biosample_id) +
       scale_y_log10() + scale_x_log10() +
       theme_bw() +
@@ -404,7 +404,7 @@ mothur_fig_tree <- ggtree(mothur_tree_dat$tree, aes(color = Phylum), ladderize =
       theme(legend.position = "bottom")
 ```
 
-```{r relAbuError, fig.cap = "(A) Expected and observed count relationship. Orange line indicates expected 1-to-1 relationship. Blue line a smoothed regression line of the observed and expected value relationship. Distribution of feature-level relative abundance (B) median error rates and (C) robust coefficient of variation (RCOV) by individual and pipeline.", echo = FALSE, warning=FALSE, message = FALSE, fig.height = 8}
+```{r relAbuError, fig.cap = "(A) Expected and observed count relationship. Orange line indicates expected 1-to-1 relationship. Blue line a smoothed regression line of the observed and expected value relationship. Features with observed and expected relative abundance values less than 1/median library size were excluded from the figure. Distribution of feature-level relative abundance (B) median error rates and (C) robust coefficient of variation (RCOV) by individual and pipeline.", echo = FALSE, warning=FALSE, message = FALSE, fig.height = 8}
 ggarrange(relAbuOvE, 
           error_boxplot + rremove("x.text"), 
           rcov_boxplot, 
@@ -440,7 +440,7 @@ rel_abu_error_summary %>%
       collapse_rows(columns = 1)
 ```
 
-```{r errorOut, warning = FALSE, message = FALSE, echo = FALSE, fig.cap = "Feature-level median relative abundance is lower for error rate outlier features but not for RCOV outlier features. (A) Relationship between median relative abundance to the feature-level (A) median error rate and (B) error RCOV. Boxplots summarizing the feature-level median relative abundance between (C) error rate and (D) RCOV outlier and non-outlier features for features. Only features with median error rates greater than 0 included in the error rate boxplot."}
+```{r errorOut, warning = FALSE, message = FALSE, echo = FALSE, fig.cap = "Feature-level median relative abundance is lower for error rate outlier features but not for RCOV outlier features. (Relationship between median relative abundance to the feature-level  (A) median error rate and (B) error RCOV. Boxplots summarizing the feature-level median relative abundance between (C) error rate and (D) RCOV outlier and non-outlier features for features. Only features with median error rates greater than 0 included in the error rate boxplot."}
 error_scatter <- rel_error_summary %>% 
       ggplot() + 
       geom_point(aes(x = median_rel_abu, y = median_error, fill = error_cat), shape = 21) + 

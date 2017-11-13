@@ -12,7 +12,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(Rqc)
 library(ProjectTemplate)
 load.project()
-
+library(ggpubr)
 project_dir <- "../16S_etec_mix_study/"
 pipeline_dir <- "../mgtst_pipelines/"
 ``` 
@@ -69,10 +69,10 @@ lib_size <- meta_df %>% filter(Read == "R1", biosample_id != "NTC", reads != 270
 ```
 
 Quality assessment of sequencing run summarizing number of reads per sample.
-Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:readCount)). 
+Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:qaPlots)A). 
 The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
 Excluding the one failed reaction with 2,700 reads and the NTCs, the total range in the observed number of sequences per samples is `r min(lib_size)` to `r max(lib_size)` reads with a median library size of `r median(lib_size)`. 
-For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:lowcycleq)).
+For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
 
 ```{r cycle_metrics, warning=FALSE, message=FALSE, echo = FALSE}
 ## amplicon position __Cycle Level Metrics__
@@ -87,6 +87,32 @@ qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>%
     left_join(meta_df) %>% left_join(amp_pos_df)
 ```
 
+```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size. (B) Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads."}
+lib_size_fig <- meta_df %>% 
+      filter(Read == "R1") %>% unique() %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = biosample_id, y = reads)) + 
+      scale_y_log10() + 
+      geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
+      theme_bw() + labs(y = "Library Size", 
+                        x = "Individual")
+
+qual_fig <- qa_cycle_q_df %>% 
+      filter(biosample_id != "NTC", ill_id != "1-F9") %>%
+      ggplot(aes(x = amp_pos, y = score)) +
+      geom_vline(aes(xintercept = 300), color = "grey60") +
+      geom_vline(aes(xintercept = 160), color = "grey60") +
+      geom_smooth(aes(weight = count, group = Read), color = "black") +
+      theme_bw() +
+      scale_x_continuous(breaks = c(0,150,300, 450)) +
+      labs(x = "Amplicon Position",
+           y = "Base Quality Score") +
+      theme(legend.position = "bottom")
+
+ggarrange(lib_size_fig, qual_fig, ncol = 1, nrow = 2,labels = "AUTO")
+```
+
+
 ```{r tableCount, warning=FALSE, message=FALSE, echo = FALSE}
 # meta_df %>% mutate(exp_ntc = ifelse(biosample_id == "NTC", "NTC","EXP")) %>% 
 #     filter(Read == "R1", ill_id != "1-F9") %>% 
@@ -97,30 +123,30 @@ qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>%
 #     kable(caption = "Summary statistics for number of reads per sample by biological replicate.", booktab = TRUE)
 ```
 
-```{r readCount, fig.cap="Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates 35,000 reads per barcoded sample.", fig.lp = "fig:", warning=FALSE, message=FALSE, echo = FALSE }
-meta_df %>% filter(Read == "R1") %>% unique() %>% 
-    ggplot() + 
-        geom_boxplot(aes(x = biosample_id, y = reads)) + 
-      scale_y_log10() + 
-        geom_hline(aes(yintercept = 35000), color = "grey60", linetype = 2) +
-        theme_bw() + labs(y = "Library Size", 
-                          x = "Individual")
+```{r readCount, fig.cap="Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size.", fig.lp = "fig:", warning=FALSE, message=FALSE, echo = FALSE }
+# meta_df %>% filter(Read == "R1") %>% unique() %>% 
+#     ggplot() + 
+#         geom_boxplot(aes(x = biosample_id, y = reads)) + 
+#       scale_y_log10() + 
+#         geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
+#         theme_bw() + labs(y = "Library Size", 
+#                           x = "Individual")
 ```
 
 
 
 ```{r lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads.", echo = FALSE, warning = FALSE, message = FALSE}
-qa_cycle_q_df %>% 
-      filter(biosample_id != "NTC", ill_id != "1-F9") %>%
-      ggplot(aes(x = amp_pos, y = score)) +
-    geom_vline(aes(xintercept = 300), color = "grey60") +
-    geom_vline(aes(xintercept = 160), color = "grey60") +
-    # geom_smooth(aes(weight = count, color = biosample_id, group = filename)) +
-    geom_smooth(aes(weight = count,group = Read)) +
-    # geom_vline(aes(xintercept = 280), color = "grey40", linetype = 2) +
-    theme_bw() +
-    scale_x_continuous(breaks = c(0,150,300, 450)) +
-    labs(x = "Amplicon Position",
-         y = "Base Quality Score", color = "Individual") +
-    theme(legend.position = "bottom")
+# qa_cycle_q_df %>% 
+#       filter(biosample_id != "NTC", ill_id != "1-F9") %>%
+#       ggplot(aes(x = amp_pos, y = score)) +
+#     geom_vline(aes(xintercept = 300), color = "grey60") +
+#     geom_vline(aes(xintercept = 160), color = "grey60") +
+#     # geom_smooth(aes(weight = count, color = biosample_id, group = filename)) +
+#     geom_smooth(aes(weight = count,group = Read)) +
+#     # geom_vline(aes(xintercept = 280), color = "grey40", linetype = 2) +
+#     theme_bw() +
+#     scale_x_continuous(breaks = c(0,150,300, 450)) +
+#     labs(x = "Amplicon Position",
+#          y = "Base Quality Score", color = "Individual") +
+#     theme(legend.position = "bottom")
 ```
