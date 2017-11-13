@@ -139,10 +139,10 @@ obs_feat_df <- meta_df %>% filter(Read == "R1") %>%
 
 The sequencing dataset was processed using four bioinformatic pipelines. 
 The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA)).
-Different pipelines have different approaches for handling low quality reads resulting in the large variability in filter rate (Table \@ref(tab:pipeQA)). 
-QIIME pipeline has the highest filter rate while the highest number of features per sample. 
+The pipelines evaluated have different approaches for handling low quality reads resulting in the large variability in filter rate (Table \@ref(tab:pipeQA)). 
+QIIME pipeline has the highest filter rate and highest number of features per sample. 
 The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired end reads. 
-The high filtration rate is to the drop in base calling accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:lowcycleq)). 
+The high filtration rate is due to the drop in base calling accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:lowcycleq)). 
 Additionally, to remove potential sequencing artifacts from the dataset QIIME excludes singletons, OTUs only observed once in the dataset. 
 The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples and there are four PCR replicates for each sample. 
 Sparsity was lower for _de-novo_ clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 

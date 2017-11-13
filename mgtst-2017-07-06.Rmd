@@ -31,11 +31,11 @@ BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission
 ```
 
 ## Titration Series Validation 
-In order to use information from the unmixed samples to obtain expected count values for the titrations we need to evaluate two assumptions about the mixed samples: 
-1. The samples were mixed volumetrically in a $log_2$ dilution series. 
-2. The unmixed pre- and post-exposure samples have the same proportion of bacterial DNA. 
-Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to expectations. 
-Total bacterial DNA in the unmixed samples was quantified using a qPCR assay targeting the 16S rRNA gene. 
+In order to use information from the unmixed samples to obtain expected count values for the titrations we first need to evaluate two assumptions about the mixed samples: 
+1. The samples were mixed volumetrically in a $log_2$ dilution series according to the mixture design. 
+2. The unmixed pre- and post-exposure samples have the same proportion of prokaryotic DNA. 
+Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to the mixture design. 
+To evaluate the second assumption total prokaryotic DNA in the titrations samples was quantified using a qPCR assay targeting the 16S rRNA gene. 
 
 
 ### Spike-in qPCR results   

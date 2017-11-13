@@ -42,7 +42,6 @@ quantitative - relative abundance
       - sample comparisons - compositional nature  
       - how clustering can impact data
       - 16S biological similarity as a confounder  
-      
 
 In the present study we developed a mixture dataset of extracted DNA from human stool samples for assessing the 16S metagenomic measurement process. 
 The mixture datasets was processed using three bioinformatic pipelines. 

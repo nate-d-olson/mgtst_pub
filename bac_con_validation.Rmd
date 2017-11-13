@@ -111,7 +111,7 @@ bac_con_summary <- bac_con_plot %>%
 #       knitr::kable(digits = 4, caption = "Slope estimates for linear model of prokaryotic DNA concentration and titration factor. Separate linear models were fit for each titrations 1-4 for each  individual. Multiple test correction was performed using the Benjamini-Hochberg method. p-value indicates signficant difference from the expected slopes of 0.",  booktabs = TRUE, escape = FALSE)
 ```
 
-```{r bacPlot, fig.cap = "Prokaryotic DNA concentration (ng/ul) across titrations measured using a 16S rRNA qPCR assay. Separate linear models, [DNA]~$\\theta$ were fit for each individual, $R^2$ and p-values were reported for each model. Red lines indicate negative slope estimates and blue lines positive slope estimates. p-value indicates signficant difference from the expected slopes of 0. Multiple test correction was performed using the Benjamini-Hochberg method. One of the E01JH0004 PCR replicates for titration 3 was identified as an outlier, with a concentration of 0.003, and was excluded from the linear model. The linear model slope was still significantly different from 0 when the outlier was included.", warning=FALSE, message=FALSE, echo = FALSE}
+```{r bacPlot, fig.cap = "Prokaryotic DNA concentration (ng/ul) across titrations measured using a 16S rRNA qPCR assay. Separate linear models, Prokaryotic DNA concentration versus $\\theta$ were fit for each individual, and $R^2$ and p-values were reported. Red lines indicate negative slope estimates and blue lines positive slope estimates. p-value indicates signficant difference from the expected slope of 0. Multiple test correction was performed using the Benjamini-Hochberg method. One of the E01JH0004 PCR replicates for titration 3 ($\theta=0.125$) was identified as an outlier, with a concentration of 0.003, and was excluded from the linear model. The linear model slope was still significantly different from 0 when the outlier was included.", warning=FALSE, message=FALSE, echo = FALSE}
 bac_con_theta_fit <- bac_con_plot %>%
       mutate(theta = 2^-titration) %>% 
       filter(titration != 20, stine_quant > 0.05) %>% 
@@ -153,7 +153,7 @@ bac_con_plot_dat %>%
 
 
 
-Prokaryotic DNA concentration changes across titrations (Fig. \@ref(fig:bacPlot)) indicating the proportion of bacterial DNA from the unmixed pre- and post-exposure samples in a titration is not consistent with the mixture design.
+Prokaryotic DNA concentration changes across titrations indicating the proportion of bacterial DNA from the unmixed pre- and post-exposure samples in a titration is not consistent with the mixture design (Fig. \@ref(fig:bacPlot)).
 A qPCR assay targeting the 16S rRNA gene was used to quantify the concentration of prokaryotic DNA in the titrations. 
 An in-house standard curve with concentrations of 20 ng/ul, 2ng/ul, and 0.2 ng/ul was used, with efficiency `r round(efficiency,2)`, and $R^2$ `r round(std_r2,3)`. 
 If the proportion of prokaryotic DNA is the same between pre- and post-exposure samples the slope of the concentration estimates across the two-sample titration would be 0. 
