@@ -233,15 +233,17 @@ data_frame(pipe = names(mrexp),
 
 ```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size. (B) Smoothing spline of the base quality score (BQS) by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads. (C) Distribution of the number of features per sample. "}
 lib_size_fig <- meta_df %>% 
-      filter(Read == "R1") %>% unique() %>% 
+      filter(Read == "R1", biosample_id != "NTC") %>% unique() %>% 
       ggplot() + 
-      geom_boxplot(aes(x = biosample_id, y = reads)) + 
+      geom_boxplot(aes(x = biosample_id, y = reads, color = biosample_id)) + 
       scale_y_log10() + 
       geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
       theme_bw() + labs(y = "Reads", 
-                        x = "Individual")
+                        x = "Individual", 
+                        color = "Individual")
 
 qual_fig <- qa_cycle_q_df %>% 
+      sample_frac(0.10) %>% ## To speed up runtime
       filter(biosample_id != "NTC", ill_id != "1-F9") %>%
       ggplot(aes(x = amp_pos, y = score)) +
       geom_vline(aes(xintercept = 300), color = "grey60") +
@@ -259,7 +261,8 @@ feat_fig <- obs_feat_df %>% ggplot() +
       labs(x = "Pipeline", y = "Features", color = "Individual")
 
 
-ggarrange(lib_size_fig, feat_fig, qual_fig, ncol = 1, nrow = 3,labels = "AUTO",common.legend = TRUE, align = "v", legend = "bottom")
+ggarrange(lib_size_fig, feat_fig, qual_fig, ncol = 1, nrow = 3, 
+          labels = "AUTO", common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
 ```{r readsVfeats, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline."}
