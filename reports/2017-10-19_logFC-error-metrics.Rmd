@@ -26,11 +26,11 @@ __Data frames__
 ### Loading Data ---------------------------------------------------------------
 pa_summary_df <- readRDS("~/Desktop/pa_summary_anno_df.RDS") %>% 
       select(pipe, biosample_id, feature_id, 
-             T00, T20, pa_mixed) %>% 
-      filter(biosample_id %in% paste0("E01JH00", c("04","11","16")))
+             T00, T20, pa_mixed) #%>% 
+      # filter(biosample_id %in% paste0("E01JH00", c("04","11","16")))
 
 logFC_df <- readRDS("~/Desktop/logFC_edgeR_df.rds") %>%
-      filter(biosample_id %in% paste0("E01JH00", c("04","11","16"))) %>% 
+      # filter(biosample_id %in% paste0("E01JH00", c("04","11","16"))) %>% 
       rename(feature_id = OTUname)
 
 ## Combining logFC estimates
