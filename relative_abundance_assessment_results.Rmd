@@ -440,86 +440,49 @@ rel_abu_error_summary %>%
       collapse_rows(columns = 1)
 ```
 
-```{r errorOut, warning = FALSE, message = FALSE, echo = FALSE, fig.cap = "Feature-level median relative abundance is lower for error rate outlier features but not for RCOV outlier features. (Relationship between median relative abundance to the feature-level  (A) median error rate and (B) error RCOV. Boxplots summarizing the feature-level median relative abundance between (C) error rate and (D) RCOV outlier and non-outlier features for features. Only features with median error rates greater than 0 included in the error rate boxplot."}
-error_scatter <- rel_error_summary %>% 
-      ggplot() + 
-      geom_point(aes(x = median_rel_abu, y = median_error, fill = error_cat), shape = 21) + 
+```{r errorOut, warning = FALSE, message = FALSE, echo = FALSE, fig.cap = "Feature-level median relative abundance and variance-mean relationship for the unmixed sample relative abundance not correlated with feature-level error rate and RCOV. Relationship between median relative abundance to the feature-level  (A) median error rate and (C) error RCOV. Relationship between unmixed sample relative abundance variance/mean to the feature-level (B) median error rate and (D) error RCOV."}
+
+### Median relative abundance
+error_rel_abu <- rel_error_summary %>% 
+      ggplot(aes(x = median_rel_abu, y = median_error)) + 
+      geom_point(aes(fill = error_cat), shape = 21) + 
+      stat_cor(method = "spearman", label.y = 22) + 
       theme_bw() + 
       scale_x_log10() +       
-      labs(x = "", y = "Error Rate", fill = "Boxplot Outlier")
-
-error_box <- rel_error_summary %>% 
-      filter(median_error > 0) %>% 
-      ggplot(aes(x = error_cat, y = median_rel_abu, fill = error_cat)) + 
-      geom_boxplot(width = 0.35) + 
-      stat_compare_means(label.x.npc = "center", label.y.npc = "center") + 
-      theme_bw() + 
-      scale_y_log10() + 
-      labs(x = "Error Rate Outlier", y = "Median Relative Abundance") + 
-      coord_flip()
-
+      labs(x = "Relative Abundance", y = "Error Rate", fill = "Boxplot Outlier")
 
 ## excluding features with rcov_error == 0 - artifacts and not real....
-rcov_scatter <- rel_error_summary %>% 
+rcov_rel_abu <- rel_error_summary %>% 
       filter(rcov_error != 0) %>% 
-      ggplot() + 
-      geom_point(aes(x = median_rel_abu, y = rcov_error, fill = rcov_cat), shape = 21) + 
+      ggplot(aes(x = median_rel_abu, y = rcov_error)) + 
+      geom_point(aes(fill = rcov_cat), shape = 21) + 
+      stat_cor(method = "spearman", label.y = 4.5) + 
       theme_bw() + 
       scale_x_log10() + scale_y_log10() +    
-      labs(x = "", y = "Error RCOV", fill = "Boxplot Outlier")
+      labs(x = "Relative Abundance", y = "Error RCOV", fill = "Boxplot Outlier")
 
-rcov_box <- rel_error_summary %>%
-      filter(rcov_error != 0) %>% 
-      ggplot(aes(x = rcov_cat, y = median_rel_abu, fill = rcov_cat)) + 
-      geom_boxplot(width = 0.35) + 
-      stat_compare_means(label.x.npc = "center", label.y.npc = "center") + 
-      theme_bw() + 
-      scale_y_log10() + 
-      labs(x = "Error RCOV Outlier", y = "Median Relative Abundance", fill = "Boxplot Outlier") + 
-      coord_flip()
 
-ggarrange(error_scatter + rremove("x.text"), rcov_scatter + rremove("x.text"), 
-          error_box, rcov_box, 
-          ncol = 2, nrow = 2, align = "v",labels = "AUTO",
-      common.legend = TRUE, legend = "bottom")
-```
-
-```{r errorMeanVarOut, warning = FALSE, message = FALSE, echo = FALSE, fig.cap = "The variance-mean relationship for the unmixed sample relative abundance values does not explain outlier median and RCOV features. (A) Relationship between unmixed sample relative abundance variance/mean to the feature-level (A) median error rate and (B) error RCOV. Boxplots summarizing the unmixed sample relative abundance variance/mean between (C) error rate and (D) RCOV outlier and non-outlier features for features. Only features with median error rates greater than 0 included in the error rate boxplot."}
-## TODO - figure out filtering, NA cat values and rcov_error = 0
+### Variance/Mean relationship
 unmix_filt <- unmix_counts %>% 
       filter(!is.na(rcov_cat), !is.na(var_mean), var_abu != 0, mean_abu != 0, rcov_error != 0)
 
-error_scatter <- ggplot(unmix_filt) + 
-      geom_point(aes(x = var_mean, y = median_error, fill = error_cat), shape = 21) + 
+error_var_mean <- ggplot(unmix_filt, aes(x = var_mean, y = median_error)) + 
+      geom_point(aes(fill = error_cat), shape = 21) +
+      stat_cor(method = "spearman", label.y = 22) + 
       theme_bw() + scale_x_log10() +       
-      labs(x = "", y = "Error Rate", fill = "Boxplot Outlier")
-
-error_box <- ggplot(unmix_filt, aes(x = error_cat, y = var_mean, fill = error_cat)) + 
-      geom_boxplot(width = 0.35) + 
-      stat_compare_means(label.x.npc = "center", label.y.npc = "center") + 
-      theme_bw() +
-      scale_y_log10() + 
-      labs(x = "Error Rate Outlier", y = "Unmixed Var/Mean") + 
-      coord_flip()
-
+      labs(x = "Variance/Mean", y = "Error Rate", fill = "Boxplot Outlier")
 
 ## excluding features with rcov_error == 0 - artifacts and not real....
-rcov_scatter <- ggplot(unmix_filt) +
-      geom_point(aes(x = var_mean, y = rcov_error, fill = rcov_cat), shape = 21) + 
+rcov_var_mean <- ggplot(unmix_filt, aes(x = var_mean, y = rcov_error)) +
+      geom_point(aes(fill = rcov_cat), shape = 21) +
+      stat_cor(method = "spearman", label.y = 4.5) + 
       theme_bw() + scale_x_log10() + scale_y_log10() +    
-      labs(x = "", y = "Error RCOV", fill = "Boxplot Outlier")
+      labs(x = "Variance/Mean", y = "Error RCOV", fill = "Boxplot Outlier")
 
-rcov_box <- ggplot(unmix_filt, aes(x = rcov_cat, y = var_mean, fill = rcov_cat)) + 
-      geom_boxplot(width = 0.35) + 
-      stat_compare_means(label.x.npc = "center", label.y.npc = "center") + 
-      theme_bw() + 
-      scale_y_log10() + 
-      labs(x = "Error RCOV Outlier", y = "Unmixed Var/Mean", fill = "Boxplot Outlier") + 
-      coord_flip()
-
-ggarrange(error_scatter + rremove("x.text"), rcov_scatter + rremove("x.text"), 
-          error_box, rcov_box, 
-          ncol = 2, nrow = 2, align = "v",labels = "AUTO",
+ggarrange(error_rel_abu, 
+          error_var_mean, 
+          rcov_rel_abu, rcov_var_mean, 
+          ncol = 2, nrow = 2, align = "hv",labels = "AUTO",
       common.legend = TRUE, legend = "bottom")
 ```
 
