@@ -15,6 +15,7 @@ library(ape)
 library(multcomp)
 library(tidyverse)
 library(stringr)
+library(ggridges)
 library(ggpubr)
 ```
 
@@ -35,17 +36,29 @@ logFCestVexp <- logFC_pre %>%
       # geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
       geom_smooth(aes(x = exp_logFC, y = logFC, color = pipe), method = "lm") +
       geom_abline(aes(intercept = 0, slope = 1), color = "grey20", linetype = 2) + 
-      facet_wrap(~biosample_id) + theme_bw()  +
+      facet_wrap(~biosample_id, nrow = 1) + theme_bw()  +
       labs(x = "Expected", y = "Estimate", color = "Pipeline") 
 
-### Median logFC Error Rate  
+
+logFC_error <- logFC_pre %>% 
+      filter(T1 != 0, T2 != 20) %>% 
+      dplyr::select(biosample_id, pipe, feature_id, exp_logFC, logFC) %>% 
+      mutate(error = abs(logFC - exp_logFC))
+      
+logFC_error_dist <- logFC_error %>% 
+      ggplot() + 
+      geom_density_ridges(aes(x = error, y = pipe, color = pipe), alpha = 0.5) + 
+      facet_wrap(~biosample_id, nrow = 1) + theme_bw() + 
+      labs(x = "Error", y = "Pipeline", color = "Pipeline")
+
+### logFC Error Rate  
 # Note filtering slope < 4 is a bit arbitrary
 slope_logFC <- logFC_feature_summary %>% 
       # filter(slope < 4) %>% 
       ggplot() + 
       geom_boxplot(aes(x = pipe, y = slope_error, color = pipe)) + 
       geom_hline(aes(yintercept = 0), color = "grey20", linetype = 2) + 
-      facet_wrap(~biosample_id) +
+      facet_wrap(~biosample_id, nrow = 1) +
       theme_bw() +
       labs(x = "Individual", y = "1 - Slope", color = "Pipeline") 
 
@@ -55,9 +68,9 @@ r2_logFC <- logFC_feature_summary %>%
       ggplot() + 
       geom_boxplot(aes(x = pipe, y = adj.r.squared, color = pipe)) + 
       geom_hline(aes(yintercept = 1), color = "grey20", linetype = 2) + 
-      facet_wrap(~biosample_id) +
+      facet_wrap(~biosample_id, nrow = 1) +
       theme_bw() +
-      labs(x = "Individual", y = "Adjusted $R^2$", color = "Pipeline")
+      labs(x = "Individual", y = "Adjusted $R^2$", color = "Pipeline") 
 ```
 
 
@@ -117,24 +130,25 @@ logFC_pre %>% filter(T1 == 0, T2 == 20) %>%
 ```
 
 ```{r logFCestVexp, echo = FALSE, warning = FALSE, message = FALSE}
-logFC_pre %>% 
-      filter(T1 != 0, T2 != 20) %>% 
-      ggplot() + 
-      geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
-      geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
-      facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw()  +
-      labs(x = "Expected", y = "Estimate") 
+# logFC_pre %>% 
+#       filter(T1 != 0, T2 != 20) %>% 
+#       ggplot() + 
+#       geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
+#       geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
+#       facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw()  +
+#       labs(x = "Expected", y = "Estimate") 
 ```
 
 
-```{r logFCerror, fig.cap = "(A) Linear model or the relationship between the logFC estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual for all titration pair comparisons, color are used to indicate different pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. Distribution of feature-level log-fold change error by individual and pipeline as the (B) 1 - slope and (C) $R^2$ for a linear model fit to the estimated and expected log fold-change values ", echo = FALSE, fig.height = 6}
+```{r logFCerror, fig.cap = "(A) Linear model or the relationship between the logFC estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual for all titration pair comparisons, color are used to indicate different pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribtion by pipeline and individual. Distribution of feature-level log-fold change error by individual and pipeline as the (C) 1 - slope and (D) $R^2$ for a linear model fit to the estimated and expected log fold-change values ", echo = FALSE, fig.height = 8}
 ggarrange(logFCestVexp, 
+          logFC_error_dist + rremove("y.text"), 
           slope_logFC + rremove("x.text"), 
-          r2_logFC, 
+          r2_logFC + rremove("x.text"), 
           labels = "AUTO",
           # align = "v", 
-          ncol = 1, nrow = 3, 
-          heights = c(0.5,0.2,0.3),
+          ncol = 1, nrow = 4, 
+          heights = c(0.3,0.2, 0.2,0.3),
           common.legend = TRUE,
           legend = "bottom")
 ```
