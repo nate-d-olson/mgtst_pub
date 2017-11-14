@@ -65,6 +65,7 @@ meta_df <- sampleSheet %>%
 lib_size <- meta_df %>% filter(Read == "R1", biosample_id != "NTC", reads != 2700) %>% .$reads
 ```
 
+
 ```{r cycle_metrics, warning=FALSE, message=FALSE, echo = FALSE}
 ## amplicon position __Cycle Level Metrics__
 amp_pos_df <- data_frame(cycle = rep(1:300, 2),
@@ -77,7 +78,6 @@ qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>%
     filter(count != 0) %>% # not sure if this impacts the smoothing function ...
     left_join(meta_df) %>% left_join(amp_pos_df)
 ```
-
 
 ```{r pipeMunge, echo = FALSE}
 pipeline_dir <- "../mgtst_pipelines"
@@ -262,7 +262,7 @@ feat_fig <- obs_feat_df %>% ggplot() +
 ggarrange(lib_size_fig, feat_fig, qual_fig, ncol = 1, nrow = 3,labels = "AUTO",common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
-```{r readsVfeats, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline."}
+```{r readsVfeats, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline."}
 meta_df %>% filter(Read == "R1", 
                    biosample_id != "NTC") %>% 
       left_join(obs_feat_df) %>% 
