@@ -191,11 +191,13 @@ feature_counts <- mrexp %>% map(extract_samples) %>%
       map(rownames_to_column, var = "feature_id") %>% 
       map_df(gather, "id","counts", -feature_id, .id = "pipe") 
 
-obs_feat_df <- feature_counts %>% filter(counts != 0) %>% 
+obs_feat_df <- feature_counts %>% 
+      filter(counts != 0) %>% 
       group_by(pipe, id) %>% 
       summarise(obs_feat = n())
 
-obs_feat_df <- meta_df %>% filter(Read == "R1") %>% 
+obs_feat_df <- meta_df %>% 
+      filter(Read == "R1") %>% 
       select(biosample_id, t_fctr, ill_id) %>% 
       dplyr::rename(id = ill_id) %>% 
       right_join(obs_feat_df)
@@ -229,14 +231,14 @@ data_frame(pipe = names(mrexp),
 ```
 
 
-```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size. (B) Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads. (C) Distribution of the number of features per sample. "}
+```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size. (B) Smoothing spline of the base quality score (BQS) by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads. (C) Distribution of the number of features per sample. "}
 lib_size_fig <- meta_df %>% 
       filter(Read == "R1") %>% unique() %>% 
       ggplot() + 
       geom_boxplot(aes(x = biosample_id, y = reads)) + 
       scale_y_log10() + 
       geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
-      theme_bw() + labs(y = "Library Size", 
+      theme_bw() + labs(y = "Reads", 
                         x = "Individual")
 
 qual_fig <- qa_cycle_q_df %>% 
@@ -244,20 +246,33 @@ qual_fig <- qa_cycle_q_df %>%
       ggplot(aes(x = amp_pos, y = score)) +
       geom_vline(aes(xintercept = 300), color = "grey60") +
       geom_vline(aes(xintercept = 160), color = "grey60") +
-      geom_smooth(aes(weight = count, group = Read, color = biosample_id)) +
+      geom_smooth(aes(weight = count, group = paste(Read, biosample_id), color = biosample_id)) +
       theme_bw() +
       scale_x_continuous(breaks = c(0,150,300, 450)) +
       labs(x = "Amplicon Position",
-           y = "Base Quality Score",
+           y = "BQS",
            color = "Individual") +
       theme(legend.position = "bottom")
 
 feat_fig <- obs_feat_df %>% ggplot() + 
-      geom_boxplot(aes(x = pipe, y = obs_feat)) + theme_bw() + 
-      labs(x = "Pipeline", y = "# of Features")
+      geom_boxplot(aes(x = pipe, y = obs_feat, color = biosample_id)) + theme_bw() + 
+      labs(x = "Pipeline", y = "Features", color = "Individual")
 
 
-ggarrange(lib_size_fig, feat_fig, qual_fig, ncol = 1, nrow = 3,labels = "AUTO")
+ggarrange(lib_size_fig, feat_fig, qual_fig, ncol = 1, nrow = 3,labels = "AUTO",common.legend = TRUE, align = "v", legend = "bottom")
 ```
+
+```{r readsVfeats, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline."}
+meta_df %>% filter(Read == "R1", 
+                   biosample_id != "NTC") %>% 
+      left_join(obs_feat_df) %>% 
+      ggplot() + 
+      geom_point(aes(x = reads, y = obs_feat, fill = biosample_id), shape = 21) + 
+      facet_wrap(~pipe) + 
+      theme_bw() + 
+      labs(x = "Reads", y = "Features", fill = "Individual") + 
+      theme(legend.position = "bottom")
+```
+
 
 
