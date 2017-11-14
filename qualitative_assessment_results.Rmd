@@ -116,7 +116,8 @@ unmix_test_plot <- unmix_binom_prop %>%
       geom_bar(aes(x = biosample_id, y = pval_prop), stat = "identity") + 
       facet_wrap(~pipe, nrow = 1) + 
       theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
-      labs(x = "Biological Replicate", y = "Proportion")
+      labs(x = "Biological Replicate", y = "Proportion") +
+      ylim(0, 1)
 
 mix_count_plot <- mix_count_df %>% filter(pipe != "unclustered") %>% ggplot() + 
       geom_boxplot(aes(x = biosample_id, y = count + 1),
@@ -152,7 +153,8 @@ mix_test_plot <- mix_binom_prop %>%
       geom_bar(aes(x = biosample_id, y = pval_prop), stat = "identity") + 
       facet_wrap(~pipe, nrow = 1) + 
       theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
-      labs(x = "Biological Replicate", y = "Proportion")
+      labs(x = "Biological Replicate", y = "Proportion") + 
+      ylim(0, 1)
 ```
 
 ```{r qualPlot, message = FALSE, echo = FALSE, warning = FALSE, fig.cap = "Distribution of (A) observed count values for titration-specific features and (B) expected count values for unmixed-specific features by pipeline and individual. The horizontal dashed line indicates a count value of 1. (C) Proportion of unmix-specific features and (D) titration-specific features with an adjusted p-value < 0.05 for the bayesian hypothesis test and binomial test respectively. We fail to accept the null hypothesis when the p-value < 0.05, indicating that for these features the discrepancy between the feature not being observed in the titration and present in the unmixed samples is not explained by sampling alone."}
