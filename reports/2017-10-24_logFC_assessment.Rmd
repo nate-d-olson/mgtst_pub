@@ -59,7 +59,7 @@ logFC_pre %>% filter(T1 != 0, T2 != 20) %>%
 logFC_pre %>% 
       filter(T1 != 0, T2 != 20) %>% 
       dplyr::select(biosample_id, pipe, feature_id, exp_logFC, logFC, nb_logFC) %>% 
-      rename(nb = nb_logFC, edgeR = logFC) %>% 
+      dplyr::rename(nb = nb_logFC, edgeR = logFC) %>% 
       gather("Method","logFC", -biosample_id, -pipe, -feature_id, -exp_logFC) %>% 
       ggplot() + 
       geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
@@ -81,7 +81,7 @@ logFC_pre %>%
 logFC_pre %>% 
       filter(T1 != 0, T2 != 20) %>% 
       dplyr::select(biosample_id, pipe, feature_id, exp_logFC, logFC, nb_logFC) %>% 
-      rename(nb = nb_logFC, edgeR = logFC) %>% 
+      dplyr::rename(nb = nb_logFC, edgeR = logFC) %>% 
       gather("Method","logFC", -biosample_id, -pipe, -feature_id, -exp_logFC) %>%
       ggplot() + 
       geom_smooth(aes(x = exp_logFC, y = logFC, color = pipe), method = "lm") + 
@@ -103,13 +103,13 @@ logFC_error_param <- logFC_pre %>%
       filter(T1 != 0, T2 != 20) %>% 
       dplyr::select(biosample_id, pipe, feature_id, exp_logFC, logFC, 
                     nb_logFC, pre_nb, post_nb, T1_nb, T2_nb) %>% 
-      rename(nb = nb_logFC, edgeR = logFC) %>% 
+      dplyr::rename(nb = nb_logFC, edgeR = logFC) %>% 
       gather("Method","logFC", -biosample_id, -pipe, -feature_id, 
              -exp_logFC, -pre_nb, -post_nb, -T1_nb, -T2_nb) %>% 
       filter(biosample_id == "E01JH0016") %>% 
       mutate(error = logFC - exp_logFC) %>% 
       group_by(biosample_id, pipe, Method, error) %>% 
-      select(exp_logFC, logFC, post_nb, pre_nb, T1_nb, T2_nb) %>% 
+      dplyr::select(exp_logFC, logFC, post_nb, pre_nb, T1_nb, T2_nb) %>% 
       gather("key", "value", -biosample_id, -pipe, -Method, -error) 
 
 logFC_error_param %>% ggplot() + 
@@ -117,6 +117,17 @@ logFC_error_param %>% ggplot() +
       geom_smooth(aes(x = value, y = error)) + 
       facet_grid(Method~key, scales = "free") + theme_bw()
 ```
+
+```{r}
+logFC_error_param %>% 
+      filter(Method == "edgeR", key != "logFC", key != "exp_logFC") %>% 
+      ggplot() + 
+      geom_point(aes(x = value, y = error)) + 
+      geom_smooth(aes(x = value, y = error, color = biosample_id)) + 
+      facet_grid(key~pipe, scales = "free") + theme_bw() + 
+      scale_x_log10()
+```
+
 
 ### Deviations from expectation by pipeline and individual
 * Consistent deviation from the expected value by individual indicates that differences in proportion of bacterial DNA does account for some of the disagrement between the log fold-change estimates and expected values.  
