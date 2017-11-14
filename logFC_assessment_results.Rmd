@@ -32,32 +32,32 @@ logFC_feature_summary <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>%
 logFCestVexp <- logFC_pre %>% 
       filter(T1 != 0, T2 != 20) %>% 
       ggplot() + 
-      geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
-      geom_smooth(aes(x = exp_logFC, y = logFC), method = "lm") +
-      geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
-      facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw()  +
-      labs(x = "Expected", y = "Estimate") 
+      # geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
+      geom_smooth(aes(x = exp_logFC, y = logFC, color = pipe), method = "lm") +
+      geom_abline(aes(intercept = 0, slope = 1), color = "grey20", linetype = 2) + 
+      facet_wrap(~biosample_id) + theme_bw()  +
+      labs(x = "Expected", y = "Estimate", color = "Pipeline") 
 
 ### Median logFC Error Rate  
 # Note filtering slope < 4 is a bit arbitrary
 slope_logFC <- logFC_feature_summary %>% 
       # filter(slope < 4) %>% 
       ggplot() + 
-      geom_boxplot(aes(x = pipe, y = slope_error)) + 
-      geom_hline(aes(yintercept = 0), color = "darkorange") + 
+      geom_boxplot(aes(x = pipe, y = slope_error, color = pipe)) + 
+      geom_hline(aes(yintercept = 0), color = "grey20", linetype = 2) + 
       facet_wrap(~biosample_id) +
       theme_bw() +
-      labs(x = "Individual", y = "1 - Slope") 
+      labs(x = "Individual", y = "1 - Slope", color = "Pipeline") 
 
 ### RCOV logFC Error Rate  
 r2_logFC <- logFC_feature_summary %>% 
       # filter(slope < 4) %>% 
       ggplot() + 
-      geom_boxplot(aes(x = pipe, y = adj.r.squared)) + 
-      geom_hline(aes(yintercept = 1), color = "darkorange") + 
+      geom_boxplot(aes(x = pipe, y = adj.r.squared, color = pipe)) + 
+      geom_hline(aes(yintercept = 1), color = "grey20", linetype = 2) + 
       facet_wrap(~biosample_id) +
       theme_bw() +
-      labs(x = "Individual", y = "Adjusted R2")
+      labs(x = "Individual", y = "Adjusted $R^2$", color = "Pipeline")
 ```
 
 
@@ -116,14 +116,27 @@ logFC_pre %>% filter(T1 == 0, T2 == 20) %>%
       knitr::kable(caption = "Number of pre-specific and pre-dominant features by individual and pipeline", booktabs = TRUE)
 ```
 
-```{r logFCerror, fig.cap = "Relationship between the observed and expected logFC for pre-specific and pre-domiant features by pipeline and individual for all titration pair comparisons. Orange line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. Blue line is a linear model was fit to the data and grey area is the models uncertainty estimate. Distribution of feature-level log-fold change error by individual and pipeline as the (B) 1 - slope and (C) $R^2$ for a linear model fit to the estimated and expected log fold-change values ", echo = FALSE, fig.height = 8}
+```{r logFCestVexp, echo = FALSE, warning = FALSE, message = FALSE}
+logFC_pre %>% 
+      filter(T1 != 0, T2 != 20) %>% 
+      ggplot() + 
+      geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
+      geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
+      facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw()  +
+      labs(x = "Expected", y = "Estimate") 
+```
+
+
+```{r logFCerror, fig.cap = "(A) Linear model or the relationship between the logFC estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual for all titration pair comparisons, color are used to indicate different pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. Distribution of feature-level log-fold change error by individual and pipeline as the (B) 1 - slope and (C) $R^2$ for a linear model fit to the estimated and expected log fold-change values ", echo = FALSE, fig.height = 6}
 ggarrange(logFCestVexp, 
           slope_logFC + rremove("x.text"), 
           r2_logFC, 
-          labels = c("A", "B", "C"),
+          labels = "AUTO",
           # align = "v", 
           ncol = 1, nrow = 3, 
-          heights = c(0.5,0.2,0.3))
+          heights = c(0.5,0.2,0.3),
+          common.legend = TRUE,
+          legend = "bottom")
 ```
 
 The 1-slope and $R^2$ values for linear models of the estimated and expected log fold-change for individual features, all titration comparison, were used to characterize the log fold-change bias and variance across pipelines. 
@@ -132,11 +145,5 @@ The linear model $R^2$ value was used to characterize the feature-level log fold
 Similar to the relative abundance assessment we used a mixed-effects models to take into account differences in individuals when comparing the log fold-change error rates between pipeline. 
 The log fold-change bias metric was not significantly different between pipelines (F = `r round(slope_f,2)`, p = `r round(slope_p,2)`, DADA2 `r round(dada_slope,2)`, Mothur `r round(mothur_slope,2)`, QIIME `r round(qiime_slope,2)`, \@ref(fig:logFCerror)B). 
 The log fold-change variance metric was not significantly different between pipelines (F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, DADA2 `r round(dada_r2,2)`, Mothur `r round(mothur_r2,2)`, QIIME `r round(qiime_r2,2)`, Fig. \@ref(fig:logFCerror)C).
-
-While some of the poor agreement can be attributed to low abundance (noisy data), or smaller differences in the log fold-change between pre- and post-exposure samples.
-An additional mixed-effects model was used to determine feature characteristics that are correlated with logFC error rate. 
-Increased estimated logFC and logCPM were significantly related to lower error rates. 
-Analysis of the log fold-change error results indicated a feature specific performance effect. 
-
 
 
