@@ -65,7 +65,7 @@ prop_inferred <- prop_inferred %>%
 #### Error Rate Calculations
 rel_abu_error <- prop_inferred %>% 
       mutate(t_fctr = factor(t_fctr, levels = c(1:5, 10, 15))) %>% 
-      mutate(inferred_error = nb_prop - inferred_prop,
+      mutate(inferred_error = abs(nb_prop - inferred_prop),
              inferred_error_rate = inferred_error/inferred_prop) 
 
 rel_abu_error_summary <-  rel_abu_error %>% 
@@ -73,7 +73,7 @@ rel_abu_error_summary <-  rel_abu_error %>%
       summarise(median_rel_abu = median(nb_prop),
                 median_error = median(inferred_error_rate),
                 iqr_error = IQR(inferred_error_rate),
-                rcov_error = iqr_error/abs(median_error), 
+                rcov_error = iqr_error/median_error, 
                 mean_error = mean(inferred_error_rate),
                 var_error = var(inferred_error_rate),
                 cov_error = var_error/mean_error) 

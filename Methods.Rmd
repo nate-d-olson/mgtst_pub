@@ -103,7 +103,7 @@ Featured were observed in at least 14 of the 28 total titration PCR replicates (
 To quantitatively assess the count table values the expected relative abundance and log fold-change values were compared to the relative abundance estimates ($obs$) calculated using a negative binomial model and the EdgeR log fold-change estimates. 
 Equation \@ref(eq:mixEq) and the inferred $\theta$ values were used to calculate the expected feature relative abundance ($exp$). 
 The error rate metrics for the relative abundance estimates were compared across pipelines and biological replicates. 
-Error rate was defined as $(exp - obs)/exp$. 
+Error rate was defined as $|exp - obs|/exp$. 
 Mixed effects models were used to compare feature-level error rate bais and variance across pipelines accounting for individual effect.
 Feature-level bias and variance were evaluated using the median error rate and robust coefficient of variation ($RCOV=IRQ/median$) respectively. 
 Large feature-level error rate bias and variance outliers were observed, these outliers were excluded from the mixed effects model to minimize biases in the model due to poor fit for a numer of features and were characterized independently.
