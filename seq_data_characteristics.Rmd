@@ -13,12 +13,11 @@ library(Rqc)
 library(ProjectTemplate)
 load.project()
 library(ggpubr)
-project_dir <- "../16S_etec_mix_study/"
 pipeline_dir <- "../mgtst_pipelines/"
 ```
 
 ```{r fq_data_filesp, warning=FALSE, message=FALSE, echo = FALSE}
-fastq_dir <- file.path(project_dir, "data/")
+fastq_dir <- file.path(pipeline_dir, "data/")
 dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
                            recursive = TRUE, full.names = TRUE)
 seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
@@ -65,7 +64,6 @@ meta_df <- sampleSheet %>%
 lib_size <- meta_df %>% filter(Read == "R1", biosample_id != "NTC", reads != 2700) %>% .$reads
 ```
 
-
 ```{r cycle_metrics, warning=FALSE, message=FALSE, echo = FALSE}
 ## amplicon position __Cycle Level Metrics__
 amp_pos_df <- data_frame(cycle = rep(1:300, 2),
@@ -86,47 +84,47 @@ mrexp_files <- list(
       mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
       qiime =  file.path(pipeline_dir, "qiime/qiime_mrexp.rds")
 )
-mrexp <- mrexp_files %>% map(readRDS)  
-
-## Loading seq count data
-fastq_dir <- file.path(pipeline_dir, "data")
-dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
-                        recursive = TRUE, full.names = TRUE)
-seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
-      grep(pattern = "fastq.gz", .,value = TRUE) %>%
-      str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
-      str_replace("-",".")
-names(dat_files) <- seq_ds_id 
-
-# from script but not saved
-read_groups <- rep(NA,length(dat_files))
-read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
-read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
-read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
-read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
-
-qa_list <- readRDS("data/rqcQA_list.rds") 
-
-## Run 
-grp_df <- data_frame(read_group = read_groups, 
-                     seq_ds_id, 
-                     filename = basename(dat_files)) %>%
-      separate(read_group,c("plate","Read")) %>% 
-      mutate(ill_id = str_replace(filename, "_.*",""))
-
-## read count data 
-qa_file_info <- perFileInformation(qa_list) %>% 
-      select(-format,-path) %>% 
-      mutate(filename = as.character(filename))
-
-## study metadata
-meta_df <- sampleSheet %>% 
-      mutate(pos_ns = str_replace(pos, "_",""),
-             ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
-      filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
-      mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
-      left_join(grp_df) %>% 
-      left_join(qa_file_info) 
+mrexp <- mrexp_files %>% map(readRDS)
+# 
+# ## Loading seq count data
+# fastq_dir <- file.path(pipeline_dir, "data")
+# dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
+#                         recursive = TRUE, full.names = TRUE)
+# seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
+#       grep(pattern = "fastq.gz", .,value = TRUE) %>%
+#       str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
+#       str_replace("-",".")
+# names(dat_files) <- seq_ds_id 
+# 
+# # from script but not saved
+# read_groups <- rep(NA,length(dat_files))
+# read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
+# read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
+# read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
+# read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
+# 
+# qa_list <- readRDS("data/rqcQA_list.rds") 
+# 
+# ## Run 
+# grp_df <- data_frame(read_group = read_groups, 
+#                      seq_ds_id, 
+#                      filename = basename(dat_files)) %>%
+#       separate(read_group,c("plate","Read")) %>% 
+#       mutate(ill_id = str_replace(filename, "_.*",""))
+# 
+# ## read count data 
+# qa_file_info <- perFileInformation(qa_list) %>% 
+#       select(-format,-path) %>% 
+#       mutate(filename = as.character(filename))
+# 
+# ## study metadata
+# meta_df <- sampleSheet %>% 
+#       mutate(pos_ns = str_replace(pos, "_",""),
+#              ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
+#       filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
+#       mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
+#       left_join(grp_df) %>% 
+#       left_join(qa_file_info) 
 
 ##### Count table characteristics
 ## number of OTUs
@@ -203,23 +201,6 @@ obs_feat_df <- meta_df %>%
       right_join(obs_feat_df)
 ```
 
-Quality assessment of sequencing run summarizing number of reads per sample.
-Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:qaPlots)A). 
-The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
-Excluding the one failed reaction with 2,700 reads and the NTCs, the total range in the observed number of sequences per samples is `r min(lib_size)` to `r max(lib_size)` reads with a median library size of `r median(lib_size)`. 
-For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
-
-The sequencing dataset was processed using four bioinformatic pipelines. 
-The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:qaPlots)C).
-The pipelines evaluated have different approaches for handling low quality reads resulting in the large variability in filter rate (Table \@ref(tab:pipeQA)). 
-QIIME pipeline has the highest filter rate and highest number of features per sample. 
-The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired end reads. 
-The high filtration rate is due to the drop in base calling accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B). 
-Additionally, to remove potential sequencing artifacts from the dataset QIIME excludes singletons, OTUs only observed once in the dataset. 
-The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples and there are four PCR replicates for each sample. 
-Sparsity was lower for _de-novo_ clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
-With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts. 
-
 ```{r pipeQA, echo = FALSE, message = FALSE, warning = FALSE}
 data_frame(pipe = names(mrexp), 
            Features = features, 
@@ -243,7 +224,7 @@ lib_size_fig <- meta_df %>%
                         color = "Individual")
 
 qual_fig <- qa_cycle_q_df %>% 
-      sample_frac(0.10) %>% ## To speed up runtime
+      sample_frac(0.25) %>% ## To speed up runtime
       filter(biosample_id != "NTC", ill_id != "1-F9") %>%
       ggplot(aes(x = amp_pos, y = score)) +
       geom_vline(aes(xintercept = 300), color = "grey60") +
@@ -277,5 +258,20 @@ meta_df %>% filter(Read == "R1",
       theme(legend.position = "bottom")
 ```
 
+Quality assessment of sequencing run summarizing number of reads per sample.
+Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:qaPlots)A). 
+The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
+Excluding the one failed reaction with 2,700 reads and the NTCs, the total range in the observed number of sequences per samples is `r min(lib_size)` to `r max(lib_size)` reads with a median library size of $`r median(lib_size)`$. 
+For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
 
+The sequencing dataset was processed using four bioinformatic pipelines. 
+The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:qaPlots)C).
+The pipelines evaluated have different approaches for handling low quality reads resulting in the large variability in filter rate (Table \@ref(tab:pipeQA)). 
+QIIME pipeline has the highest filter rate and highest number of features per sample. 
+The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired end reads. 
+The high filtration rate is due to the drop in base calling accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B). 
+Additionally, to remove potential sequencing artifacts from the dataset QIIME excludes singletons, OTUs only observed once in the dataset. 
+The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples and there are four PCR replicates for each sample. 
+Sparsity was lower for _de-novo_ clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
+With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts. 
 
