@@ -155,8 +155,9 @@ Of the four samples with low numbers of features for the QIIME pipeline, only on
 data_frame(pipe = names(mrexp), 
            Features = features, 
            Sparsity = round(sparsity,2)) %>% 
-      left_join(count_summary) %>% left_join(filter_rate_summary) %>% 
-      dplyr::rename(Pipelines = pipe) %>% 
+      left_join(count_summary) %>% 
+      left_join(filter_rate_summary) %>% 
+      dplyr::rename(Pipelines = pipe, `Total Abundance` = `Sample Coverage`, `Drop-out Rate` = `Filter Rate`) %>% 
       knitr::kable(caption = "Summary statistics for the different bioinformatic pipeliens. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total feature abundance. Filter rate is the proportion of reads that were removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
 ```
 

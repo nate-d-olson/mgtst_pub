@@ -27,9 +27,6 @@ BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission
 ```{r seqChar, child="seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-```{r pipeChar, child="pipeline_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-```
-
 ## Titration Series Validation 
 In order to use information from the unmixed samples to obtain expected count values for the titrations we first need to evaluate two assumptions about the mixed samples: 
 1. The samples were mixed volumetrically in a $log_2$ dilution series according to the mixture design. 
