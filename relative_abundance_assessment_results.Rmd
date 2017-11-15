@@ -218,6 +218,14 @@ qiime_rcov <- dada_rcov + rcov_fit$coefficients$fixed['pipeqiime']
 rcov_var <- ape::varcomp(rcov_fit)  
 ```
 
+```{r relAbuFeatTbl, echo = FALSE, warning = FALSE, message = FALSE}
+rel_abu_error_summary %>% 
+      group_by(pipe, biosample_id) %>% 
+      summarise(count = n()) %>% 
+      spread(biosample_id, count) %>% 
+      knitr::kable(booktabs = TRUE, caption = "Number of features by pipeline and individual used in the relative abundance error rate analysis.")
+```
+
 ```{r errorMeanVarTidy, echo = FALSE, message = FALSE, warning = FALSE}
 rel_abu_count_df <- readRDS("~/Desktop/raw_counts.RDS") %>%       
       group_by(pipe, id) %>% 
