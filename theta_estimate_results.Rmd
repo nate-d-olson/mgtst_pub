@@ -167,7 +167,7 @@ To account for differences in the proportion of prokaryotic DNA in the pre- and 
 Overall the relationship between the inferred and mixture design $\theta$ values were consistent across pipelines but not individual whereas the 95\% CI varied by both individual and pipeline. 
 For E01JH0004, E01JH0011, and E01JH0016 the inferred and mixture design $\theta$ values were in better agreement compared to E01JH0017 and E01JH0038.
 For E01JH0017 the inferred values were consistently less than the mixture design values, and greater than the mixture design values for E01JH0038. 
-These results were consistent with the qPCR prokaryotic DNA concentration results with E01JH0017 having a significantly positive slope and E01JH0038 a significantly negative slope (Fig. \@ref(fig:bacPlot)). 
+These results were consistent with the qPCR prokaryotic DNA concentration results with E01JH0004 and E01JH0017 having a significantly positive slopes then E01JH0016 and E01JH0038 significantly negative slopes (Fig. \@ref(fig:bacPlot)). 
 
 
 ```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
