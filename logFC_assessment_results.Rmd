@@ -127,27 +127,6 @@ r2_p <- r2_anova$`p-value`
 r2_var <- ape::varcomp(r2_fit)
 ```
 
-```{r preCountTbl, echo = FALSE}
-logFC_pre %>% filter(T1 == 0, T2 == 20) %>%
-      mutate(Type = if_else(T00 == 0, "specific", "dominant")) %>% 
-      group_by(pipe, biosample_id, Type) %>% 
-      summarise(count = n()) %>% 
-      spread(pipe, count,fill = 0) %>% 
-      dplyr::rename(Individual = biosample_id) %>% 
-      knitr::kable(caption = "Number of pre-specific and pre-dominant features by individual and pipeline", booktabs = TRUE)
-```
-
-```{r logFCestVexp, echo = FALSE, warning = FALSE, message = FALSE}
-# logFC_pre %>% 
-#       filter(T1 != 0, T2 != 20) %>% 
-#       ggplot() + 
-#       geom_point(aes(x = exp_logFC, y = logFC), alpha = 0.15) +
-#       geom_abline(aes(intercept = 0, slope = 1), color = "darkorange") + 
-#       facet_grid(pipe~biosample_id, scales = "free_y") + theme_bw()  +
-#       labs(x = "Expected", y = "Estimate") 
-```
-
-
 ```{r logFCerror, fig.cap = "(A) Linear model or the relationship between the logFC estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual for all titration pair comparisons, color are used to indicate different pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribtion by pipeline and individual. Distribution of feature-level log-fold change error by individual and pipeline as the (C) 1 - slope and (D) $R^2$ for a linear model fit to the estimated and expected log fold-change values ", echo = FALSE, message = FALSE, fig.height = 8}
 ggarrange(logFCestVexp, 
           logFC_error_dist + rremove("y.text"), 

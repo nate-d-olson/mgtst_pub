@@ -71,39 +71,6 @@ theta_est_df <- count_good %>%
              t_fctr, count, post_count, pre_count, total_count) 
 ```
 
-```{r thetaFeaturesMA, echo = FALSE, fig.cap = "MA plot (x-axis mean abundance, y-axis log2 fold change between unmixed pre- and post-exposure samples. Orange points indicate features used to estimate theta. Dashed lines indicate the +/- 1 log2 fold change filter used when to pick features."}
-# pre_post_logFC_df %>% ggplot() +
-#       geom_point(aes(x = logCPM, y = logFC), color = "grey60", alpha = 0.25) +
-#       geom_hline(aes(yintercept = -1), linetype = 2) +
-#       geom_hline(aes(yintercept = 1), linetype = 2) +
-#       geom_point(data = good_features, 
-#                  aes(x = logCPM, y = logFC),
-#                  color = "darkorange",alpha = 0.5) +
-#       facet_grid(pipe~biosample_id) +
-#       # scale_x_log10() + 
-#       theme_bw() +
-#       labs(y = "log Fold-Change", x = "log Mean Abundance")
-```
-
-
-```{r thetaFeatures, warning=FALSE, message=FALSE, echo = FALSE}
- theta_est_df %>% ungroup() %>% 
-      select(pipe, biosample_id, feature_id) %>% 
-      unique() %>% 
-      group_by(pipe, biosample_id) %>% 
-      summarise(count = n()) %>% 
-      spread(biosample_id, count) %>% 
-      knitr::kable(booktab = TRUE, caption = "Number of features used to estimate theta by biological replicate and pipeline.")
-
-# # Sanity check not the same set of features for DADA2 pipeline E01JH0004 and E01JH0011 due to bug
-# theta_est_df %>%
-#       filter(pipe == "dada2", biosample_id %in% c("E01JH0004", "E01JH0011")) %>%
-#       select(pipe, feature_id, biosample_id) %>% unique() %>%
-#       group_by(feature_id) %>%
-#       summarise(count = n()) %>% .$count %>% summary()
-```
-
-
 ```{r fitModel, warning=FALSE, message=FALSE, echo = FALSE}
 #### For a weighted regression ----------------------------
 ## VOOM version - fit model error versus mean 
@@ -119,7 +86,7 @@ munge_strap <- function(data){
 }
 
 calc_boot_theta <- function(boot_theta_file, count_nb_good){
-      if(file.exists(boot_theta_file)){
+      if (file.exists(boot_theta_file)) {
             boot_theta_hat <- readRDS(boot_theta_file)
             return(boot_theta_hat)
       }

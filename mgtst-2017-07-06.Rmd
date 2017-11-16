@@ -80,35 +80,12 @@ logFC Error Rate Results
 ```{r discussion, child="Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ``` 
 
-\pagebreak  
+# References 
+<div id="refs"></div>
 
-# Session information 
-
-## Git repo commit information
-```{r include = FALSE}
-library(tidyverse)
-library(git2r)
-repo <- repository(path = ".")
-last_commit <- commits(repo)[[1]]
+# Supplemental
+```{r}
+#```{r supplemental, child="Supplemental.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+#```
 ```
 
-The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name`  branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit  message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
-
-
-## Platform Information  
-```{r session_info, warning=FALSE, message=FALSE, echo = FALSE}
-s_info <- devtools::session_info()
-print(s_info$platform)
-```
-
-
-## Package Versions  
-```{r warning=FALSE, message=FALSE, echo = FALSE}
-s_info$packages %>% filter(`*` == "*") %>% 
-      dplyr::select(-`*`) %>%
-      knitr::kable(booktabs = TRUE, longtable=TRUE)
-```
-
-\pagebreak
-
-# References
