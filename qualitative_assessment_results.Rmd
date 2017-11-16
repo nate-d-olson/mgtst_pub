@@ -58,7 +58,7 @@ prop_inferred <- theta_est %>%
       ## Setting negative inferrred theta values to 0
       mutate(theta_hat_mean = if_else(theta_hat_mean < 0, 0, theta_hat_mean)) %>% 
       ## Using inferred theta estimates to calculate expected values
-      mutate(inferred_prop = post * theta_hat_mean + pre * (1-theta_hat_mean))
+      mutate(inferred_prop = post * theta_hat_mean + pre * (1 - theta_hat_mean))
 
 count_df <- prop_inferred %>% 
       select(biosample_id, t_fctr, pipe, feature_id, 
@@ -85,22 +85,13 @@ unmix_plot_df <- unmix_count_df %>%
 unmix_count_plot <- ggplot(unmix_plot_df) +
       geom_boxplot(aes(x = biosample_id, y = exp_count + 1), 
                    alpha = 0.25) + 
-      geom_hline(aes(yintercept = 1 + 1), linetype = 2) + 
+      geom_hline(aes(yintercept = 1 + 1), linetype = 2, color = "darkorange") + 
       scale_y_log10() + theme_bw() + 
-      labs(x = "Pipeline", y = "Expected Counts", 
-           fill = "Biological Replicate", color = "Biological Replicate") +
+      labs(x = "Individual", y = "Expected Counts") +
       theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
       facet_wrap(~pipe, nrow = 1)
 
 ## Only including p < 0.05 
-# unmix_test_plot <- unmix_binom_tidy %>% 
-#       filter(pipe != "unclustered") %>% 
-#       mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05")) %>% 
-#       ggplot() + geom_bar(aes(x = biosample_id, fill = pval_cat), position = "fill") + 
-#       facet_wrap(~pipe, nrow = 1) +
-#       theme_bw() + theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") +
-#       labs(x = "Biological Replicate", y = "Proportion", fill = "Adjusted p-value")
-
 unmix_binom_prop <- unmix_binom_tidy %>% 
       filter(pipe != "unclustered") %>% 
       mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05")) %>% 
@@ -116,28 +107,19 @@ unmix_test_plot <- unmix_binom_prop %>%
       geom_bar(aes(x = biosample_id, y = pval_prop), stat = "identity") + 
       facet_wrap(~pipe, nrow = 1) + 
       theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
-      labs(x = "Biological Replicate", y = "Proportion") +
+      labs(x = "Individual", y = "Proportion") +
       ylim(0, 1)
 
 mix_count_plot <- mix_count_df %>% filter(pipe != "unclustered") %>% ggplot() + 
       geom_boxplot(aes(x = biosample_id, y = count + 1),
                    alpha = 0.25) + 
-      geom_hline(aes(yintercept = 1 + 1), linetype = 2) + 
+      geom_hline(aes(yintercept = 1 + 1), linetype = 2, color = "darkorange") + 
       scale_y_log10() + theme_bw() + 
-      labs(x = "Pipeline", y = "Observed Counts", 
-           fill = "Biological Replicate", color = "Biological Replicate") +
+      labs(x = "Individual", y = "Observed Counts") +
       theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
       facet_wrap(~pipe, nrow = 1)
 
 ## Only including p < 0.05 
-# mix_test_plot <- mix_binom_tidy %>% filter(pipe != "unclustered") %>% 
-#       mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05")) %>% 
-#       ggplot() + geom_bar(aes(x = biosample_id, fill = pval_cat), position = "fill") + 
-#       facet_wrap(~pipe) +
-#       theme_bw() + theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") +
-#       labs(x = "Biological Replicate", y = "Proportion", fill = "Adjusted p-value")
-
-
 mix_binom_prop <- mix_binom_tidy %>% 
       filter(pipe != "unclustered") %>% 
       mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05")) %>% 
@@ -153,7 +135,7 @@ mix_test_plot <- mix_binom_prop %>%
       geom_bar(aes(x = biosample_id, y = pval_prop), stat = "identity") + 
       facet_wrap(~pipe, nrow = 1) + 
       theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
-      labs(x = "Biological Replicate", y = "Proportion") + 
+      labs(x = "Individual", y = "Proportion") + 
       ylim(0, 1)
 ```
 
@@ -166,6 +148,6 @@ ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text
 ```
 
 A number of unmixed- and titration-specific features were observed (titration-specific: Fig. \@ref(fig:qualPlot)A, unmix-specific: Fig. \@ref(fig:qualPlot)B). 
-There were unmixed-specific features with expected counts that could not be explained by sampling alone for all biological replicates and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C). 
+There were unmixed-specific features with expected counts that could not be explained by sampling alone for all Individuals and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C). 
 However, the proportion of unmixed-specific features that could not be explained by sampling alone varied by bioinformatic pipeline with over half of the DADA2 unmixed-specific features could not be explained by sampling alone whereas QIIME had the lowest rate of unmixed-specific features that could not be explained by sampling alone. 
 Consistent with the distribution of observed counts for titration-specific features more of the DADA2 features could not be explained by sampling alone compared to the other pipelines (Fig. \@ref(fig:qualPlot)D). 
