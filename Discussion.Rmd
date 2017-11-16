@@ -14,23 +14,29 @@ We used the dataset to assess the feature presence/ absence, relative abundance,
 We assessed the performance of three bioinformatic pipelines, open-clustering, _de-novo_ clustering, sequencing inference, and unclustered. 
 Running these pipelines on our mixture dataset resulted in a range of total feature abundance and features per sample. 
 Despite the wide range in number of features the pipelines all generated similarly sparse datasets. 
+The sparsity was comparable to previously publised values, 1-3\% [@paulson2013differential].
 As the dataset is highly redundant, 180 samples derived from 10 environmental samples lower sparsity was expected. 
-__Paulson metagenomeSeq paper supplemental figure 4 1-3% features detected per sample__  
-The qualitative assessmen results, specifically the high proportion of titration and unmixed sample specific features that could not be explained by sampling alone, indicates that the sequence inference method had a high false negative feature detection rate 
-This high false negative rate likey resulted in higher sparsity. 
-For the other pipelines the high sparsity is attributed to features that were artifacts of the sequencing process, false positives.  
-The high rate of false positive features have been observed in benchmarking studies using mock communities __REF__.
-The 16S region sequenced in the study is larger than the region the de-novo and open clustering pipelines were initially developed for __REF-Schloss__. 
+The higher than expected sparsity can be attributed to false positive and false negative or true low abundance features. 
+False positives are sequencing or PCR artifacts that are not appropriately filtered or assigned to an appropriate feature by the bioinformatic pipeline. 
+The 16S region sequenced in the study is larger than the region the de-novo and open clustering pipelines were initially developed for and thus potentailly explaining the higher than expected sparsity [@kozich2013development] __QIIME V4 REF__. 
 The larger region has a smaller overlap between the forward and reverse reads as a result in our study the merging of the forward and reverse reads did not allow for the sequence error correction that occurs when their is greater overlap. 
+However, both the _de-novo_ and open-reference clustering pipelines have produced count tables with magnitudes higher than expected features in evaluation studies using defined mixtures of cell and DNA, mock communities __REF__. 
+The sequence inference method produced a count table with significantly fewer features compared to the _de-novo_ and open-reference clustering pipelines, yet had comparable sparsity. 
+False negative provide a potential expalination for the higher than expected sparsity. 
+A false negative occurs when a lower abundance sequence representing an organism within the sample is clustered with a higher abundance sequence inflating the dataset sparsity. 
+The qualitative assessment results, specifically the high proportion of titration and unmixed sample specific features that could not be explained by sampling alone, indicates that the sequence inference method had a high false negative feature detection rate. 
+While microbial abundance distributions are known to have long tails, it is likely that the observed sparsity is an artifact of the 16S measurement process based on results from previously mentioned mock community benchmarking studies.
 
 As the qualitative assessment results were pipeline dependent the implications for 16S metagenomic studies vary by pipeline. 
-For de-novo and open-reference clustering methods any conclusions made based on low abundance features require additional justification. 
-Specifically, how do you know whether the feature is a measurement artifact or represents a member of the microbial community. 
+For _de-novo_ and open-reference clustering methods any conclusions made based on low abundance features require additional justification. 
+Specifically, determining whether the feature is a measurement artifact or represents a member of the microbial community. 
 This is especially relevant for studies characterizing the rare biosphere. 
-A study exploring the microbial ecology of __SOME BIRD__ used a hard filter for low abundance features, but also compared the results with and without the filter ensuring that any conclusions were not biases by using the artibrary filter or including the low abundance features that are likely predominantly measurement artifacts __REF__. 
-For 16S metagenomic studies using DADA2, missing low abundance features are more likely to impact presence/absence diversity analysis. 
-Though a user can be more confident that an observed feature represents a member of the microbial community and not a measurement artifact. 
-It is unlikely that the number of features in a sample accurately reflects the true richness of a sample though how well the results datasets are able to detect real differences in richness between samples is unknown.
+A study exploring the microbial ecology of the Red-necked stint _Calidris ruficollis_, 
+a migratory shorebird, used a hard filter for low abundance features, 
+but also compared the results with and without the filter ensuring that the study conclusions were not biased by using the artibrary filter or including the low abundant, likely predominantly measurement artifacts, features [@risely2017gut]. 
+For 16S metagenomic studies using DADA2, missing low abundance features are more likely to impact presence/absence ecological diversity analysis. 
+When a sequencing dataset is processed using DADA2, the user can be more confident that an observed feature represents a member of the microbial community and not a measurement artifact. 
+At the same it is unlikely that the number of features in a sample accurately reflects the true richness of a sample though whether real differences in richness between samples are detectable when a dataset is processed using DADA2 is unknown.
 
 The quantiative assessment results, both relative abundance and log fold-change estimates were individual specific. The individual specific results are a limitation in inferring the proportion of prokaryotic DNA in a titration from post-exposure samples, $\theta$. 
 Pipeline had minimal effect on the quantiative results when accounting for individual effects. 

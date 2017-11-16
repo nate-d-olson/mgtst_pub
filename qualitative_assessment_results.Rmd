@@ -139,7 +139,7 @@ mix_test_plot <- mix_binom_prop %>%
       ylim(0, 1)
 ```
 
-```{r qualPlot, message = FALSE, echo = FALSE, warning = FALSE, fig.cap = "Distribution of (A) observed count values for titration-specific features and (B) expected count values for unmixed-specific features by pipeline and individual. The horizontal dashed line indicates a count value of 1. (C) Proportion of unmix-specific features and (D) titration-specific features with an adjusted p-value < 0.05 for the bayesian hypothesis test and binomial test respectively. We fail to accept the null hypothesis when the p-value < 0.05, indicating that for these features the discrepancy between the feature not being observed in the titration and present in the unmixed samples is not explained by sampling alone."}
+```{r qualPlot, message = FALSE, echo = FALSE, warning = FALSE, fig.cap = "Distribution of (A) observed count values for titration-specific features and (B) expected count values for unmixed-specific features by pipeline and individual. The orange horizontal dashed line indicates a count value of 1. (C) Proportion of unmix-specific features and (D) titration-specific features with an adjusted p-value < 0.05 for the bayesian hypothesis test and binomial test respectively. We failed to accept the null hypothesis when the p-value < 0.05, indicating that the discrepancy between the feature only being observed in the titrations or unmixed samples cannot be not explained by sampling alone."}
 ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text"), 
           mix_test_plot, unmix_test_plot, 
           labels = c("A", "B", "C","D"),
@@ -147,7 +147,8 @@ ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text
 #ggsave("~/Desktop/qual_assessment.png", dpi = 450)
 ```
 
-A number of unmixed- and titration-specific features were observed (titration-specific: Fig. \@ref(fig:qualPlot)A, unmix-specific: Fig. \@ref(fig:qualPlot)B). 
-There were unmixed-specific features with expected counts that could not be explained by sampling alone for all Individuals and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C). 
-However, the proportion of unmixed-specific features that could not be explained by sampling alone varied by bioinformatic pipeline with over half of the DADA2 unmixed-specific features could not be explained by sampling alone whereas QIIME had the lowest rate of unmixed-specific features that could not be explained by sampling alone. 
+A number of unmixed- and titration-specific features were observed (titration-specific: Fig. \@ref(fig:qualPlot)A, unmixed-specific: Fig. \@ref(fig:qualPlot)B). 
+There were unmixed-specific features with expected counts that could not be explained by sampling alone for all individuals and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C). 
+However, the proportion of unmixed-specific features that could not be explained by sampling alone varied by bioinformatic pipeline. 
+DADA2 had the highest rate of unmixed-specific features could not be explained by sampling alone whereas QIIME had the lowest rate of unmixed-specific features. 
 Consistent with the distribution of observed counts for titration-specific features more of the DADA2 features could not be explained by sampling alone compared to the other pipelines (Fig. \@ref(fig:qualPlot)D). 
