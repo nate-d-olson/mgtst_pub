@@ -79,6 +79,9 @@ rel_abu_error_summary <-  rel_abu_error %>%
               var_error = var(inferred_error_rate),
               cov_error = var_error/mean_error) 
 
+saveRDS(rel_abu_error, "~/Desktop/rel_abu_error.RDS")
+saveRDS(rel_abu_error_summary, "~/Desktop/rel_abu_error_summary.RDS")  
+
 ### Error rate boxplot and outlier annotation
 error_boxplot <- rel_abu_error %>% group_by(pipe, biosample_id, feature_id) %>% 
     summarise(median_error = median(inferred_error_rate)) %>%
@@ -86,7 +89,7 @@ error_boxplot <- rel_abu_error %>% group_by(pipe, biosample_id, feature_id) %>%
     geom_boxplot(aes(x = pipe, y = median_error, color = pipe), outlier.shape = NA) + 
     facet_wrap(~biosample_id, ncol = 1) + 
     theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
-    labs(x = "Individual", y = "Median", color = "Pipeline")
+    labs(x = "Pipeline", y = "Bias Metric", color = "Pipeline")
 
 ## Annotating features as outliers based on boxplot
 error_plot_dat <- ggplot_build(error_boxplot)$data[[1]] %>% 
@@ -115,7 +118,7 @@ rcov_boxplot <- rel_abu_error_summary %>%
     geom_boxplot(aes(x = pipe, y = rcov_error, color = pipe), outlier.shape = NA) + 
     facet_wrap(~biosample_id, ncol = 1) + 
     theme_bw() + theme(axis.text.x = element_text(angle = 90)) +
-    labs(x = "Individual", y = "RCOV", color = "Pipeline") 
+    labs(x = "Pipeline", y = "Variance Metric", color = "Pipeline") 
 
 
 ## Annotating features as outliers based on boxplot
@@ -146,12 +149,15 @@ rel_error_summary <- rel_error_outlier_cat %>%
     left_join(rcov_outlier_cat) %>% 
     dplyr::rename(rcov_cat = outlier_cat)
 
+```
+
+```{r relAbuPlots, echo = FALSE, message = FALSE, warning = FALSE}
 ### Plot Code -----------------------------------------------------------------
 ## Observed v. Expected Regression plot
 relAbuOvE <- prop_inferred %>%
     ggplot() +
-    geom_abline(aes(intercept = 0, slope = 1), color = "grey60", linetype = 2) +
     geom_smooth(aes(x = inferred_prop, y = nb_prop, color = pipe), method = "lm") +
+    geom_abline(aes(intercept = 0, slope = 1), color = "grey60", linetype = 2) +
     facet_wrap(~biosample_id, ncol = 1) +
     scale_y_log10() + scale_x_log10() +
     theme_bw() +
@@ -161,7 +167,7 @@ relAbuOvE <- prop_inferred %>%
 
 relAbuErrorDist <- rel_abu_error %>% 
     ggplot() + 
-    geom_density_ridges(aes(x = inferred_error_rate, y = pipe, color = pipe), alpha = 0.5) + 
+    geom_density_ridges(aes(x = inferred_error_rate, y = pipe, color = pipe), alpha = 0.5) +  
     facet_wrap(~biosample_id, ncol = 1) + theme_bw() + 
     labs(x = "Error Rate", y = "Pipeline", color = "Pipeline") +
     scale_x_log10()
@@ -202,7 +208,7 @@ qiime_error <- dada_error + error_fit$coefficients$fixed['pipeqiime']
 
 # Post-hoc test to check for pipeline differences 
 ## based on fit pipeline estimates are all negative, using alternative greater to determine which pipelines are closer to zero
-error_post_hoc <- glht(error_fit, linfct = mcp(pipe = "Tukey"), alternative = "less") 
+error_post_hoc <- glht(error_fit, linfct = mcp(pipe = "Tukey"), alternative = "greater") 
 
 error_tukey_p <- summary(error_post_hoc)$test$pvalues 
 error_tukey_t <- summary(error_post_hoc)$test$tstat
@@ -239,7 +245,7 @@ rcov_var <- ape::varcomp(rcov_fit)
 
 
 
-```{r relAbuError, fig.cap = "(A) Expected and observed count relationship. Orange line indicates expected 1-to-1 relationship. Blue line a smoothed regression line of the observed and expected value relationship. Features with observed and expected relative abundance values less than 1/median library size were excluded from the figure. Distribution of feature-level relative abundance (B) median error rates and (C) robust coefficient of variation (RCOV) by individual and pipeline.", echo = FALSE, warning=FALSE, message = FALSE, fig.height = 8}
+```{r relAbuError, fig.cap = "Relative abundance assessment. (A) A linear model of the relationship between the expected and observed relative abundance. The dashed grey line indicates expected 1-to-1 relationship. The plot is split by individual and color is used to indicate the different bioinformatic pipelines. A negative binomial model was used to calculate an average relative abundance estimate across the four PCR replicates. Points with observed and expected relative abundance values less than 1/median library size were excluded from the data used to fit the linear model. (B) Distribution of relative abundance error rate by individual and pipeline. Distribution of feature-level relative abundance (C) bias metric - median error rate and (D) variance - robust coefficient of variation ($RCOV=(IQR)/|median|$) by individual and pipeline. To prevent extreme metric values from obscuring metric value visual comparisons, boxplot outliers, $1.5\times IQR$ from the median were excluded from the figure.", echo = FALSE, warning=FALSE, message = FALSE, fig.height = 7}
 ggarrange(relAbuOvE,
           relAbuErrorDist + rremove("y.text"),
           error_boxplot + rremove("x.text"), 
@@ -267,8 +273,8 @@ rel_abu_error_summary %>%
       #                      round(max_rcov_error,2), "-",
       #                      round(min_rcov_error,2),")")) %>% 
       # Max values only 
-      mutate(Median = max_med_error, RCOV = max_rcov_error) %>% 
-     dplyr::select(pipe, biosample_id, Median, RCOV) %>%
+      mutate(Bias = max_med_error, Variance = max_rcov_error) %>% 
+     dplyr::select(pipe, biosample_id, Bias, Variance) %>%
       dplyr::rename(Pipeline = pipe, Individual = biosample_id) %>%
       gather("Metric","value", -Pipeline, -Individual) %>% 
       spread(Individual, value) %>% 
@@ -278,38 +284,26 @@ rel_abu_error_summary %>%
       collapse_rows(columns = 1)
 ```
 
-Overall aggreement between the inferred and observed relative abundance was high for all individuals and bioinformatic pipelines (Fig. \@ref(fig:relAbuError)A). 
+For the relative abundance assessment we evaluated the consistency of the observed and expected relative abundance estimates for a feature across the four titration PCR replicates as well as feature-level bias and variance. 
 The pre- and post-exposure estimated relative abundance and inferred $\theta$ values were used to calculate titration and feature level error rates. 
-To prevent over-fitting, $\theta$ estimates for the unclustered pipeline were used to calculate the error rates for the other three pipelines.  
+To prevent over-fitting, unclustered pipeline $\theta$ estimates were used to calculate the error rates. 
 Only features observed in all pre- and post-exposure PCR replicates and pre- and post-exposure specific features were included in the analysis (Table \@ref(tab:relAbuFeatTbl)). 
 Pre- and post-exposure specific features were defined as present in all four PCR replicates of the pre-exposure or post-exposure PCR replicates, respectively, but none of the PCR replicates for the other unmixed sample.
 There is lower confidence in the relative abundance of a feature in the pre- or post-exposure unmixed samples when the feature is observed in some of the 4 PCR replicates, therefore these features were not included in the error analysis.
-The deviation from the expected value on the low end varies by biological replicate and pipeline. 
+Overall aggreement between the inferred and observed relative abundance was high for all individuals and bioinformatic pipelines (Fig. \@ref(fig:relAbuError)A). 
+The error rate distribution was similarly consistent across pipelines, including long tails (Fig. \@ref(fig:relAbuError)B)
 
-Next we evaluated the feature-level quantitative accuracy of the relative abundance values by comparing the distribution of the median error and robust coefficient of variation ($RCOV=(IQR)/|median|$)for the relative abundance error rate (Fig. \@ref(fig:relAbuError)). 
-Feature-level median error rates and RCOV were compared across pipelines and individuals using a mixed effects model. 
-Large error rates and RCOV values were observed for all pipelines (Table  \@ref(tab:relAbuErrorTbl)). 
-Features with large error rates, defined as $1.5\times IQR$ from the median, were excluded from the analysis to prevent outliers from biasing the comparison. 
-The mean feature-level error rate by pipeline was negative for all three pipelines (DADA2 `r round(dada_error,2)`, Mothur `r round(mothur_error,2)`, and QIIME `r round(qiime_error,2)`). 
-Multiple comparisons test (Tukey) was used to test for significant differences in feature-level error between pipelines. 
-A one-sided alternative hypothesis to determine which pipelines had a smaller, closer to zero, feature-level error rate. 
-The Mothur and DADA2 mean feature-level error rates were closer to zero and signficantly different from the QIIME pipeline, (Mothur v. QIIME t = `r  round(error_tukey_t['qiime - mothur'],2)`, p = `r round(error_tukey_p[error_tukey_t == error_tukey_t['qiime - mothur']],2)`; DADA2 v. QIIME t = `r  round(error_tukey_t['qiime - dada2'],2)`, p = `r round(error_tukey_p[error_tukey_t == error_tukey_t['qiime - dada2']],2)`). 
-Though the Mothur and DADA2 mean feature-level error rates were not significantly different from eachother, (t = `r  round(error_tukey_t['mothur - dada2'],2)`, p = `r round(error_tukey_p[error_tukey_t == error_tukey_t['mothur - dada2']],2)`).
-Unlike feature-level error rates, large RCOV was observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)). 
-Outlier values were also excluded from the RCOV analysis. 
-The feature-level RCOV was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuError)C). 
-
-In an attempt to identify feature characteristics that could be attributed to poor performance the feature-level error-rate and RCOV were compared to the unmixed sample relative abundance and relative abundance across the titrations. 
-Additionally, feature-level relative abundance error metrics were compared across individuals to try and identify any relationship between poor performance and phylogeny. 
-Outlier feature-level error-rates had lower median relative abundance, but not RCOV (Fig. \@ref(fig:errorOut)). 
-The median relative abundance was significantly lower for features identified as outliers based on the feature-level error rate, but only when considering features with positive error rates. 
-This is likely due to the more extreme error rates all being positive. 
-For the RCOV the feature-level median relative abundance values were not significantly different between the outlier and non-outlier features.  
-The error rate is dependent on the accuracy of the relative abundance estimates for the unmixed pre- and post-exposure samples. 
-The feature-level median error-rate and RCOV was compared to the the unmixed sample variance/mean relative abundance to determine if extreme error-rate and RCOV values could be attributed to variability in relative abundance between PCR replicates for the unmixed samples. 
-The variance/mean for the unmixed samples was lower for the outliers compared to the non-outliers for both the feature-level error rate and RCOV. 
-Investigation of relationship between phylogeny and feature-level relative abundance error metrics (Fig. \@ref(fig:relAbuTreeFig)). 
-Only features included in the relative abundance error analysis for at least three of the five individuals were included in the figure. 
-No clear relationship between feature-level error rate or RCOV and phylogeny of representative sequences. 
+To assess the feature-level quantitative accuracy of the relative abundance values we compared the the relative abundance feature-level bias, (median error rate, Fig. \@ref(fig:relAbuError)C), and variance, ($RCOV=(IQR)/|median|$ Fig. \@ref(fig:relAbuError)D). 
+Feature-level bias and variance metrics were compared across pipelines and individuals using a mixed effects model. 
+Large bias and variance values were observed for all pipelines (Table  \@ref(tab:relAbuErrorTbl)). 
+Features with large bias and variance metrics, defined as $1.5\times IQR$ from the median, were excluded from the analysis to prevent outliers from biasing the comparison. 
+Multiple comparisons test (Tukey) was used to test for significant differences in feature-level bias and variance between pipelines. 
+A one-sided alternative hypothesis to determine which pipelines had a smaller, feature-level error rate. 
+The Mothur, DADA2, and QIIME feature-level bias were all signficantly different from each other ($p < 1\times 10^{-8}$). 
+DADA2 had the lowest mean feature-level bias (`r round(dada_error,2)`), followed by Mothur (`r round(mothur_error,2)`), with QIIME having the highest bias (`r round(qiime_error,2)`) (\@ref(fig:relAbuError)C).  
+Large variance metric values were observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)). 
+The feature-level variance was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuError)D). 
+We evalutated whether poor feature-level relative abundance metrics can be attribtuted to specific taxonomic groups or phylogenetic clades  (Supplemental Fig. __2017-11-16_feature-phyloSignal.pdf__). 
+While a phylogenetic signal was detected for both the bias and variance metric, we were unable to identify specific taxonomic groups or phylogenetic clades that performed poorly in our assessement. 
 
 

@@ -38,32 +38,36 @@ For 16S metagenomic studies using DADA2, missing low abundance features are more
 When a sequencing dataset is processed using DADA2, the user can be more confident that an observed feature represents a member of the microbial community and not a measurement artifact. 
 At the same it is unlikely that the number of features in a sample accurately reflects the true richness of a sample though whether real differences in richness between samples are detectable when a dataset is processed using DADA2 is unknown.
 
-The quantiative assessment results, both relative abundance and log fold-change estimates were individual specific. The individual specific results are a limitation in inferring the proportion of prokaryotic DNA in a titration from post-exposure samples, $\theta$. 
-Pipeline had minimal effect on the quantiative results when accounting for individual effects. 
+The quantiative assessment results, both relative abundance and log fold-change estimates were individual specific. 
+The individual specific results are a limitation in inferring the proportion of prokaryotic DNA in a titration from post-exposure samples, $\theta$. 
+We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentation of bacterial DNA across titration but we were unable to estimate the proportion of bacterial DNA in the unmixed samples using the qPCR data. 
+Using the 16S sequencing data we inferred the proportion of bacterial DNA from the post-exposure sample in each titration. 
+However, the uncertainty and accuracy of the inferrence method is not known resulting in an unaccounted for error source. 
+A better method for estimating the proportion of bacterial DNA in the unmixed samples would increase the accuracy of the error metrics. 
+
+While the relative abundance bias metric was significantly different between pipelines overall, pipeline had minimal impact on the quantitative assement results when accounting for individual effects. 
 However, large outliers were commonly observed. 
+The outliers could not be attributed to the bioinformatic pipeliens as the outliers were observed for the unclustered datasets as well. 
+Therefore the poor performance for outliers was attributed to the molecular laboratory side of the measurment process. 
 Visual exploration of the results indicates a feature-specific effect. 
-Experimental factors such as feature-level relative abundance of the titrations or unmixed samples could not account for the outliers. 
-Additionally, outliers were not restricted to specific taxonomic groups. 
-What dependency means for 16S gene surveys, when does bioinformatic pipeline matter and when does it not matter? 
-Unable to define a set of characteristics that define can be used to identify poor performing features. 
-In general low abundance features are noisier but high abundance features are not necessarily accurate? 
+Mismatches in the primer binding regions have been shown to impact PCR efficiency, a potential cause for poor feature-specific performance __REF__. 
+We evaluate the taxonomy and phylogenetic relationship for the relative abundance and log fold-change bias and variance metrics. 
+While a phylogenetic signal was detected for all metrics poor feature-level performance we were unable to attributed to any specific taxonomic group or phylogenetic clade. 
+We were unable to define a set of characteristics (quantitate, taxonomic, or phylogenetic) that can be used to identify poor performing features. 
 
-__Outliers as a product of artificial merging or splitting of features__
-
-Compositional nature of 16S metagenomic data is well known within the field. 
-The proportion of prokaryotic DNA in a sample is rarely taken into consideration in 16S studies. 
-Our error metrics decrease when using our inferred $\theta$ values to correct for difference in prokaryotic DNA proportions. 
-The extent to which the impact of differences in the proportion of prokaryotic DNA between sets of samples compared in a 16S studies is not well known. 
-However, our results indicate that accounting for differences in proportion of prokaryotic DNA can improve the accuracy of the relative abundance comparisons. 
+Based on the results of our quantitative assessment community level analysis are likey more accurate than feature-level analyses. 
+Therefore results from individual analysis like differential abundance, which rely on log-fold change estimates, are more susceptible unknown biases and are potentially artifacts of the measurement process. 
+As the outliers were consistently observed across individual, pipeline, normalization method, and log fold-change estimators, the molecular laboratory step in the measurement process is responsible for the measurement artifact. 
+Additional work is needed to further characterize these outliers to increase confidence in the results of feature-level analyses.  
 
 # Conclusions  
-This two-sample-titration dataset  can be used to evaluate and characterize bioinformatic pipelines and clustering methods. 
+This two-sample-titration dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods. 
 The sequence dataset presented in this study can be processed with any 16S bioinformatic pipeline to generate a count table. 
 Our quantitative and qualitative assessment can then be performed on the count table and the results compared to those obtained using the pipelines included in this study. 
-Based on the results of our assessment of four bioinformatic pipelines the pipelines generate sets of features with different characteristics interms of numbers of features. 
-The objective of any pipeline is to differentiate true biological sequences in a dataset from artifacts of the measurement process. 
-Users should consider whether a pipeline is minimizes false positives (DADA2) or false negatives (Mothur). 
-Continued effort to improve the 16S metagenomic measurement process to better understand and account for differences in the proportion of prokaryotic DNA in the samples and sequence artifacts. 
+Based on the results of our assessment of four bioinformatic pipelines the pipelines generate sets of features with different characteristics interms of total abundance, features per samples, and total features. 
+The objective of any pipeline is to differentiate true biological sequences from artifacts of the measurement process. 
+Users should consider whether a pipeline minimizes false positives (DADA2) or false negatives (Mothur) is more appropriate for their study objectives. 
+Further more as the feature-specific quantitative assessment results could not be attributed to any feature quantitative, phylogenetic, or taxonomy, feature-level resutlts for any 16S metagenomic study should be interpreted with care. 
 Addressing both of these issues requires advances in both the molecular biology and computational components of the measurement process. 
 
 ```{r include = FALSE}

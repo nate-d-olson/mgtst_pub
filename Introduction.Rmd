@@ -29,19 +29,18 @@ However, without an expected value to compare to only measurement precision, sim
 By mixing environmental samples at known proportions you can use information obtained from the unmixed samples and how they were mixed to obtain an expected value for use in assessing the measurement process. 
 Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq [@parsons2015using;@pine2011adaptable;@thompson2005use]
 
-The quantitative and qualitative characteristics of a 16S metagenomic dataset can be assessed. 
 Mock communities are most commonly used to assess the qualitative characteristics of a dataset. 
 As the number of organisms in the mock community is known the total number of features can be compared to the expected number. 
 The number of observed features in a mock community is often significantly higher than the expected number of organism __REF__. 
 A noteable exception to this is mock community benchmarking studies evaluating sequencing inference method, such as DADA2 [@callahan2016dada2]. 
 The higher than expected number of features is often attributed to sequencing and PCR artifacts as well as reagent contaminants __REF__. 
 
-
-quantitative - relative abundance
-      - accuracy of relative abundance estimates  
-      - sample comparisons - compositional nature  
-      - how clustering can impact data
-      - 16S biological similarity as a confounder  
+The quantitative characteristics of 16S metagenomic measurement process is normally assessed using both mock communities and simulated data. 
+Mock communities of equimolar and staggered concentration are used to assess the quantiative accuracy of the relative abundance estimates __REF__. 
+Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample. 
+These taxonomic specific effects have been attributed to primer mismatches __REF__. 
+To assess differential abundance, simulated datasets are used where specific taxa are artifically over represented in one set of samples compared to another __REF__.  
+Using simulated data to assess log fold-change estimates only evaluate computational steps of the measurement process. 
 
 In the present study we developed a mixture dataset of extracted DNA from human stool samples for assessing the 16S metagenomic measurement process. 
 The mixture datasets was processed using three bioinformatic pipelines. 

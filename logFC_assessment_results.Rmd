@@ -58,7 +58,7 @@ slope_logFC <- logFC_feature_summary %>%
       geom_hline(aes(yintercept = 0), color = "grey20", linetype = 2) + 
       facet_wrap(~biosample_id, ncol = 1) +
       theme_bw() +
-      labs(x = "Pipeline", y = "1 - Slope", color = "Pipeline") 
+      labs(x = "Pipeline", y = "Bias", color = "Pipeline") 
 
 ymin <- ggplot_build(slope_logFC)$data[[1]]$ymin %>% min()
 ymax <- ggplot_build(slope_logFC)$data[[1]]$ymax %>% max()
@@ -73,7 +73,7 @@ r2_logFC <- logFC_feature_summary %>%
       geom_hline(aes(yintercept = 1), color = "grey20", linetype = 2) + 
       facet_wrap(~biosample_id, ncol = 1) +
       theme_bw() +
-      labs(x = "Pipeline", y = "Adjusted $R^2$", color = "Pipeline") 
+      labs(x = "Pipeline", y = "Variance$", color = "Pipeline") 
 
 
 ymin <- ggplot_build(r2_logFC)$data[[1]]$ymin %>% min()
@@ -127,7 +127,7 @@ r2_p <- r2_anova$`p-value`
 r2_var <- ape::varcomp(r2_fit)
 ```
 
-```{r logFCerror, fig.cap = "(A) Linear model or the relationship between the logFC estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual for all titration pair comparisons, color are used to indicate different pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribtion by pipeline and individual. Distribution of feature-level log-fold change error by individual and pipeline as the (C) 1 - slope and (D) $R^2$ for a linear model fit to the estimated and expected log fold-change values ", echo = FALSE, message = FALSE, fig.height = 8}
+```{r logFCerror, fig.cap = "(A) Linear model or the relationship between log fold-change estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual, line color indicates pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribtion by pipeline and individual. Distribution of feature-level log-fold change error bias (C) and variance (D) metrics by individual and pipeline. The bias ($1 - slope$) and variance ($R^2$) metrics are derived from the linear model fit to the estimated and expected log fold-change values for individual features. To prevent extreme metric values from obscuring metric value visual comparisons, boxplot outliers, $1.5\times IQR$ from the median were excluded from the figure.", echo = FALSE, message = FALSE, fig.height = 8}
 ggarrange(logFCestVexp, 
           logFC_error_dist + rremove("y.text"), 
           slope_logFC + rremove("x.text"), 
@@ -139,9 +139,25 @@ ggarrange(logFCestVexp,
           legend = "bottom")
 ```
 
-The 1-slope and $R^2$ values for linear models of the estimated and expected log fold-change for individual features, all titration comparison, were used to characterize the log fold-change bias and variance across pipelines. 
-A error metric of $1 - slope$ was used, where 0 is the desired value (i.e. log fold-change estimate = log fold-change expected), negative and positive values indicate the log-fold change was consistently under and over estimated, respectively. 
-The linear model $R^2$ value was used to characterize the feature-level log fold-change variance as it indicates how consistent the relationship between the log fold-change estimates and expected values are across titration comparisons. 
-Similar to the relative abundance assessment we used a mixed-effects models to take into account differences in individuals when comparing the log fold-change error rates between pipeline. 
-The log fold-change bias metric was not significantly different between pipelines (F = `r round(slope_f,2)`, p = `r round(slope_p,2)`, DADA2 `r round(dada_slope,2)`, Mothur `r round(mothur_slope,2)`, QIIME `r round(qiime_slope,2)`, \@ref(fig:logFCerror)B). 
-The log fold-change variance metric was not significantly different between pipelines (F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, DADA2 `r round(dada_r2,2)`, Mothur `r round(mothur_r2,2)`, QIIME `r round(qiime_r2,2)`, Fig. \@ref(fig:logFCerror)C).
+The agreement between the log-fold change estimates and expected values were individual specific and generally consistent across pipelines (Fig. \@ref(fig:logFCerror)A). 
+The individual specific effect was attributed to the fact that unlike the relative abundance assessment the inferred $\theta$ values were not used to calculate the expected values. 
+The inferred $\theta$ values were not used to calculate the expected values as we wanted to include all of the titrations and the $\theta$ estimates for the higher titrations were not monotomically decreasing and therefore resulted in unrealistic expected log fold-change values, e.g. negative log-fold changes for pre-exposure specific features. 
+The log-fold change estimates and expected values were consistent across pipelines with one noteable exception. 
+For E01JH0011 the Mothur log fold-change estimates were in better agreement wih the expected value compared to the other pipelines. 
+As $\theta$ was not corrected for differences in the proportion of prokaryotic DNA between the unmixed pre- and post-exposure samples we are unable to say whether Mothur's performance was better than the other pipelines. 
+
+The log fold-change error distribution was consistent across pipelines (Fig. \@ref(fig:logFCerror)B). 
+There was a long tail in the distribution for all pipelines and individuals. 
+The log fold-change estimates responsible for the long tail could not be attributed to specific titration comparisons. 
+Additionally, we compared the log-fold change error distribution for log-fold change estimates using different normalization methods (Supplemental Fig. \@ref(fig:logfcNormComp)). 
+The error rate distributions, including the long tails, were consistent across normalization methods. 
+Furthermore as the long tail was observed for the unclustered data as well, the log-fold change estimates contributing to the long tail are likely due to a bias associated with the molecular laboratory portion of the measurement process and not the bioinformatic pipelines. 
+Based on exploratory analysis of the relationship between the log fold-change estimates and expected values for individual features indicated that the long tails were attributed to feature specific performance.
+
+The $1-slope$ and $R^2$ values for linear models of the estimated and expected log fold-change for individual features, all titration comparison, were used to characterize the feature-level log fold-change bias (Fig. \@ref(fig:logFCerror)C) and variance across pipelines (Fig. \@ref(fig:logFCerror)D). 
+A bias metric of $1 - slope$ was used, where 0 is the desired value (i.e. log fold-change estimate = log fold-change expected), negative and positive values indicate the log-fold change was consistently under and over estimated, respectively. 
+The linear model $R^2$ value was used to characterize the feature-level log fold-change variance as it indicates the consistency of the relationship between the log fold-change estimates and expected values are across titration comparisons. 
+Similar to the relative abundance assessment we used a mixed-effects models to account for differences in individuals when comparing bias and variance metrics across pipelines. 
+The log fold-change bias metric and variance metrics were not significantly different between pipelines (Bias: F = `r round(slope_f,2)`, p = `r round(slope_p,2)`, \@ref(fig:logFCerror)B, (Variance: F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, Fig. \@ref(fig:logFCerror)C).
+Next we evaluated whether poor feature-level metrics could be attributed to specific clades for taxonomic groups (Supplemental Fig. __2017-11-16_feature-phyloSignal.pdf__). 
+Similar to the relative abundance estimate, while a phylogenetic signal was detected for both the bias and variance metrics, we were unable to identify specific taxonomic groups or phylogenetic clades that performed poorly in our assessement.
