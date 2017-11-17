@@ -1,6 +1,8 @@
 ---
 title: "logFC error Normalization method comparison"
-output: html_notebook
+output: 
+      bookdown::pdf_document2: 
+            toc: FALSE
 ---
 
 ```{r logFCsetup, include=FALSE}
