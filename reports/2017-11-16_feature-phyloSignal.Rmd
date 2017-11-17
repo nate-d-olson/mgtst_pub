@@ -1,0 +1,388 @@
+---
+title: "Feature-Level Phylogenetic Assessment"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+library(ggtree)
+library(phylosignal)
+library(phylobase)
+library(tidyverse)
+library(stringr)
+library(forcats)
+```
+
+```{r mungePhylo, echo = FALSE, message = FALSE, warning = FALSE}
+require(metagenomeSeq)
+dada_tax <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_mrexp.rds") %>% 
+    fData() %>% rename(feature_id = OTUname) 
+mothur_tax <- readRDS("~/Projects/mgtst_pipelines/mothur/mothur_mrexp.rds") %>% 
+    fData() %>% rename(feature_id = OTUname)
+
+## Phylogenetic Trees
+
+qiime_tree <- read.tree("~/Projects/mgtst_pipelines/qiime/otus_uc_fast/rep_set.tre")
+dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree 
+unclustered_tree <- read.tree("~/Projects/mgtst_pipelines/unclustered/unclustered_seqs_set.tre")
+
+## Mothur tree with renamed tips
+seq_id_df <- read_lines("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.fasta") %>% grep(pattern = ">", value = TRUE) %>% 
+      str_replace("\\|.*","") %>% 
+      str_replace(">","") %>% 
+      enframe(name = "X", value = "seq_id") %>% 
+      select(-X) %>% 
+      separate(seq_id, into = c("seq_id", "feature_id"),sep = "\t")
+
+
+mothur_tree <- read.tree("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.tre")
+
+seq_tree_ids <- data_frame(seq_id = mothur_tree$tip.label) %>% 
+      left_join(seq_id_df)
+
+mothur_tree$tip.label <- seq_tree_ids$feature_id 
+
+## Feature Metrics
+rel_abu_feature_metrics <- readRDS("~/Desktop/rel_abu_error_summary.RDS")  %>% 
+    select(pipe, biosample_id, feature_id, median_error, rcov_error) %>% 
+    rename(Bias = median_error, Variance = rcov_error)
+
+# log fold-change
+logFC_feature_metrics <- readRDS("~/Desktop/logFC_feature_summary.RDS") %>% 
+      mutate(slope_metric = 1 - slope) %>% 
+    filter(logFC_est == "edgeR") %>% 
+    rename(Bias = slope_metric, Variance = adj.r.squared)
+```
+
+```{r phlyoSigFuns, echo = FALSE, message = FALSE, warning = FALSE}
+make_metric_df <- function(feature_metrics, tree.tips){
+    ## Center and scale metrics
+    metric_df <- feature_metrics %>%  
+        filter(feature_id %in% tree.tips) %>% 
+        select(biosample_id, feature_id, Bias, Variance) %>% 
+        group_by(biosample_id) %>% 
+        ## center and scale to adjust for individual effect
+        mutate(center_scale_bias = scale(Bias)) %>%
+        mutate(center_scale_variance = scale(Variance)) %>% 
+        ungroup()
+    
+    ## Use median value to summarize replicates
+    metric_df %>% 
+        group_by(feature_id) %>% 
+        summarise(Bias = median(Bias), 
+                  Variance = median(Variance),
+                  sc_bias = median(center_scale_bias), 
+                  sc_variance = median(center_scale_variance)) %>% 
+        as.data.frame()
+}
+
+generate_p4d <- function(metrics, tree){
+    ## Remove features not include in the analysis  
+    tips_to_drop <- tree$tip.label[!(tree$tip.label %in% metrics$feature_id)] 
+    
+    trim <- drop.tip(tree, tip = tips_to_drop)
+    
+    ## Adding character to tip.labels to prevent issue generating phylo4d
+    # trim$tip.label <- paste0("F_",trim$tip.label) 
+    # metrics_med$feature_id <- paste0("F_", metrics_med$feature_id) 
+    
+    ## making sure row order matching tip order
+    dat <- data.frame(feature_id = trim$tip.label) %>% 
+        left_join(metrics) %>% 
+        column_to_rownames(var = "feature_id")
+    
+    ## combining tree and data frame
+    phylo4d(trim, dat)
+}
+
+make_signal_df <- function(p4d){
+    phyloSignal(p4d, method = c("all")) %>% 
+        map_df(rownames_to_column, var = "Metric", .id = "test") %>% 
+        gather("Method","Value", -Metric, -test) %>% 
+        spread(test, Value) %>% 
+        select(Metric, Method, stat, pvalue)
+}
+
+make_lipa_df <- function(lipa){
+    ## Tidy
+    lipa_stat <- lipa$lipa %>% as.data.frame() %>% 
+        rownames_to_column(var = "feature_id") %>% 
+        rename(lipa_stat_bias = sc_bias, lipa_stat_variance = sc_variance)
+    
+    lipa_p <- lipa$p.value %>% as.data.frame() %>% 
+        rownames_to_column(var = "feature_id") %>% 
+        rename(lipa_p_bias = sc_bias, lipa_p_variance = sc_variance) 
+    
+    left_join(lipa_stat, lipa_p)
+}
+
+make_clusterGroup_df <- function(trait, p4d){
+    gc <- graphClust(p4d, trait) 
+    
+    data.frame(feature_id = names(gc$clusters),
+           cluster_id = gc$clusters)
+} 
+
+signal_pipe <- function(feature_metrics, tree) {
+  metric_df <- make_metric_df(feature_metrics, tree.tips = tree$tip.label)
+  p4d <- generate_p4d(metrics = select(metric_df,-Bias, -Variance), tree = tree)
+  signal_df <- make_signal_df(p4d) 
+  
+  ## Feature level tests 
+  lipa <- lipaMoran(p4d, alternative = "two-sided")
+  lipa_df <- make_lipa_df(lipa)
+  
+  cg_df <- colnames(p4d@data) %>% set_names(.) %>% 
+      map_df(make_clusterGroup_df, p4d = p4d, .id = "metrics") %>% 
+      mutate(metrics = paste0("cluster_",metrics)) %>% 
+      spread(metrics, cluster_id)
+  
+  ## Combining data.frames
+  full_metric_df <- metric_df %>% left_join(lipa_df) %>% left_join(cg_df) 
+  
+  ## Return outputs
+  list(df = full_metric_df, signal = signal_df, p4d = p4d, lipa = lipa)
+}
+```
+
+
+
+## relative abundanceDADA 
+
+```{r}
+dada_signal <- signal_pipe(rel_abu_feature_metrics, dada_tree)
+# dada_sim <- phyloSim(mothur_signal$p4d, method = c("Cmean")) 
+# dada_sim %>% plot()
+```
+
+```{r}
+dada_signal$signal %>% 
+    knitr::kable()
+```
+
+```{r}
+# dada_bias_corr <- phyloCorrelogram(dada_signal$p4d, trait = "sc_bias")
+# plot(dada_bias_corr)
+```
+
+
+```{r}
+# dada_variance_corr <- phyloCorrelogram(dada_signal$p4d, trait = "sc_variance")
+# plot(dada_variance_corr)
+```
+
+```{r fig.height = 5}
+dotplot(dada_signal$p4d, dot.col = (dada_signal$lipa$p.value < 0.05) + 1, 
+                center = FALSE , scale = FALSE, 
+        grid.horizontal = FALSE, 
+        trait.labels = c("Bias", "Variance"),
+        show.tip = FALSE, 
+        tree.ladderize = TRUE)
+```
+
+```{r}
+dada_signal$df %>% left_join(dada_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Bias)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Bias, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 0), linetype = 2) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")  + scale_y_log10() + annotation_logticks(sides = "l")
+```
+
+```{r}
+dada_signal$df %>% left_join(dada_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Variance)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Variance, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 1), linetype = 2) +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")
+
+```
+
+## relative abundance Mothur
+```{r}
+mothur_signal <- signal_pipe(rel_abu_feature_metrics, mothur_tree)
+# mothur_sim <- phyloSim(mothur_signal$p4d, method = c("Cmean")) 
+# mothur_sim %>% plot()
+```
+
+```{r}
+mothur_signal$signal %>% 
+    knitr::kable()
+```
+
+```{r}
+# mothur_bias_corr <- phyloCorrelogram(mothur_signal$p4d, trait = "sc_bias")
+# plot(mothur_bias_corr)
+```
+
+
+```{r}
+# mothur_variance_corr <- phyloCorrelogram(mothur_signal$p4d, trait = "sc_variance")
+# plot(mothur_variance_corr)
+```
+
+```{r fig.height = 5}
+dotplot(mothur_signal$p4d, dot.col = (mothur_signal$lipa$p.value < 0.05) + 1, 
+                center = FALSE , scale = FALSE, 
+        grid.horizontal = FALSE, 
+        trait.labels = c("Bias", "Variance"),
+        show.tip = FALSE, 
+        tree.ladderize = TRUE)
+```
+
+```{r}
+mothur_signal$df %>% left_join(mothur_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Bias)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Bias, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 0), linetype = 2) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")  + scale_y_log10() + annotation_logticks(sides = "l")
+```
+
+```{r}
+mothur_signal$df %>% left_join(mothur_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Variance)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Variance, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 1), linetype = 2) +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")
+
+```
+
+## log fold-change Mothur  
+```{r}
+mothur_signal <- signal_pipe(logFC_feature_metrics, mothur_tree)
+# mothur_sim <- phyloSim(mothur_signal$p4d, method = c("Cmean")) 
+# mothur_sim %>% plot()
+```
+
+```{r}
+mothur_signal$signal %>% 
+    knitr::kable()
+```
+
+```{r}
+# mothur_bias_corr <- phyloCorrelogram(mothur_signal$p4d, trait = "sc_bias")
+# plot(mothur_bias_corr)
+```
+
+
+```{r}
+# mothur_variance_corr <- phyloCorrelogram(mothur_signal$p4d, trait = "sc_variance")
+# plot(mothur_variance_corr)
+```
+
+```{r fig.height = 5}
+dotplot(mothur_signal$p4d, dot.col = (mothur_signal$lipa$p.value < 0.05) + 1, 
+                center = FALSE , scale = FALSE, 
+        grid.horizontal = FALSE, 
+        trait.labels = c("Bias", "Variance"),
+        show.tip = FALSE, 
+        tree.ladderize = TRUE)
+```
+
+```{r}
+mothur_signal$df %>% left_join(mothur_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Bias)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Bias, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 0), linetype = 2) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")
+```
+
+```{r}
+mothur_signal$df %>% left_join(mothur_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Variance)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Variance, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 1), linetype = 2) +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")
+
+```
+
+## log fold-change DADA
+
+```{r}
+dada_signal <- signal_pipe(logFC_feature_metrics, dada_tree)
+# dada_sim <- phyloSim(mothur_signal$p4d, method = c("Cmean")) 
+# dada_sim %>% plot()
+```
+
+```{r}
+dada_signal$signal %>% 
+    knitr::kable()
+```
+
+```{r}
+# dada_bias_corr <- phyloCorrelogram(dada_signal$p4d, trait = "sc_bias")
+# plot(dada_bias_corr)
+```
+
+
+```{r}
+# dada_variance_corr <- phyloCorrelogram(dada_signal$p4d, trait = "sc_variance")
+# plot(dada_variance_corr)
+```
+
+```{r fig.height = 5}
+dotplot(dada_signal$p4d, dot.col = (dada_signal$lipa$p.value < 0.05) + 1, 
+                center = FALSE , scale = FALSE, 
+        grid.horizontal = FALSE, 
+        trait.labels = c("Bias", "Variance"),
+        show.tip = FALSE, 
+        tree.ladderize = TRUE)
+```
+
+```{r}
+dada_signal$df %>% left_join(dada_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Bias)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Bias, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 0), linetype = 2) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")
+```
+
+```{r}
+dada_signal$df %>% left_join(dada_tax) %>% 
+    mutate(Rank6 = fct_reorder(Rank6, Variance)) %>% 
+    select(Rank2, Rank6, Bias, Variance) %>% 
+    # gather(Metric, Value, -Rank2, -Rank6) %>% 
+    ggplot() + geom_point(aes(x = Rank6, y = Variance, fill = Rank2), shape = 21) + 
+    # facet_wrap(~Metric, scales = "free_y", ncol = 1) + 
+    geom_hline(aes(yintercept = 1), linetype = 2) +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") + 
+    labs(x = "Genus", fill = "Phylum")
+```
