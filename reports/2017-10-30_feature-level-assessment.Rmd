@@ -5,6 +5,7 @@ output: html_notebook
 
 ```{r logFCsetup, include=FALSE}
 library(tidyverse)
+library(forcats)
 library(stringr)
 library(ggridges)
 library(phylosignal)
@@ -48,8 +49,10 @@ logFC_feature_summary %>%
 
 
 ### Phylogenetic signal  
+```{r}
+feature_metrics
+```
 
-__TODO__ Add Taxonomic levels to tree
 ```{r message = FALSE}
 dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
 
@@ -73,45 +76,132 @@ dada_lipa <- lipaMoran(dada_p4d)
 barplot.phylo4d(dada_p4d, bar.col=(dada_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
 ```
 
-a significant phylogenetic signal was detected
-```{r message = FALSE}
-phyloSignal(p4d = dada_p4d, method = c("I","Cmean"))
-``` 
+```{r}
+phyloCorrelogram(dada_p4d) %>% plot()
+```
 
-```{r message = FALSE}
-dada_tax <- logFC_pre_taxa %>% 
-      filter(pipe == "dada2") %>% 
-      rename(id = feature_id)
-
-dada_labels <-  data_frame(id = dada_trim$tip.label)
-dada_dat <- dada_metrics %>% 
-      rename(id = feature_id) %>% 
-      right_join(dada_labels) %>% 
-      dplyr::select(id, slope_metric, adj.r.squared) 
-
-dada_tax <- logFC_pre_taxa %>% 
-      filter(pipe == "dada2") %>% 
-      rename(id = feature_id) %>% 
-      left_join(dada_labels)
-
-dada_trim <- groupOTU(dada_trim, split(dada_tax$id, dada_tax$Rank3), group_name = "Class")
-
-
-
-p <- ggtree(dada_trim, aes(color = Class))
-
-p <- facet_plot(p, panel = 'Slope Metric', data = dada_dat, 
-                geom=geom_segment, aes(x=0, xend=slope_metric, y=y, yend=y), size=1)
-
-facet_plot(p, panel = 'R2', data = dada_dat, 
-           geom=geom_segment, aes(x=0, xend=adj.r.squared, y=y, yend=y), size=1) +
-      theme_tree2() + theme(legend.position = "bottom")
+```{r}
+# phyloSignalINT(dada_p4d)
 ```
 
 
+```{r}
+dada_gc <- graphClust(dada_p4d)
+```
+
+
+```{r}
+plot(dada_gc, which = "graph", ask = FALSE)
+```
+
+
+```{r}
+plot(dada_gc, which = "tree", ask = FALSE)
+```
+
+```{r message = FALSE}
+dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
+
+dada_metrics <- feature_metrics %>%  
+      filter(feature_id %in% dada_tree$tip.label) %>% 
+      filter(biosample_id == "E01JH0004")
+
+tips_to_drop <- dada_tree$tip.label[!(dada_tree$tip.label %in% dada_metrics$feature_id)] 
+
+dada_trim <- drop.tip(dada_tree,tip = tips_to_drop)
+
+dada_labels <-  data_frame(tip.label = dada_trim$tip.label)
+dada_dat <- list()
+dada_dat$slope_metric <- dada_metrics$slope_metric
+dada_dat$adj.r.squared <- dada_metrics$adj.r.squared 
+dada_dat$tip.label <- dada_metrics$feature_id
+dada_dat <- as.data.frame(dada_dat) %>% right_join(dada_labels) %>% 
+      column_to_rownames(var = "tip.label")
+dada_p4d <- phylo4d(dada_trim, dada_dat)
+dada_lipa <- lipaMoran(dada_p4d)
+barplot.phylo4d(dada_p4d, bar.col=(dada_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```
+
+```{r}
+phyloCorrelogram(dada_p4d) %>% plot()
+```
+
+```{r}
+# dada_gc <- graphClust(dada_p4d)
+```
+
+
+```{r}
+# plot(dada_gc, which = "graph", ask = FALSE)
+```
+
+
+```{r}
+# plot(dada_gc, which = "tree", ask = FALSE)
+```
+
+Too little overlap in shared features between individuals to analyze all together
+```{r}
+# dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
+# 
+# dada_metrics <- feature_metrics %>%  
+#       filter(feature_id %in% dada_tree$tip.label)
+# 
+# dada_slope <- dada_metrics %>% select(feature_id, biosample_id, slope) %>% 
+#     mutate(biosample_id = str_replace(biosample_id, "E01JH00", "slope_")) %>% 
+#     group_by(feature_id) %>%
+#     ungroup() %>% 
+#     spread(biosample_id, slope, fill = NaN) %>% 
+#     rename(tip.label = feature_id)
+# 
+# tips_to_drop <- dada_tree$tip.label[!(dada_tree$tip.label %in% dada_slope$tip.label)] 
+# 
+# dada_trim <- drop.tip(dada_tree,tip = tips_to_drop)
+# 
+# dada_r2 <- dada_metrics %>% select(feature_id, biosample_id, adj.r.squared) %>% 
+#     mutate(biosample_id = str_replace(biosample_id, "E01JH00", "r2_")) %>% 
+#     spread(biosample_id, adj.r.squared, fill = NaN) %>% 
+#     rename(tip.label = feature_id)
+# 
+# dada_dat <-  data.frame(tip.label = dada_trim$tip.label) %>% 
+#     left_join(dada_slope) %>% 
+#     left_join(dada_r2) %>%
+#     column_to_rownames(var = "tip.label") 
+# 
+# dada_p4d <- phylo4d(dada_trim, dada_dat)
+# dada_lipa <- lipaMoran(dada_p4d)
+```
+
+```{r}
+# dada_tax <- logFC_pre_taxa %>% 
+#       filter(pipe == "dada2") %>% 
+#       rename(id = feature_id)
+# 
+# dada_labels <-  data_frame(id = dada_trim$tip.label)
+# dada_dat <- dada_metrics %>% 
+#       rename(id = feature_id) %>% 
+#       right_join(dada_labels) %>% 
+#       dplyr::select(id, slope_metric, adj.r.squared) 
+# 
+# dada_tax <- logFC_pre_taxa %>% 
+#       filter(pipe == "dada2") %>% 
+#       rename(id = feature_id) %>% 
+#       left_join(dada_labels)
+# 
+# dada_trim <- groupOTU(dada_trim, split(dada_tax$id, dada_tax$Rank3), group_name = "Class")
+# 
+# p <- ggtree(dada_trim, aes(color = Class))
+# 
+# p <- facet_plot(p, panel = 'Slope Metric', data = dada_dat, 
+#                 geom=geom_segment, aes(x=0, xend=slope_metric, y=y, yend=y), size=1)
+# 
+# facet_plot(p, panel = 'R2', data = dada_dat, 
+#            geom=geom_segment, aes(x=0, xend=adj.r.squared, y=y, yend=y), size=1) +
+#       theme_tree2() + theme(legend.position = "bottom")
+```
 
 ## QIIME
-```{r message = FALSE}
+```{r, message = FALSE}
 qiime_tree <- read.tree("~/Projects/mgtst_pipelines/qiime/otus_uc_fast/rep_set.tre")
 qiime_metrics <- feature_metrics %>%
       # filter(feature_id %in% qiime_tree$tip.label) %>%
@@ -286,6 +376,281 @@ facet_plot(p, panel = 'R2', data = unclustered_dat,
 
 
 
+### Phylogenetic Signal 
+* By pipeline
+    * Feature overlap between individuals, comparison of metric values between replicates
+        * Summarize replicates for phylogenetic analysis
+    * Evaluate signal
+        * test for signal 
+            * if signal
+                * id feature
+                * correlation plot 
+                * clusterGroup 
 
+
+```{r message = FALSE}
+dada_tree <- readRDS("~/Projects/mgtst_pipelines/dada2/dada_tree_GTR.rds") %>% .$tree
+
+dada_metrics <- feature_metrics %>%  
+      filter(feature_id %in% dada_tree$tip.label) %>% 
+    select(biosample_id, feature_id, slope_metric, adj.r.squared) %>% 
+    group_by(feature_id ) %>% 
+    mutate(count = n()) %>% 
+    group_by(biosample_id) %>% 
+    mutate(center_scale_slope = scale(slope_metric)) %>%
+    mutate(center_scale_r2 = scale(adj.r.squared))
+
+tips_to_drop <- dada_tree$tip.label[!(dada_tree$tip.label %in% dada_metrics$feature_id)] 
+
+dada_trim <- drop.tip(dada_tree,tip = tips_to_drop)
+```
+
+
+```{r}
+dada_metrics %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, slope_metric)) %>% 
+ggplot() + 
+    geom_path(aes(x = feature_id, y = slope_metric)) + 
+    geom_point(aes(x = feature_id, y = slope_metric, color = biosample_id)) + 
+    theme_bw() + 
+    theme(axis.text.x = element_blank(), 
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank())
+```
+
+```{r}
+dada_metrics %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, center_scale_slope)) %>% 
+ggplot() + 
+    geom_path(aes(x = feature_id, y = center_scale_slope)) + 
+    geom_point(aes(x = feature_id, y = center_scale_slope, color = biosample_id)) + 
+    theme_bw() + 
+    theme(axis.text.x = element_blank(), 
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank())
+```
+
+```{r}
+dada_metrics %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, adj.r.squared)) %>% 
+ggplot() + 
+    geom_path(aes(x = feature_id, y = adj.r.squared)) + 
+    geom_point(aes(x = feature_id, y = adj.r.squared, color = biosample_id)) + 
+    theme_bw() + 
+    theme(axis.text.x = element_blank(), 
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank())
+```
+
+```{r}
+dada_metrics %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, center_scale_r2)) %>% 
+ggplot() + 
+    geom_path(aes(x = feature_id, y = center_scale_r2)) + 
+    geom_point(aes(x = feature_id, y = center_scale_r2, color = biosample_id)) + 
+    theme_bw() + 
+    theme(axis.text.x = element_blank(), 
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank())
+```
+
+```{r}
+dada_metrics %>% 
+    ungroup() %>% 
+    select(feature_id, count) %>% distinct() %>% 
+    ggplot() + geom_histogram(aes(x = count))
+```
+
+
+
+To summarize features across individuals using median centered and scaled values.
+```{r}
+dada_metrics_sc_med <- dada_metrics %>% 
+    group_by(feature_id) %>% 
+    summarise(sc_slope = median(center_scale_slope), 
+              sc_r2 = median(center_scale_r2)) %>% 
+    as.data.frame()
+```
+
+Check to see if normally distributed
+```{r}
+ggqqplot(dada_metrics_sc_med, x = "sc_slope")
+```
+
+```{r}
+ggqqplot(dada_metrics_sc_med, x = "sc_r2")
+```
+
+```{r}
+dada_dat <- data.frame(feature_id = dada_trim$tip.label) %>% 
+    left_join(dada_metrics_sc_med) %>% 
+      column_to_rownames(var = "feature_id")
+
+dada_p4d <- phylo4d(dada_trim, dada_dat)
+```
+
+
+
+Tests for phylogenetic signal - both metrics are significant for all Methods, not calculated for Lambda
+```{r}
+phyloSignal(p4d = dada_p4d, method = c("all")) %>% 
+    map_df(rownames_to_column, var = "Metric", .id = "test") %>% 
+    gather("Method","Value", -Metric, -test) %>% 
+    spread(test, Value) %>% 
+    select(Metric, Method, stat, pvalue)
+```
+
+
+```{r}
+phyloCorrelogram(dada_p4d, trait = "sc_slope") %>% plot()
+```
+
+```{r}
+phyloCorrelogram(dada_p4d, trait = "sc_r2") %>% plot()
+```
+
+
+Needs a rooted tree
+```{r}
+# phyloSignalINT(dada_p4d)
+```
+
+
+```{r}
+dada_lipa <- lipaMoran(dada_p4d, alternative = "two-sided")
+barplot.phylo4d(dada_p4d, bar.col = (dada_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```
+```{r}
+dada_lipa <- lipaMoran(dada_p4d, alternative = "less")
+barplot.phylo4d(dada_p4d, bar.col = (dada_lipa$p.value < 0.05) + 1, center = FALSE , scale = FALSE)
+```
+
+
+```{r}
+dada_lipa_df <- dada_lipa$p.value %>% as.data.frame() %>% 
+    rownames_to_column(var = "feature_id") %>% 
+    rename(lipa_p_slope = sc_slope, lipa_p_r2 = sc_r2)
+```
+
+
+```{r}
+dada_gc <- graphClust(dada_p4d)
+```
+
+```{r}
+dada_gc_df <- data.frame(feature_id = names(dada_gc$clusters),
+           cluster_id = dada_gc$clusters)
+```
+
+```{r}
+dada_gc_df %>% ggplot(aes(x = cluster_id)) + geom_bar()
+```
+
+```{r}
+plot(dada_gc, which = "graph", ask = FALSE)
+```
+
+```{r}
+plot(dada_gc, which = "tree", ask = FALSE)
+```
+
+Figure summarizing 
+* value distributions 
+* number of features with replicates
+
+
+functions
+* compute metrics 
+
+```{r}
+make_metric_df <- function(feature_metrics, tree.tips){
+    feature_metrics %>%  
+        filter(feature_id %in% tree.tips) %>% 
+        select(biosample_id, feature_id, slope_metric, adj.r.squared) %>% 
+        group_by(biosample_id) %>% 
+        ## center and scale to adjust for individual effect
+        mutate(center_scale_slope = scale(slope_metric)) %>%
+        mutate(center_scale_r2 = scale(adj.r.squared)) 
+}
+
+generate_p4d <- function(metrics, tree){
+    ## Use median value to summarize replicates
+    metrics_med <- metrics %>% 
+        group_by(feature_id) %>% 
+        summarise(sc_slope = median(center_scale_slope), 
+                  sc_r2 = median(center_scale_r2)) %>% 
+        as.data.frame()
+    
+    ## making sure row order matching tip order
+    dat <- data.frame(feature_id = tree$tip.label) %>% 
+        left_join(metrics_med) %>% 
+        column_to_rownames(var = "feature_id")
+    
+    ## combining tree and data frame
+    phylo4d(tree, dat)
+}
+
+make_signal_df <- function(p4d){
+    phyloSignal(p4d, method = c("all")) %>% 
+        map_df(rownames_to_column, var = "Metric", .id = "test") %>% 
+        gather("Method","Value", -Metric, -test) %>% 
+        spread(test, Value) %>% 
+        select(Metric, Method, stat, pvalue)
+}
+
+calc_lipa <- function(p4d){
+    lipa <- lipaMoran(p4d, alternative = "two-sided")
+    
+    ## Tidy
+    lipa$p.value %>% as.data.frame() %>% 
+        rownames_to_column(var = "feature_id") %>% 
+        rename(lipa_p_slope = sc_slope, lipa_p_r2 = sc_r2)
+}
+
+make_clusterGroup_df <- function(p4d, trait){
+    gc <- graphClust(p4d, trait) 
+    
+    data.frame(feature_id = names(gc$clusters),
+           cluster_id = gc$clusters)
+} 
+
+```
+
+
+figures
+__metric distributions__  
+* R2 distribution
+```{r}
+dada_metrics %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, center_scale_r2)) %>% 
+ggplot() + 
+    geom_path(aes(x = feature_id, y = center_scale_r2)) + 
+    geom_point(aes(x = feature_id, y = center_scale_r2, color = biosample_id)) + 
+    theme_bw() + 
+    theme(axis.text.x = element_blank(), 
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank())
+```
+
+* Slope distribution
+```{r}
+dada_metrics %>% 
+    ungroup() %>% 
+    mutate(feature_id = fct_reorder(feature_id, center_scale_slope)) %>% 
+ggplot() + 
+    geom_path(aes(x = feature_id, y = center_scale_slope)) + 
+    geom_point(aes(x = feature_id, y = center_scale_slope, color = biosample_id)) + 
+    theme_bw() + 
+    theme(axis.text.x = element_blank(), 
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank())
+```
+
+* tree - with lipa, dominant cluster groups, phylum, metric values  
 
 
