@@ -1,17 +1,11 @@
 Next Steps
 ==========
 * Submit data to SRA
+* qPCR MIQE guidelines
 
 Open Questions
 ==============
 Dealing with NTC
-
-ERCC qPCR
------------------------------------------------------
-* Use a mixed effects model to account for qPCR plate effects   
-* Add test (t-test) to test whether slopes are significantly different from expectation (1,-1)  
-* Compare model fix results for different titration subsets (only relevant to support conclusions regarding titration specific differences.)
-
 
 
 NOTES
@@ -21,8 +15,6 @@ NOTES
 
 Note from chat with Hector
 look at est_div_theta as input proportion of the feature  
-
-
 
 use variance of estimates for comparison
 
