@@ -7,21 +7,20 @@ output:
     toc: FALSE
 ---
 
-```{r seq_setup, warning=FALSE, message=FALSE, echo = FALSE}
+```{r seqSetup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 library(Rqc)
 library(ProjectTemplate)
+cwd <- getwd()
+setwd("../")
 load.project()
-
-project_dir <- "../16S_etec_mix_study/"
-pipeline_dir <- "../mgtst_pipelines/"
-``` 
-
-
-
+setwd(cwd)
+library(ggpubr)
+pipeline_dir <- "../../mgtst_pipelines/"
+```
 
 ```{r fq_data_filesp, warning=FALSE, message=FALSE, echo = FALSE}
-fastq_dir <- file.path(project_dir, "data/")
+fastq_dir <- file.path(pipeline_dir, "data/")
 dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
                            recursive = TRUE, full.names = TRUE)
 seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
@@ -39,7 +38,7 @@ read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
 read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
 read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
 
-qa_list <- readRDS("data/rqcQA_list.rds")
+qa_list <- readRDS("../data/rqcQA_list.rds")
 ```
 
 ```{r metadat, warning=FALSE, message=FALSE, echo = FALSE}
@@ -63,63 +62,219 @@ meta_df <- sampleSheet %>%
     filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
     mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
     left_join(grp_df) %>% left_join(qa_file_info)
-```
 
-Quality assessment of sequencing run summarizing number of reads per sample.
-Two barcoded experimental samples have less than 50,000 reads \@ref(fig:readCount). 
-The rest of the samples with less than 50,000 reads are negative PCR controls (NTC). 
-Excluding the one failed reaction the total range in the observed number of sequences per sample is approximately 40,000 to 150,000 reads. 
+## Library sizes
+lib_size <- meta_df %>% filter(Read == "R1", biosample_id != "NTC", reads != 2700) %>% .$reads
+```
 
 ```{r cycle_metrics, warning=FALSE, message=FALSE, echo = FALSE}
 ## amplicon position __Cycle Level Metrics__
-# amp_pos_df <- data_frame(cycle = rep(1:300, 2), 
-#                          Read = rep(c("R1","R2"), each = 300),
-#                          amp_pos = c(1:300,c(460 - 1:300)))
+amp_pos_df <- data_frame(cycle = rep(1:300, 2),
+                         Read = rep(c("R1","R2"), each = 300),
+                         amp_pos = c(1:300,c(460 - 1:300)))
+
+qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>%
+    as_data_frame() %>%
+    mutate(cycle = as.numeric(as.character(cycle))) %>%
+    filter(count != 0) %>% # not sure if this impacts the smoothing function ...
+    left_join(meta_df) %>% left_join(amp_pos_df)
+```
+
+```{r pipeMunge, echo = FALSE}
+pipeline_dir <- "../../mgtst_pipelines"
+mrexp_files <- list(
+      dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_mrexp.rds")
+)
+mrexp <- mrexp_files %>% map(readRDS)
 # 
-# qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>% 
-#     as_data_frame() %>% 
-#     mutate(cycle = as.numeric(as.character(cycle))) %>% 
-#     filter(count != 0) %>% # not sure if this impacts the smoothing function ...
-#     left_join(meta_df) %>% left_join(amp_pos_df)
+# ## Loading seq count data
+# fastq_dir <- file.path(pipeline_dir, "data")
+# dat_files <- list.files(path = fastq_dir,pattern = "001.fastq.gz$",
+#                         recursive = TRUE, full.names = TRUE)
+# seq_ds_id <- dat_files %>% str_split("/") %>% flatten_chr() %>% 
+#       grep(pattern = "fastq.gz", .,value = TRUE) %>%
+#       str_replace(".fastq.gz","") %>% paste0("Fq_",.) %>% 
+#       str_replace("-",".")
+# names(dat_files) <- seq_ds_id 
+# 
+# # from script but not saved
+# read_groups <- rep(NA,length(dat_files))
+# read_groups[grepl("/1-.*_R1", dat_files)] <- "plate1_R1"
+# read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
+# read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
+# read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
+# 
+# qa_list <- readRDS("data/rqcQA_list.rds") 
+# 
+# ## Run 
+# grp_df <- data_frame(read_group = read_groups, 
+#                      seq_ds_id, 
+#                      filename = basename(dat_files)) %>%
+#       separate(read_group,c("plate","Read")) %>% 
+#       mutate(ill_id = str_replace(filename, "_.*",""))
+# 
+# ## read count data 
+# qa_file_info <- perFileInformation(qa_list) %>% 
+#       select(-format,-path) %>% 
+#       mutate(filename = as.character(filename))
+# 
+# ## study metadata
+# meta_df <- sampleSheet %>% 
+#       mutate(pos_ns = str_replace(pos, "_",""),
+#              ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
+#       filter(seq_lab == "JHU", barcode_lab == "JHU") %>% 
+#       mutate(pcr_16S_plate = as.character(pcr_16S_plate)) %>% 
+#       left_join(grp_df) %>% 
+#       left_join(qa_file_info) 
+
+##### Count table characteristics
+## number of OTUs
+features <- mrexp %>% map_dbl(NROW)
+
+## spareseness
+extract_samples <- function(mrobj){
+      sam_names <- pData(mrobj) %>% rownames_to_column() %>% 
+            filter(biosample_id != "NTC") %>% .$rowname
+      mrobj[,colnames(mrobj) %in% sam_names]
+}
+
+calc_sparsity <- function(mat){
+      nentry <- length(mat)
+      nzero <- sum(mat == 0)
+      ## calculate sparsity 
+      nzero/nentry
+}
+
+sparsity <- mrexp %>% map(extract_samples) %>% map(MRcounts, sl = 1) %>% map_dbl(calc_sparsity)   
+
+## Read loss / Filter rate 
+count_df <- mrexp %>% map(extract_samples) %>% 
+      map(MRcounts,sl = 1) %>% 
+      map(colSums) %>% map(as.data.frame) %>% 
+      map_df(rownames_to_column, var = "id", .id = "pipe") %>% 
+      dplyr::rename(counts = `.x[[i]]`)
+
+count_summary <- count_df %>% group_by(pipe) %>% 
+      summarise(count_med = median(counts) %>% round(0),
+                count_min = min(counts) %>% round(0),
+                count_max = max(counts) %>% round(0)) %>% 
+      mutate(`Sample Coverage` = paste0(count_med, " (", count_min, "-", count_max,")")) %>% 
+      select(pipe, `Sample Coverage`)
+
+reads_df <- meta_df %>% filter(Read == "R1") %>% 
+      select(ill_id, reads, group) %>% dplyr::rename(id = ill_id) 
+
+filter_rate_df <- count_df %>% left_join(reads_df) %>%
+      mutate(filter_rate = 1 - counts/reads) 
+
+filter_rate_summary <- filter_rate_df %>% group_by(pipe) %>% 
+      summarise(filt_med = median(filter_rate) %>% round(2),
+                filt_min = min(filter_rate) %>% round(2),
+                filt_max = max(filter_rate) %>% round(2)) %>% 
+      mutate(`Filter Rate` = paste0(filt_med, " (", filt_min, "-", filt_max,")")) %>% 
+      select(pipe, `Filter Rate`)
+
+### Total feature counts by sample
+raw_feat_count_df <- meta_df %>% 
+      filter(Read == "R1", biosample_id != "NTC") %>%
+      dplyr::rename(id = ill_id, counts = reads) %>% 
+      mutate(pipe = "Reads") %>% 
+      select(pipe, id, counts) %>% 
+      bind_rows(count_df)
+
+
+## Observed Features per sample
+feature_counts <- mrexp %>% map(extract_samples) %>% 
+      map(MRcounts,sl = 1) %>% 
+      map(as.data.frame) %>% 
+      map(rownames_to_column, var = "feature_id") %>% 
+      map_df(gather, "id","counts", -feature_id, .id = "pipe") 
+
+obs_feat_df <- feature_counts %>% 
+      filter(counts != 0) %>% 
+      group_by(pipe, id) %>% 
+      summarise(obs_feat = n())
+
+obs_feat_df <- meta_df %>% 
+      filter(Read == "R1") %>% 
+      select(biosample_id, t_fctr, ill_id) %>% 
+      dplyr::rename(id = ill_id) %>% 
+      right_join(obs_feat_df)
 ```
 
-```{r tableCount, warning=FALSE, message=FALSE, echo = FALSE}
-# meta_df %>% mutate(exp_ntc = ifelse(biosample_id == "NTC", "NTC","EXP")) %>% 
-#     filter(Read == "R1", ill_id != "1-F9") %>% 
-#     group_by(biosample_id) %>% 
-#     summarise(median = median(reads),
-#               min_lib_size = min(reads),
-#               max_lib_size = max(reads)) %>% 
-#     kable(caption = "Summary statistics for number of reads per sample by biological replicate.", booktab = TRUE)
+```{r pipeQA, echo = FALSE, message = FALSE, warning = FALSE}
+data_frame(pipe = names(mrexp), 
+           Features = features, 
+           Sparsity = round(sparsity,2)) %>% 
+      left_join(count_summary) %>% 
+      left_join(filter_rate_summary) %>% 
+      dplyr::rename(Pipelines = pipe, `Total Abundance` = `Sample Coverage`, `Drop-out Rate` = `Filter Rate`) %>% 
+      knitr::kable(caption = "Summary statistics for the different bioinformatic pipeliens. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total feature abundance. Filter rate is the proportion of reads that were removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
 ```
 
 
-```{r readCount, fig.cap="Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates 50,000 reads per barcoded sample.", fig.lp = "fig:", warning=FALSE, message=FALSE, echo = FALSE }
-meta_df %>% filter(Read == "R1") %>%
-    ggplot() + 
-        geom_boxplot(aes(x = biosample_id, y = reads)) + 
+```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size. (B) Smoothing spline of the base quality score (BQS) by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads. (C) Distribution of the number of features per sample. "}
+lib_size_fig <- meta_df %>% 
+      filter(Read == "R1", biosample_id != "NTC") %>% unique() %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = biosample_id, y = reads, color = biosample_id)) + 
       scale_y_log10() + 
-        geom_hline(aes(yintercept = 50000), color = "grey60", linetype = 2) +
-        theme_bw() + labs(y = "Library Size (log10)", 
-                          x = "Individual")
+      geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
+      theme_bw() + labs(y = "Reads", 
+                        x = "Individual", 
+                        color = "Individual")
+
+qual_fig <- qa_cycle_q_df %>% 
+      sample_frac(0.25) %>% ## To speed up runtime
+      filter(biosample_id != "NTC", ill_id != "1-F9") %>%
+      ggplot(aes(x = amp_pos, y = score)) +
+      geom_vline(aes(xintercept = 300), color = "grey60") +
+      geom_vline(aes(xintercept = 160), color = "grey60") +
+      geom_smooth(aes(weight = count, group = paste(Read, biosample_id), color = biosample_id)) +
+      theme_bw() +
+      scale_x_continuous(breaks = c(0,150,300, 450)) +
+      labs(x = "Amplicon Position",
+           y = "BQS",
+           color = "Individual") +
+      theme(legend.position = "bottom")
+
+feat_fig <- obs_feat_df %>% ggplot() + 
+      geom_boxplot(aes(x = pipe, y = obs_feat, color = biosample_id)) + theme_bw() + 
+      labs(x = "Pipeline", y = "Features", color = "Individual")
+
+
+ggarrange(lib_size_fig, feat_fig, qual_fig, ncol = 1, nrow = 3, 
+          labels = "AUTO", common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
-
-
-```{r lowcycleq, fig.cap = "Smoothing spline of the base quality score by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads."}
-## Text -------
-## For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read \@ref(fig:lowcycleq). 
-
-# qa_cycle_q_df %>% filter(biosample_id != "NTC", ill_id != "1-F9") %>% 
-#       ggplot(aes(x = amp_pos, y = score)) + 
-#     geom_vline(aes(xintercept = 300), color = "grey60") +
-#     geom_vline(aes(xintercept = 160), color = "grey60") +
-#     # geom_smooth(aes(weight = count, color = biosample_id, group = filename)) + 
-#     geom_smooth(aes(weight = count,group = Read)) +
-#     geom_vline(aes(xintercept = 280), color = "grey40", linetype = 2) +
-#     theme_bw() + 
-#     scale_x_continuous(breaks = c(0,150,300, 450)) +
-#     labs(x = "Amplicon Position", 
-#          y = "Base Quality Score", color = "Individual") + 
-#     theme(legend.position = "bottom")
+```{r readsVfeats, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline."}
+meta_df %>% filter(Read == "R1", 
+                   biosample_id != "NTC") %>% 
+      left_join(obs_feat_df) %>% 
+      ggplot() + 
+      geom_point(aes(x = reads, y = obs_feat, fill = biosample_id), shape = 21) + 
+      facet_wrap(~pipe) + 
+      theme_bw() + 
+      labs(x = "Reads", y = "Features", fill = "Individual") + 
+      theme(legend.position = "bottom")
 ```
+
+Quality assessment of sequencing run summarizing number of reads per sample.
+Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:qaPlots)A). 
+The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
+Excluding the one failed reaction with 2,700 reads and the NTCs, the total range in the observed number of sequences per samples is `r min(lib_size)` to `r max(lib_size)` reads with a median library size of $`r median(lib_size)`$. 
+For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
+
+The sequencing dataset was processed using four bioinformatic pipelines. 
+The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:qaPlots)C).
+The pipelines evaluated have different approaches for handling low quality reads resulting in the large variability in filter rate (Table \@ref(tab:pipeQA)). 
+QIIME pipeline has the highest filter rate and highest number of features per sample. 
+The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired end reads. 
+The high filtration rate is due to the drop in base calling accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B). 
+Additionally, to remove potential sequencing artifacts from the dataset QIIME excludes singletons, OTUs only observed once in the dataset. 
+The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples and there are four PCR replicates for each sample. 
+Sparsity was lower for _de-novo_ clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
+With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts. 
+

@@ -16,10 +16,10 @@ library(modelr)
 
 ```{r thetaMunge, warning=FALSE, message=FALSE, echo = FALSE}
 ## Raw counts 
-raw_counts <- readRDS("~/Desktop/raw_counts.RDS")
+raw_counts <- readRDS("../data/raw_counts.RDS")
 
 ## Negative Binomial Summaries
-nb_counts <- readRDS("~/Desktop/nb_counts_titrations.RDS") 
+nb_counts <- readRDS("../data/nb_counts_titrations.RDS") 
 
 ## Pre-Post Expected Counts
 pre_post <- nb_counts %>% 
@@ -38,7 +38,7 @@ pre_post_exp_count <- pre_post %>%
 
 ####### Feature Filters
 ## PA - excluding features observed in less than 14 mixed sample PCR replicates  
-pa_summary_anno_df <- readRDS("~/Desktop/pa_summary_anno_df.RDS")
+pa_summary_anno_df <- readRDS("../data/pa_summary_anno_df.RDS")
 
 pa_good <- pa_summary_anno_df %>% 
       ## Features present in all 4 PCR replicates for unmixed pre and/or post
@@ -48,7 +48,7 @@ pa_good <- pa_summary_anno_df %>%
 
 
 ## logFC > 1 between pre and post with a p-value < 0.05
-pre_post_logFC_df <- readRDS("~/Desktop/logFC_edgeR_df.rds") %>% 
+pre_post_logFC_df <- readRDS("../data/logFC_edgeR_df.RDS") %>% 
       ## Go back and change when logFC generated
       rename(feature_id = OTUname) %>% 
       select(pipe, biosample_id, T1, T2, feature_id, 
@@ -71,39 +71,6 @@ theta_est_df <- count_good %>%
              t_fctr, count, post_count, pre_count, total_count) 
 ```
 
-```{r thetaFeaturesMA, echo = FALSE, fig.cap = "MA plot (x-axis mean abundance, y-axis log2 fold change between unmixed pre- and post-exposure samples. Orange points indicate features used to estimate theta. Dashed lines indicate the +/- 1 log2 fold change filter used when to pick features."}
-# pre_post_logFC_df %>% ggplot() +
-#       geom_point(aes(x = logCPM, y = logFC), color = "grey60", alpha = 0.25) +
-#       geom_hline(aes(yintercept = -1), linetype = 2) +
-#       geom_hline(aes(yintercept = 1), linetype = 2) +
-#       geom_point(data = good_features, 
-#                  aes(x = logCPM, y = logFC),
-#                  color = "darkorange",alpha = 0.5) +
-#       facet_grid(pipe~biosample_id) +
-#       # scale_x_log10() + 
-#       theme_bw() +
-#       labs(y = "log Fold-Change", x = "log Mean Abundance")
-```
-
-
-```{r thetaFeatures, warning=FALSE, message=FALSE, echo = FALSE}
- theta_est_df %>% ungroup() %>% 
-      select(pipe, biosample_id, feature_id) %>% 
-      unique() %>% 
-      group_by(pipe, biosample_id) %>% 
-      summarise(count = n()) %>% 
-      spread(biosample_id, count) %>% 
-      knitr::kable(booktab = TRUE, caption = "Number of features used to estimate theta by biological replicate and pipeline.")
-
-# # Sanity check not the same set of features for DADA2 pipeline E01JH0004 and E01JH0011 due to bug
-# theta_est_df %>%
-#       filter(pipe == "dada2", biosample_id %in% c("E01JH0004", "E01JH0011")) %>%
-#       select(pipe, feature_id, biosample_id) %>% unique() %>%
-#       group_by(feature_id) %>%
-#       summarise(count = n()) %>% .$count %>% summary()
-```
-
-
 ```{r fitModel, warning=FALSE, message=FALSE, echo = FALSE}
 #### For a weighted regression ----------------------------
 ## VOOM version - fit model error versus mean 
@@ -119,7 +86,7 @@ munge_strap <- function(data){
 }
 
 calc_boot_theta <- function(boot_theta_file, count_nb_good){
-      if(file.exists(boot_theta_file)){
+      if (file.exists(boot_theta_file)) {
             boot_theta_hat <- readRDS(boot_theta_file)
             return(boot_theta_hat)
       }
@@ -159,15 +126,15 @@ calc_boot_theta <- function(boot_theta_file, count_nb_good){
       boot_theta_hat
 }
 
-boot_theta_file <- "~/Desktop/bootstrap_theta_estimates.rds"
+boot_theta_file <- "../data/bootstrap_theta_estimates.RDS"
 boot_theta_hat <- calc_boot_theta(boot_theta_file, theta_est_df)
 ```
 
-To account for differences in the proportion of prokaryotic DNA in the pre- and post-exposure samples we attempted to infer $\theta$, proportion of post-exposure sample prokaryotic DNA in a titration, using the 16S rRNA sequencing data (Fig. \@ref(fig:thetaHat)). 
-Overall the relationship between the inferred and mixture design $\theta$ values were consistent across pipelines but not individual whereas the size 95\% CI varied by both individual and pipeline. 
-For E01JH0004, 11, and 16 the inferred and mixture design $\theta$ values were in better agreement compared to E01JH0017 and E01JH0038.
-For E01JH0017 and E01JH00038 the inferred values were consistently less than and greater than the mixture design values, respectively. 
-These results were consistent with the qPCR prokaryotic DNA concentration results with E01JH0017 having a significantly positive slope and E01JH0038 a significantly negative slope (Fig. \@ref(fig:bacPlot)). 
+To account for differences in the proportion of prokaryotic DNA in the pre- and post-exposure (Fig. \@ref(fig:bacPlot)) we inferred the proportion of post-exposure sample prokaryotic DNA in a titration, using the 16S rRNA sequencing data, $\theta$ (Fig. \@ref(fig:thetaHat)). 
+Overall the relationship between the inferred and mixture design $\theta$ values were consistent across pipelines but not individual whereas the 95\% CI varied by both individual and pipeline. 
+For E01JH0004, E01JH0011, and E01JH0016 the inferred and mixture design $\theta$ values were in better agreement compared to E01JH0017 and E01JH0038.
+For E01JH0017 the inferred values were consistently less than the mixture design values, and greater than the mixture design values for E01JH0038. 
+These results were consistent with the qPCR prokaryotic DNA concentration results with E01JH0004 and E01JH0017 having a significantly positive slopes then E01JH0016 and E01JH0038 significantly negative slopes (Fig. \@ref(fig:bacPlot)). 
 
 
 ```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
