@@ -62,6 +62,9 @@ prop_inferred <- prop_inferred %>%
            inferred_prop > 1/73571,
            theta_hat_mean > 0)
 
+## Save for supplemental table
+saveRDS(prop_inferred, "data/prop_inferred.RDS")
+
 
 #### Error Rate Calculations
 rel_abu_error <- prop_inferred %>% 
@@ -234,16 +237,6 @@ qiime_rcov <- dada_rcov + rcov_fit$coefficients$fixed['pipeqiime']
 # Checking whether indiviudal or pipeline contributes more to the overal vaiance
 rcov_var <- ape::varcomp(rcov_fit)  
 ```
-
-```{r relAbuFeatTbl, echo = FALSE, warning = FALSE, message = FALSE}
-# rel_abu_error_summary %>% 
-#       group_by(pipe, biosample_id) %>% 
-#       summarise(count = n()) %>% 
-#       spread(biosample_id, count) %>% 
-#       knitr::kable(booktabs = TRUE, caption = "Number of features by pipeline and individual used in the relative abundance error rate analysis.")
-```
-
-
 
 ```{r relAbuError, fig.cap = "Relative abundance assessment. (A) A linear model of the relationship between the expected and observed relative abundance. The dashed grey line indicates expected 1-to-1 relationship. The plot is split by individual and color is used to indicate the different bioinformatic pipelines. A negative binomial model was used to calculate an average relative abundance estimate across the four PCR replicates. Points with observed and expected relative abundance values less than 1/median library size were excluded from the data used to fit the linear model. (B) Distribution of relative abundance error rate by individual and pipeline. Distribution of feature-level relative abundance (C) bias metric - median error rate and (D) variance - robust coefficient of variation ($RCOV=(IQR)/|median|$) by individual and pipeline. To prevent extreme metric values from obscuring metric value visual comparisons, boxplot outliers, $1.5\times IQR$ from the median were excluded from the figure.", echo = FALSE, warning=FALSE, message = FALSE, fig.height = 7}
 ggarrange(relAbuOvE,

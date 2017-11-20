@@ -68,7 +68,10 @@ count_good <- raw_counts %>%
 theta_est_df <- count_good %>% 
       filter(t_fctr %in% c(1:5,10,15)) %>% 
       select(pipe, feature_id, id, pcr_rep, biosample_id, 
-             t_fctr, count, post_count, pre_count, total_count) 
+             t_fctr, count, post_count, pre_count, total_count)  
+
+### Save data frame for supplemental 
+saveRDS(theta_est_df, "data/theta_est_df.RDS")
 ```
 
 ```{r fitModel, warning=FALSE, message=FALSE, echo = FALSE}

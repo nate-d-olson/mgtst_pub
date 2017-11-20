@@ -82,10 +82,12 @@ logFC Error Rate Results
 ```{r discussion, child="Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ``` 
 
+*************************************************************************
+
 # References 
 <div id="refs"></div>
 
-\break
+*************************************************************************
 
 # Supplemental
 ```{r supplemental, child="results/Supplemental.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
