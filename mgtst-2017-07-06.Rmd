@@ -1,10 +1,47 @@
 ---
 title: "Microbiome-Scale Mixture Use Demonstration"
-author: "Nate Olson"
-date: '`r Sys.Date()`'
+author:
+  - fnm: "Nathan"
+    snm: "Olson"
+    inits: "D"
+    addressref: "aff1"
+    email: "nolson@nist.gov"
+  - fnm: "M."
+    snm: "Kumar"
+    inits: "M"
+    addressref: "aff2"
+  - fnm: "Stephanie"
+    snm: "Hao"
+    addressref: "aff3"
+  - fnm: "Winston"
+    snm: "Timp"
+    addressref: "aff3"
+  - fnm: "Marc"
+    snm: "Salit"
+    inits: "L"
+    addressref: "aff2"
+  - fnm: "O"
+    snm: "Stine"
+    inits: "Colin"
+    addressref: "aff4" 
+  - fnm: "Hector"
+    snm: "Corrada Bravo"
+    addressref: "aff2"
+address:
+  - id: "aff1"
+    orgname: "National Institute of Standards and Technology"
+  - id: "aff2"
+    orgname: "University of Maryland, College Park"
+  - id: "aff3"
+    orgname: "Johns Hopkins University"
+  - id: "aff4"
+    orgname: "School of Medicine, University of Maryland"
+date: '`r Sys.Date()`' 
 output:
   bookdown::pdf_document2: 
     toc: FALSE
+    template: template.tex
+    keep_tex: FALSE
 bibliography: [mgtst.bib, packages.bib]
 ---
 
@@ -13,6 +50,10 @@ BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission
 
 Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-author-details-in-pdf-from-r-markdown-latex-template 
 -->
+
+
+
+# Abstract
 
 # Introduction
 ```{r intro, child="Introduction.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
@@ -25,7 +66,6 @@ Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-auth
 
 # Results
 ## Dataset characteristics  
-
 ```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
@@ -38,7 +78,6 @@ To evaluate the second assumption total prokaryotic DNA in the titrations sample
 
 
 ### Spike-in qPCR results   
-
 ```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
@@ -85,7 +124,7 @@ logFC Error Rate Results
 *************************************************************************
 
 # References 
-<div id="refs"></div>
+\thebibliography
 
 *************************************************************************
 

@@ -40,12 +40,12 @@ The amplification data and Ct values were exported from the QuantStudio™ Desig
 Statistical analysis was performed using the R programming language. 
 
 ## Sequencing 
-The 45 samples (seven titrations and two unmixed samples for the five biological replicates) were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, dowloaded from https://support.illumina.com).
+The 45 samples (seven titrations and two unmixed samples for the five biological replicates) were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, dowloaded from \url{https://support.illumina.com}).
 The protocol consisted of an initial 16S rRNA PCR followed by a separate sample indexing PCR prior to normalization and pooling.
 
 A total of 192 PCRs were run including four PCR replicates per sample and 12 no template controls. 
 The 16S PCR targeted the V3-V5 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
-The V3-V5 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp, assuming 300 bp paired-end reads [@yang2016sensitivity] ( http://probebase.csb.univie.ac.at).
+The V3-V5 target region is `r 805-341` bp, with forward and reverse reads overlaping by `r 600 - (805-341)` bp, assuming 300 bp paired-end reads [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
 The primer sequences include additional overhang adapter sequences to facilitate library preparation (forward primer 5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3' and reverse primer 5'- GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC - 3'). 
 The 16S targeted PCR was performed according to the Illumina protocol using the KAPA HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
 The resulting PCR product was verified using agarose gel electrophoresis.
@@ -64,20 +64,20 @@ Sequencing data quality control metrics for the 384 datasets in the study (192 s
 
 ## Sequence Processing
 Sequence data was processed using three bioinformatic pipelines, a _de-novo_clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@caporaso2010qiime], and a sequence inference methods - DADA2 [@callahan2016dada2], unclustered sequences as a control. 
-Code used to run the bioinformatic pipelines is available at https://github.com/nate-d-olson/mgtst_pipelines. 
-The Mothur (version 1.37, http://www.mothur.org/) pipeline was based on the MiSeq SOP [@schloss2009introducing;@kozich2013development].
+Code used to run the bioinformatic pipelines is available at \url{https://github.com/nate-d-olson/mgtst_pipelines}. 
+The Mothur (version 1.37, \url{http://www.mothur.org/}) pipeline was based on the MiSeq SOP [@schloss2009introducing;@kozich2013development].
 As a different 16S rRNA region was sequenced than the region the SOP was developed for the procedure was modified to account for smaller overlap between the forward and reverse reads relative to the amplicons used in the protocol.
 The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merge using the Needleman-Wunsch algorithm.
-Low quality reads were identified based on presence of ambiguous bases, reads that failed alignment to the SILVA reference database (V119, https://www.arb-silva.de/) [@quast2012silva], and chimeras were filtered from the dataset.
+Low quality reads were identified based on presence of ambiguous bases, reads that failed alignment to the SILVA reference database (V119, \url{https://www.arb-silva.de/}) [@quast2012silva], and chimeras were filtered from the dataset.
 Chimera filtering was performed using UChime without a reference database [@edgar2011uchime].
 OTU clustering was performed using the OptiClust algorithm with a clustering threshold of 0.97 [@westcott2017opticlust].
 The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set [@wang2007naive].
-The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb) using QIIME version 1.9.1 [@caporaso2010qiime]. 
+The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (\url{http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb}) using QIIME version 1.9.1 [@caporaso2010qiime]. 
 Briefly the QIIME pipeline uses fastq-join to merge paired-end reads [@aronesty2011ea] and the Usearch algorithm  [@edgar2010search] with Greengenes database version 13.8 with a 97% similarity threshold [@desantis2006greengenes] was used for open-reference clustering. 
 DADA2 a R native pipeline was also used to process the sequencing data [@callahan2016dada2].
-The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier [@wang2007naive] and the SILVA database V123 provided by the DADA2 developers [@quast2012silva, https://benjjneb.github.io/dada2/training.html]. 
+The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier [@wang2007naive] and the SILVA database V123 provided by the DADA2 developers [@quast2012silva, \url{https://benjjneb.github.io/dada2/training.html}]. 
 The unclustered pipeline was based on the mothur _de-novo_ clustering pipeline, where the paired-end reads were merged, filtered, and then dereplicated. 
-Reads were aligned to the reference Silva alignment (V119, https://www.arb-silva.de/), and reads failing alignment were excluded from the dataset. 
+Reads were aligned to the reference Silva alignment (V119, \url{https://www.arb-silva.de/}), and reads failing alignment were excluded from the dataset. 
 Taxonomic classification of the unclustered sequences was performed using the same RDP classifier implmented in mothur used for the _de-novo_ pipeline. 
 To limit the size of the dataset the most abundant 40,000 OTUs (comparable to the mothur dataset), across all samples, were used as the unclustered dataset. 
 
