@@ -1,6 +1,6 @@
 ## Munge Bacterial Abundance qPCR data
 get_abu_0909 <- function(xcl_file){
-      cols <- c("well","sample_name",
+      cols <- c("well","sample_name","conc",
                 "plate1_Ct","plate1_quant",
                 "plate2_Ct","plate2_quant",
                 "plate3_Ct","plate3_quant")
@@ -8,7 +8,7 @@ get_abu_0909 <- function(xcl_file){
       read_excel(path = xcl_file, sheet = "QDNA_20160919", 
                  skip = 11, na = "Undetermined", col_names = FALSE) %>% 
             set_colnames(cols) %>% 
-            mutate(date = "2016-09-19", std = "zymo")
+            mutate(std = "zymo", date = "2016-09-19")
 }
 
 get_abu_1209 <- function(xcl_file){
@@ -55,8 +55,7 @@ tidy_abu_con <- function(bac_con_raw){
 }
 
 qpcrBacAbu <- "data/raw/MixStudy_Nate_20161209.xls" %>% 
-      {bind_rows(get_abu_0909(.), get_abu_1209(.))} %>% 
+{bind_rows(get_abu_0909(.), get_abu_1209(.))} %>% 
       tidy_abu_con()
 
 ProjectTemplate::cache("qpcrBacAbu")
-

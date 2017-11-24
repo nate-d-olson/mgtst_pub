@@ -3,29 +3,32 @@ title: "Microbiome-Scale Mixture Use Demonstration"
 author:
   - fnm: "Nathan"
     snm: "Olson"
-    inits: "D"
+    inits: "ND"
     addressref: "aff1"
     email: "nolson@nist.gov"
-  - fnm: "M."
+  - fnm: "M. Senthil"
     snm: "Kumar"
-    inits: "M"
+    inits: "MS"
     addressref: "aff2"
   - fnm: "Stephanie"
     snm: "Hao"
+    inits: "S"
     addressref: "aff3"
   - fnm: "Winston"
     snm: "Timp"
+    inits: "W"
     addressref: "aff3"
   - fnm: "Marc"
     snm: "Salit"
-    inits: "L"
+    inits: "ML"
     addressref: "aff2"
-  - fnm: "O"
+  - fnm: "O Colin"
     snm: "Stine"
-    inits: "Colin"
+    inits: "O"
     addressref: "aff4" 
   - fnm: "Hector"
     snm: "Corrada Bravo"
+    inits: "H"
     addressref: "aff2"
 address:
   - id: "aff1"
@@ -36,14 +39,30 @@ address:
     orgname: "Johns Hopkins University"
   - id: "aff4"
     orgname: "School of Medicine, University of Maryland"
-date: '`r Sys.Date()`' 
+date: '`r Sys.Date()`'
+header-includes:
+    - \RequirePackage{hyperref}
+    - \usepackage{lmodern}
+    - \usepackage{graphicx}
+    - \usepackage{booktabs}
+    - \usepackage{lmodern}
+    - \usepackage{graphicx}
+    - \usepackage{booktabs}
+    - \usepackage{multirow}
+    - \usepackage{array}
+    - \usepackage{amsmath}
 output:
   bookdown::pdf_document2: 
+
     toc: FALSE
     template: template.tex
-    keep_tex: FALSE
+    keep_tex: TRUE
 bibliography: [mgtst.bib, packages.bib]
 ---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.path = "img/")
+```
 
 <!-- 
 BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
@@ -121,12 +140,8 @@ logFC Error Rate Results
 ```{r discussion, child="Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ``` 
 
-*************************************************************************
-
 # References 
-\thebibliography
-
-*************************************************************************
+<div id="refs"></div>
 
 # Supplemental
 ```{r supplemental, child="results/Supplemental.Rmd", warning=FALSE, message=FALSE, echo = FALSE}

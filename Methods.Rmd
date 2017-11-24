@@ -64,7 +64,7 @@ Sequencing data quality control metrics for the 384 datasets in the study (192 s
 
 ## Sequence Processing
 Sequence data was processed using three bioinformatic pipelines, a _de-novo_clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@caporaso2010qiime], and a sequence inference methods - DADA2 [@callahan2016dada2], unclustered sequences as a control. 
-Code used to run the bioinformatic pipelines is available at \url{https://github.com/nate-d-olson/mgtst_pipelines}. 
+Code used to run the bioinformatic pipelines is available at \url{https://github.com/nate-d-olson/mgtst\_pipelines}. 
 The Mothur (version 1.37, \url{http://www.mothur.org/}) pipeline was based on the MiSeq SOP [@schloss2009introducing;@kozich2013development].
 As a different 16S rRNA region was sequenced than the region the SOP was developed for the procedure was modified to account for smaller overlap between the forward and reverse reads relative to the amplicons used in the protocol.
 The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merge using the Needleman-Wunsch algorithm.
@@ -72,7 +72,7 @@ Low quality reads were identified based on presence of ambiguous bases, reads th
 Chimera filtering was performed using UChime without a reference database [@edgar2011uchime].
 OTU clustering was performed using the OptiClust algorithm with a clustering threshold of 0.97 [@westcott2017opticlust].
 The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set [@wang2007naive].
-The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (\url{http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina_overview_tutorial.ipynb}) using QIIME version 1.9.1 [@caporaso2010qiime]. 
+The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (\url{http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina\_overview\_tutorial.ipynb}) using QIIME version 1.9.1 [@caporaso2010qiime]. 
 Briefly the QIIME pipeline uses fastq-join to merge paired-end reads [@aronesty2011ea] and the Usearch algorithm  [@edgar2010search] with Greengenes database version 13.8 with a 97% similarity threshold [@desantis2006greengenes] was used for open-reference clustering. 
 DADA2 a R native pipeline was also used to process the sequencing data [@callahan2016dada2].
 The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier [@wang2007naive] and the SILVA database V123 provided by the DADA2 developers [@quast2012silva, \url{https://benjjneb.github.io/dada2/training.html}]. 

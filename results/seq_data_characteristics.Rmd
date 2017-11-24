@@ -8,13 +8,10 @@ output:
 ---
 
 ```{r seqSetup, warning=FALSE, message=FALSE, echo = FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(Rqc)
-library(ProjectTemplate)
-cwd <- getwd()
-setwd("../")
-load.project()
-setwd(cwd)
+library(tidyverse)
+library(stringr)
 library(ggpubr)
 pipeline_dir <- "../../mgtst_pipelines/"
 ```
@@ -56,6 +53,8 @@ qa_file_info <- perFileInformation(qa_list) %>%
     select(-format,-path)
 
 ## study metadata
+load("../cache/sampleSheet.RData")
+
 meta_df <- sampleSheet %>% 
     mutate(pos_ns = str_replace(pos, "_",""),
            ill_id = paste(pcr_16S_plate, pos_ns, sep = "-")) %>% 
