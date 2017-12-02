@@ -3,61 +3,39 @@ library(tidyverse)
 
 mrexp_obj <- readRDS("~/Projects/mgtst_pipelines/mothur/mothur_mrexp.rds")
 
-mrexp_to_edgeR <- function(mrexp_obj, method){
-    require(edgeR)
-    ## Extracting count data - no scaling or transformation
-    x <- mrexp_obj %>% 
-        metagenomeSeq::MRcounts(norm = FALSE, log = FALSE, sl = 1) %>% 
-        as.matrix()
-    x <- x + 1 # add 1 to prevent log(0) issues
-    
-    ## Use taxonomy information at gene annotations 
-    ## - Where OTUname is incorporated into the results
-    taxonomy <- fData(mrexp_obj)
-    if (!is.null(taxonomy)) {
-        taxonomy <- taxonomy %>% as.matrix() %>% data.frame()
-    }
-    
-    
-    ## Convert into a DGEList
-    y <- DGEList(counts = x, genes = taxonomy,
-                 remove.zeros = TRUE)
-    
-    
-    ## Calc normalization factors
-    if (method == "CSS") {
-        z <- edgeR::calcNormFactors(y, method = "none")
-        mg_nf <- metagenomeSeq::calcNormFactors(mrexp_obj, p = 0.75)
-        z$samples$norm.factors <- mg_nf$normFactors[which(rownames(mg_nf) == rownames(z$samples))]
-    } else if (method == "TSS") {
-        z <- edgeR::calcNormFactors(y, method = "none")
-        z$samples$norm.factors <- z$samples$lib.size
-    } else {
-        z <- edgeR::calcNormFactors(y, method = method)
-    }
-    
-    ## Check for division by zero inside `calcNormFactors`
-    if ( !all(is.finite(z$samples$norm.factors))) {
-        stop("Something wrong with edgeR::calcNormFactors on this data,
-             non-finite $norm.factors, consider changing `method` argument.")
-    }
-    z 
-}
-
 get_norm_count_df <- function(method, mrexp){
+    require(matrixStats)
+    ## Extract count matrix from MRexperiment
+    count_mat <- mrexp@assayData$counts 
+    
     ## extract normalizaed counts
-    count_mat <- mrexp_to_edgeR(mrexp, method = method) %>% 
-        cpm(normalized.lib.sizes = TRUE)
-
-    ## Scalling CSS and TSS so they are on the same scale as other normalization method. 
-    if (method == "CSS") {
-        count_mat = count_mat * 1000
-    } else if (method == "TSS") {
-        count_mat = count_mat * 100000
-    } 
+    if (method == "RAW") {
+        ## Raw counts no normalization applied
+        norm_factors = 1
+    } else if (method == "UQ") {
+        ## Upper quartile normalization
+        count_mat[count_mat == 0] <- NA
+        norm_factors <- colQuantiles(count_mat, p = 0.75 ,na.rm = TRUE)
+    } else if (method == "CSS") {
+        ## Cumulative sum scaling Paulson et al. 2013
+        norm_factors <- metagenomeSeq::calcNormFactors(count_mat, p = 0.75)
+        norm_factors <- norm_factors$normFactors
+    } else if ( method == "TSS") {
+        ## Total sum scaling 
+        norm_factors <- colSums(count_mat)
+    } else if (method %in% c("RLE","TMM")) {
+        ## EdgeR RLE and TMM normalization methods
+        norm_factors <- edgeR::calcNormFactors(count_mat, method = method) 
+        norm_factors <- norm_factors * colSums(count_mat)
+    } else {
+        warning("Normalization method not defined")
+    }
+    
+    ## Normalizing counts
+    norm_mat <- sweep(count_mat, 2, norm_factors,'/')
 
     ## Tidy counts
-    count_df <- count_mat %>% 
+    count_df <- norm_mat %>% 
         as.data.frame() %>% 
         rownames_to_column(var = "feature_id") %>% 
         gather("id", "count", -feature_id)
@@ -76,12 +54,10 @@ get_norm_count_df <- function(method, mrexp){
                   var_count = var(count))
 }
 
-norm_count_df <- list(RAW = "none", 
-                      RLE = "RLE", TMM = "TMM",
-                      UQ = "upperquartile", 
-                      CSS = "CSS", TSS = "TSS") %>% 
+norm_count_df <- list(RAW = "RAW", RLE = "RLE", TMM = "TMM",
+                      UQ = "UQ", CSS = "CSS", TSS = "TSS") %>% 
     map(get_norm_count_df, mrexp = mrexp_obj) %>% 
-    map_df(bind_rows,.id = "norm_method") %>% 
+    map_df(bind_rows, .id = "norm_method") %>%
     mutate(pipe = "mothur")
 
 
