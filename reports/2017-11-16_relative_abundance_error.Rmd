@@ -14,26 +14,24 @@ library(ggridges)
 ```
 
 ```{r}
-norm_count_df <- readRDS("~/Desktop/to_file/mgtst_RDS/norm_count_df.RDS")
+norm_count_df <- readRDS("~/Desktop/norm_count_df.RDS")
 ```
 
 Mean variance relationship by normalization method - not sure if the difference is due to scaling or normalization method. 
 
-```{r fig.cap = "Comparison of relative abundance mean and variance relationship for PCR replicates across normalization methods. RLE - relative log expression, TMM - weighted trim mean of M-values, RAW - unnormalized, CSS - cumulative sum scaling, TSS - total sum scaling, UQ - upperquartile.", fig.ext = "png"}
-subsample_norm <- norm_count_df %>% 
-    # filter(mean_count != 0, biosample_id != "NTC") %>% 
-    # filter(mean_count != 0, var_count > 1e-10, 
-           # biosample_id == "E01JH0004") %>%
-    filter(mean_count != 0, var_count > 1e-10, t_fctr == 0)
+```{r fig.cap = "Comparison of relative abundance mean and variance relationship for PCR replicates across normalization methods. RLE - relative log expression, TMM - weighted trim mean of M-values, RAW - unnormalized, CSS - cumulative sum scaling, TSS - total sum scaling, UQ - upperquartile. Points with means of zero and variance < 1e-10 were excluded from the plot"}
+filtered_norm <- norm_count_df %>%
+    filter(mean_count != 0, var_count > 1e-10) 
 
-ggplot(subsample_norm) + 
-    geom_point(aes(x = mean_count, y = var_count, fill = biosample_id), 
-               shape = 21, alpha = 0.25) + 
-    geom_abline(aes(intercept = 0, slope = 1 )) + 
+ggplot(filtered_norm) +
+    geom_hex(aes(x = mean_count, y = var_count)) + 
+    geom_smooth(aes(x = mean_count, y = var_count)) + 
+    geom_abline(aes(intercept = 0, slope = 1 ), color = "darkorange") + 
     facet_wrap(~norm_method) + 
     theme_bw() + scale_y_log10() + scale_x_log10() + 
     labs(x = "Mean", y = "Variance") + 
-    coord_equal()
+    # coord_equal() + 
+    theme(legend.position = "bottom", axis.text.x = element_text(angle = 315))
 ```
 
 
@@ -78,29 +76,63 @@ pa_filter <- pa_summary_anno_df %>%
 rel_abu_error <- prop_inferred %>% 
       mutate(t_fctr = factor(t_fctr, levels = c(1:5, 10, 15))) %>% 
       mutate(inferred_error = abs(mean_count - inferred_prop),
-             inferred_error_rate = inferred_error/inferred_prop) 
+             inferred_error_rate = inferred_error/inferred_prop)
 ```
-
 
 ```{r fig.ext="png"}
 rel_abu_ridge_df <- rel_abu_error %>% 
-    mutate(inferred_error_rate = if_else(inferred_error_rate < 1e-10, 
-                                         0, inferred_error_rate)) %>% 
-    filter(inferred_error_rate != 0 & mean_count > 1e-10) 
+    mutate(inferred_error_rate = if_else(inferred_error_rate < 1e-10, 0, inferred_error_rate)) %>% 
+    filter(inferred_error_rate != 0 & mean_count > 1e-10) %>% 
+    mutate(inferred_error_rate = if_else(inferred_prop == 0, NaN, inferred_error_rate))
 
-rel_abu_med <- rel_abu_ridge_df %>% 
-      group_by(biosample_id, norm_method) %>% 
-      mutate(med_error = median( inferred_error_rate))
+rel_abu_med <- rel_abu_ridge_df %>%
+      group_by(biosample_id, norm_method) %>%
+      summarise(med_error = median( inferred_error_rate,na.rm = TRUE))
     
 rel_abu_ridge_df %>% 
       ggplot() + 
       geom_density_ridges(aes(x =  inferred_error_rate, y = norm_method, color = norm_method), 
                           alpha = 0.5, stat = "binline", bins = 30, draw_baseline = FALSE)  + 
-      geom_text(data = rel_abu_med, 
-                aes(x = 10, y = norm_method, label = round(med_error,2))) + 
-      facet_wrap(~biosample_id) + theme_bw() + 
+      # geom_text(data = rel_abu_med, 
+      #           aes(x = 100, y = norm_method, label = round(med_error,2)), nudge_y = 0.1) + 
+      facet_wrap(~biosample_id, nrow = 1) + theme_bw() + 
     scale_x_log10() +
       labs(x = "Error Rate", y = "Normalization", color = "Normalization") +
       theme(legend.position = "none")
+```
+
+```{r}
+rel_abu_med %>% spread(norm_method, med_error) %>% knitr::kable(digits = 3)
+```
+
+
+```{r}
+rel_abu_med %>% ungroup() %>% 
+    mutate(biosample_id = factor(biosample_id)) %>% 
+    ggplot(aes(x = biosample_id, y = med_error)) + 
+    geom_blank() + 
+    geom_path(aes(x = as.numeric(biosample_id), y = med_error, color = norm_method)) +
+    geom_point(aes(x = biosample_id, y = med_error, fill = norm_method), shape = 21) + 
+    theme_bw() + 
+    labs(x = "Individual", y = "Median Error Rate", fill = "Normalization", color = "Normalization") + 
+    theme(legend.position = "bottom")
+```
+
+```{r}
+fit <- aov(med_error ~ norm_method + biosample_id, data = rel_abu_med)
+```
+
+Significant difference between normalization methods when including biosample in the model. 
+Need to used a mixed effects model to account for 
+```{r}
+summary(fit)
+```
+
+```{r}
+plot(fit)
+```
+Only two pairs normalization methods are significantly different from each other. Upper quartile is significantly different from TMM and TSS.  
+```{r}
+TukeyHSD(fit)
 ```
 
