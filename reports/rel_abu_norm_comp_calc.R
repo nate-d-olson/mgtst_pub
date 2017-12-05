@@ -51,7 +51,8 @@ get_norm_count_df <- function(method, mrexp){
     count_df %>% 
         group_by(biosample_id, feature_id, t_fctr) %>% 
         summarise(mean_count = mean(count),
-                  var_count = var(count))
+                  var_count = var(count),
+                  sd_count = sd(count))
 }
 
 norm_count_df <- list(RAW = "RAW", RLE = "RLE", TMM = "TMM",

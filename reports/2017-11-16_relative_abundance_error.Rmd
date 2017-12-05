@@ -7,19 +7,80 @@ output:
     toc: FALSE
 ---
 
-Comparison of relative abundance error rate for different normalization methods 
-```{r}
+```{r setup, warning=FALSE, message = FALSE, echo = FALSE}
+library(nlme)
+library(multcomp)
 library(tidyverse)
 library(ggridges)
+norm_count_df <- readRDS("~/Desktop/norm_count_df.RDS") 
+pa_summary_anno_df <- readRDS("~/Desktop/to_file/mgtst_RDS/pa_summary_anno_df.RDS")
+theta_est <- readRDS("~/Desktop/to_file/mgtst_RDS/bootstrap_theta_estimates.rds")
 ```
 
-```{r}
-norm_count_df <- readRDS("~/Desktop/norm_count_df.RDS")
+```{r errorRateCalc, message = FALSE, echo = FALSE }
+## Calculating Relative Abundance Error Rate
+pre_post_prop <- norm_count_df %>% 
+      ungroup() %>% 
+      filter(t_fctr %in% c(0,20)) %>% 
+      mutate(end_point = if_else(t_fctr == 0 , "post", "pre")) %>% 
+      select(-t_fctr, -var_count, -sd_count) %>% 
+      ## setting values to 0 when one or more of the PCR replicates are 0 for titration end-points
+      spread(end_point,mean_count, fill = 0)
+
+prop_inferred <- theta_est %>% 
+    filter(pipe == "unclustered") %>% 
+    ungroup() %>%
+    mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
+    select(biosample_id, theta_hat_mean, t_fctr) %>% 
+    right_join(norm_count_df) %>% 
+    right_join(pre_post_prop) %>% 
+    filter(t_fctr %in% c(1:5,10,15)) %>% 
+    ## Using inferred theta estimates to calculate expected values
+    mutate(inferred_prop = post * theta_hat_mean + pre * (1 - theta_hat_mean))
+
+## Excluding mix and unmix specific features
+## Only including features observed in all or none of the four pre- post- PCR replicates
+pa_filter <- pa_summary_anno_df %>% 
+      filter(pa_specific == "unspecific") %>% 
+      select(biosample_id, pipe, feature_id, full_pre, T00, T20, pa_mixed) %>% 
+      filter(T00 %in% c(0,4), T20 %in% c(04))
+
+#### Error Rate Calculations
+rel_abu_error <- prop_inferred %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5, 10, 15))) %>% 
+      mutate(inferred_error = abs(mean_count - inferred_prop),
+             inferred_error_rate = inferred_error/inferred_prop)
 ```
 
-Mean variance relationship by normalization method - not sure if the difference is due to scaling or normalization method. 
 
-```{r fig.cap = "Comparison of relative abundance mean and variance relationship for PCR replicates across normalization methods. RLE - relative log expression, TMM - weighted trim mean of M-values, RAW - unnormalized, CSS - cumulative sum scaling, TSS - total sum scaling, UQ - upperquartile. Points with means of zero and variance < 1e-10 were excluded from the plot"}
+
+## Methods
+To evalute the impact of different normalization methods the mean-variance relationship and error rates for mothur count tables were compared. 
+Normalization methods compared were; 
+1. TMM - weighted trim mean of M-values (EdgeR),    
+1. RLE - relative log expression (EdgeR),  
+1. CSS - cummulative sum scaling (metagenomeSeq),  
+1. TSS - total sum scaling, proportions,   
+1. UQ - upper quartile scaling.
+
+## Results 
+The mean-variance relationship is relevant when making assumptions regarding the distribution the data are drawn from. 
+Here we compare the mean relative abundance values to the variance (Fig. \@(fig:meanVarNormComp)) and standard deviation (Fig. \@(fig:meanSdNormComp)) for four PCR replicates (Fig. \@(fig:meanVarNormComp)). 
+__Not sure how to interpret these results__
+
+The the error rates were compared across normalization methods (Fig. \@ref(fig:errorDistNormComp)). 
+__Distribution comparison statistics??__
+The full data were fit using a mixed effects linear model with individual as the random effect and normalization method as a fixed effect. 
+As a result of the long tailed distributions the residuals were not normally distributed violating the model assumptions. 
+We used a non-parametric rank based analysis to compare normalization methods. 
+The median error rates for each individual were compared across normalization methods (Fig. \@ref(fig:errorMedNormComp)). 
+TSS had the lowest average rank across individuals followed by CSS. 
+TMM and RLE had higher ranks than non-normalized data. 
+
+
+
+
+```{r meanVarNormComp, fig.cap = "Comparison of relative abundance mean and variance relationship for PCR replicates across normalization methods. RLE - relative log expression, TMM - weighted trim mean of M-values, RAW - unnormalized, CSS - cumulative sum scaling, TSS - total sum scaling, UQ - upperquartile. Orange line indicates a 1-to-1 relationship between the relative abundance mean and variance. Blue line is a GAM smoother. Points with means of zero and variance < 1e-10 were excluded from the plot.", message=FALSE, echo = FALSE}
 filtered_norm <- norm_count_df %>%
     filter(mean_count != 0, var_count > 1e-10) 
 
@@ -34,79 +95,45 @@ ggplot(filtered_norm) +
     theme(legend.position = "bottom", axis.text.x = element_text(angle = 315))
 ```
 
+```{r fig.cap = "Same plot as above but with standard deviation instead of variance.", message = FALSE, echo = FALSE}
+filtered_norm <- norm_count_df %>%
+    filter(mean_count != 0, var_count > 1e-10) 
 
-Calculating Error Rate
-```{r}
-pa_summary_anno_df <- readRDS("~/Desktop/to_file/mgtst_RDS/pa_summary_anno_df.RDS")
-theta_est <- readRDS("~/Desktop/to_file/mgtst_RDS/bootstrap_theta_estimates.rds")
-
-pre_post_prop <- norm_count_df %>% 
-      ungroup() %>% 
-      filter(t_fctr %in% c(0,20)) %>% 
-      mutate(end_point = if_else(t_fctr == 0 , "post", "pre")) %>% 
-      select(-t_fctr, -var_count) %>% 
-      ## setting values to 0 when one or more of the PCR replicates are 0 for titration end-points
-      spread(end_point,mean_count, fill = 0)
-
-prop_inferred <- theta_est %>% 
-      filter(pipe == "unclustered") %>% 
-      ungroup() %>%
-      mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
-      select(biosample_id, theta_hat_mean, t_fctr) %>% 
-      right_join(norm_count_df) %>% 
-    right_join(pre_post_prop) %>% 
-      filter(t_fctr %in% c(1:5,10,15)) %>% 
-      ## Using inferred theta estimates to calculate expected values
-      mutate(inferred_prop = post * theta_hat_mean + pre * (1 - theta_hat_mean))
-
-## Excluding mix and unmix specific features
-## Only including features observed in all or none of the four pre- post- PCR replicates
-## Features with relative abundance estimates less than 1e-7, these are features that we would not expect to consistently observe in a PCR replicate for the given sequencing depth
-pa_filter <- pa_summary_anno_df %>% 
-      filter(pa_specific == "unspecific") %>% 
-      select(biosample_id, pipe, feature_id, full_pre, T00, T20, pa_mixed) %>% 
-      filter(T00 %in% c(0,4), T20 %in% c(04))
-
-# prop_inferred <- prop_inferred %>% 
-#       right_join(pa_filter) %>% 
-#       filter(nb_prop > 1e-7)
-
-
-#### Error Rate Calculations
-rel_abu_error <- prop_inferred %>% 
-      mutate(t_fctr = factor(t_fctr, levels = c(1:5, 10, 15))) %>% 
-      mutate(inferred_error = abs(mean_count - inferred_prop),
-             inferred_error_rate = inferred_error/inferred_prop)
+ggplot(filtered_norm) +
+    geom_hex(aes(x = mean_count, y = sd_count)) + 
+    geom_smooth(aes(x = mean_count, y = sd_count)) + 
+    geom_abline(aes(intercept = 0, slope = 1 ), color = "darkorange") + 
+    facet_wrap(~norm_method) + 
+    theme_bw() + scale_y_log10() + scale_x_log10() + 
+    labs(x = "Mean", y = "Standard Deviation") + 
+    theme(legend.position = "bottom", axis.text.x = element_text(angle = 315))
 ```
 
-```{r fig.ext="png"}
+
+
+```{r errorDistNormComp, fig.cap = "Comparison of relative abundance error rate distribution across normalization methods. RLE - relative log expression, TMM - weighted trim mean of M-values, RAW - unnormalized, CSS - cumulative sum scaling, TSS - total sum scaling, UQ - upperquartile."}
 rel_abu_ridge_df <- rel_abu_error %>% 
-    mutate(inferred_error_rate = if_else(inferred_error_rate < 1e-10, 0, inferred_error_rate)) %>% 
-    filter(inferred_error_rate != 0 & mean_count > 1e-10) %>% 
+    filter(t_fctr %in% 1:5, theta_hat_mean > 0) %>% 
+    mutate(inferred_error_rate = if_else(inferred_error_rate < 1e-10, 0, inferred_error_rate)) %>%
+    filter(inferred_error_rate != 0 & mean_count != 0) %>%
     mutate(inferred_error_rate = if_else(inferred_prop == 0, NaN, inferred_error_rate))
 
-rel_abu_med <- rel_abu_ridge_df %>%
-      group_by(biosample_id, norm_method) %>%
-      summarise(med_error = median( inferred_error_rate,na.rm = TRUE))
-    
-rel_abu_ridge_df %>% 
-      ggplot() + 
-      geom_density_ridges(aes(x =  inferred_error_rate, y = norm_method, color = norm_method), 
-                          alpha = 0.5, stat = "binline", bins = 30, draw_baseline = FALSE)  + 
-      # geom_text(data = rel_abu_med, 
-      #           aes(x = 100, y = norm_method, label = round(med_error,2)), nudge_y = 0.1) + 
-      facet_wrap(~biosample_id, nrow = 1) + theme_bw() + 
+rel_abu_ridge_df %>%
+    ggplot() + 
+    geom_density_ridges(aes(x =  inferred_error_rate, y = norm_method, color = norm_method), 
+                        alpha = 0.5, stat = "binline", bins = 30, draw_baseline = FALSE)  + 
+    facet_wrap(~biosample_id, nrow = 1) + theme_bw() + 
     scale_x_log10() +
-      labs(x = "Error Rate", y = "Normalization", color = "Normalization") +
-      theme(legend.position = "none")
-```
-
-```{r}
-rel_abu_med %>% spread(norm_method, med_error) %>% knitr::kable(digits = 3)
+    labs(x = "Error Rate", y = "Normalization", color = "Normalization") +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 315))
 ```
 
 
-```{r}
+```{r errorMedNormComp, message = FALSE, echo = FALSE}
+rel_abu_med <- rel_abu_ridge_df %>%
+group_by(biosample_id, norm_method) %>%
+summarise(med_error = median( inferred_error_rate, na.rm = TRUE)) # %>%
+
 rel_abu_med %>% ungroup() %>% 
     mutate(biosample_id = factor(biosample_id)) %>% 
     ggplot(aes(x = biosample_id, y = med_error)) + 
@@ -118,21 +145,79 @@ rel_abu_med %>% ungroup() %>%
     theme(legend.position = "bottom")
 ```
 
-```{r}
-fit <- aov(med_error ~ norm_method + biosample_id, data = rel_abu_med)
+
+
+
+```{r errorRankNormComp, echo = FALSE, message = FALSE}
+rel_abu_rank <- rel_abu_med %>% 
+    group_by(biosample_id) %>% arrange(med_error) %>% mutate(error_rank = 1:n()) %>% 
+    group_by(norm_method) %>% summarize(mean_rank = mean(error_rank)) %>%
+    add_column(biosample_id = "Rank") %>% 
+    rename(med_error = mean_rank)
+
+rel_abu_med <- rel_abu_ridge_df %>%
+      group_by(biosample_id, norm_method) %>%
+      summarise(med_error = median( inferred_error_rate, na.rm = TRUE))
+
+rel_abu_med %>% bind_rows(rel_abu_rank) %>% 
+    spread(biosample_id, med_error) %>% 
+    arrange(Rank) %>% 
+    knitr::kable(digits = 3)
 ```
 
-Significant difference between normalization methods when including biosample in the model. 
-Need to used a mixed effects model to account for 
-```{r}
-summary(fit)
+
+##Error Stats
+
+```{r errorStatsNormComp, echo = FALSE, message = FALSE}
+rel_abu_filt <- rel_abu_ridge_df %>% #filter(!norm_method %in% c("RLE","UQ")) %>% 
+    filter(!is.na(inferred_error_rate)) %>% 
+    mutate(norm_method = factor(norm_method))
+    
+# Fitting mixed effects model with individual as the fixed effect
+error_fit <- nlme::lme(inferred_error_rate ~ norm_method, random =  ~ 1 | biosample_id, 
+                       data = rel_abu_filt) 
+error_aov <- anova(error_fit)
 ```
 
 ```{r}
-plot(fit)
-```
-Only two pairs normalization methods are significantly different from each other. Upper quartile is significantly different from TMM and TSS.  
-```{r}
-TukeyHSD(fit)
+plot(error_fit)
 ```
 
+```{r}
+qqnorm(error_fit)
+```
+
+
+```{r}
+summary(error_fit)
+```
+
+```{r}
+error_aov
+```
+
+
+# Session information 
+
+## Git repo commit information
+```{r}
+library(git2r)
+repo <- repository(path = "../")
+last_commit <- commits(repo)[[1]]
+```
+
+The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+
+
+## Platform Information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
