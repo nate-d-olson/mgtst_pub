@@ -17,6 +17,7 @@ pa_summary_df <- readRDS("~/Desktop/pa_summary_anno_df.RDS") %>%
              T00, T20, pa_mixed) #%>% 
       # filter(biosample_id %in% paste0("E01JH00", c("04","11","16")))
 
+## generated with logFC_norm_comp_calc.R 
 logFC_df <- readRDS("~/Desktop/norm_logFC_df.RDS") %>%
       # filter(biosample_id %in% paste0("E01JH00", c("04","11","16"))) %>% 
       rename(feature_id = OTUname)
