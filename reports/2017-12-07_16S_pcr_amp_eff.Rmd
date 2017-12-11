@@ -1,0 +1,94 @@
+---
+title: "Untitled"
+author: "Nate Olson"
+date: "12/7/2017"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(DECIPHER)
+```
+
+```{r}
+ambig_primer_set <- DNAStringSet(x = c(Bakt_341F = "CCTACGGGNGGCWGCAG", 
+                                       Bakt_806R = "GGACTACHVGGGTATCTAAT"),
+                                 use.names = TRUE)
+disambig_primer_set <- Disambiguate(primer_set)
+```
+
+```{r}
+disambig_primer_set[[1]]
+disambig_primer_set[[2]]
+```
+
+```{r}
+rdp_seqs <- readRDS("~/Projects/16S_mgFeatures/ribosomaldatabaseproject11.4MgDb/inst/extdata/rdp_11.4_seq.rds")
+```
+
+
+```{r}
+primer_pair <- c(disambig_primer_set[[1]][1], disambig_primer_set[[2]][1])
+
+## P and annealingTemp from illumina protocol
+amp_results <- AmplifyDNA(primers = ambig_primer_set, 
+                          myDNAStringSet = rdp_seqs[1], 
+                          P = 0.000002, 
+                          annealingTemp = 55, 
+                          maxProductSize = 600,
+                          includePrimers = TRUE)
+```
+
+```{r}
+rdp_amp <- as.list(rdp_seqs) %>% 
+    map(DNAStringSet) %>% 
+    map(AmplifyDNA,
+        primers = ambig_primer_set, 
+        P = 0.000002, 
+        annealingTemp = 55, 
+        maxProductSize = 600,
+        includePrimers = TRUE)
+```
+```{r}
+saveRDS(rdp_amp,file = "~/Desktop/rdp_pcr_eff.RDS")
+```
+
+
+## Number of hits per target
+```{r}
+n_hits = map(rdp_amp, length)
+rdp_amp_df <- data_frame(rdp_id = names(rdp_amp), n_hits)  
+```
+
+## PCR Amplification Info
+```{r}
+amp_set <- rdp_amp %>% keep(~length(.) > 0)
+amp_df <- data_frame(rdp_id = names(amp_set), amp_set) %>% 
+    mutate(pcr_info = map(amp_set, names),
+           pcr_bp = map(amp_set, width)) %>% 
+    select(-amp_set) %>% 
+    unnest() %>% 
+    mutate(pcr_eff = str_replace(pcr_info, "% \\(.*",""),
+           pcr_eff = as.numeric(pcr_eff),
+           primer_pair = str_extract(pcr_info, ". x ."))
+```
+
+```{r}
+amp_df %>% ggplot() + geom_point(aes(x = rdp_id, y = pcr_eff, size = pcr_bp/450, color = primer_pair))
+```
+
+
+```{r}
+
+pcr_eff <- names(amp_results) %>% str_replace("% \\(.*","") %>% as.numeric()
+primer_pair <- pcr_eff <- names(amp_results) %>% str_extract(". x .")
+pcr_bp <- width(amp_results)
+
+data_frame(pcr_eff, pcr_bp, primer_pair) %>% 
+    ggplot() + geom_point(aes(x = pcr_eff, y = pcr_bp, color = primer_pair)) + 
+    labs(x = "PCR Efficiency", y = "Amplicon Size", color = "Primer Set")
+```
+
+
+

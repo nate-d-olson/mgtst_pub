@@ -1,0 +1,44 @@
+---
+title: "Rep Seq RDP Blast"
+author: "Nate Olson"
+date: "12/7/2017"
+output: html_document
+---
+
+From within the mgtst_blast directory on the desktop
+Create BLAST database
+RDP sequences downloaded from http://rdp.cme.msu.edu/misc/resources.jsp
+```
+makeblastdb -in current_Bacteria_unaligned.fa -parse_seqids -dbtype nucl
+```
+
+BLAST Rep sequences against RDP database
+
+Can speed up BLAST if only using 
+```
+## DADA2
+blastn -db current_Bacteria_unaligned.fa -query ~/Projects/mgtst_pipelines/dada2/sv_seqs.fasta -out dada.out -outfmt 6 -max_target_seqs 10 -num_threads 7 
+
+## Mothur
+blastn -db current_Bacteria_unaligned.fa -query ~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.ng.fasta -out mothur.out -outfmt 6 -max_target_seqs 10 -num_threads 7 
+
+## QIIME
+blastn -db current_Bacteria_unaligned.fa -query"~/Projects/mgtst_pipelines/qiime/otus_uc_fast/new_refseqs.fna" -out qiime.out -outfmt 6 -max_target_seqs 10 -num_threads 7 
+
+## Unclustered
+blastn -db current_Bacteria_unaligned.fa -query unclustered_seqs.fasta -out unclustered.out -outfmt 6 -max_target_seqs 10 -num_threads 7 
+
+```
+
+## Load BLAST Output
+```{r}
+library(tidyverse)
+```
+
+Get top match info - keeping ties
+```{r}
+
+```
+
+### Merge output with pcr efficiency results
+

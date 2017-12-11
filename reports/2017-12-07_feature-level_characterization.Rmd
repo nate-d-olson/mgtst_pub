@@ -1,0 +1,143 @@
+---
+title: "Feature-level Characterization"
+output: html_notebook
+---
+
+## Objective 
+Explore representative sequence characteristics with feature-level relative abundance and log fold-change bias and variance metrics. 
+Sequence characteristics to evalaute include GC content and primer matches. 
+
+## Feature-level Metrics
+```{r setup}
+library(Biostrings)
+library(tidyverse) 
+library(stringr)
+
+## Relative abundance 
+## __TODO__ Need to generate RDS with feature-level relative abundance metrics 
+
+## log fold change
+logFC_feature_summary <- readRDS("~/Desktop/to_file/mgtst_RDS/logFC_feature_summary.RDS") %>% 
+      mutate(slope_error = 1 - slope)
+```
+
+## Sequence characteristics
+
+### GC Content
+No relationship between GC content and log fold-change metrics 
+
+```{r}
+calc_gc <- function(seqs){
+    ## Get nucleotide frequency
+    nuc_mat <- Biostrings::oligonucleotideFrequency(seqs, width = 1, step = 1) 
+    
+    ## Calc GC content 
+    (nuc_mat[,'G'] + nuc_mat[,'C'])/rowSums(nuc_mat)
+}
+
+## DADA2 
+dada_seq <- readDNAStringSet("~/Projects/mgtst_pipelines/dada2/sv_seqs.fasta")
+dada_gc <- data_frame(feature_id = names(dada_seq), gc = calc_gc(dada_seq))
+
+
+## Mothur tree with renamed tips
+seq_id_df <- read_lines("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.filter.unique.precluster.pick.opti_mcc.unique_list.0.03.rep.fasta") %>% grep(pattern = ">", value = TRUE) %>% 
+      str_replace("\\|.*","") %>% 
+      str_replace(">","") %>% 
+      enframe(name = "X", value = "seq_id") %>% 
+      select(-X) %>% 
+      separate(seq_id, into = c("seq_id", "feature_id"),sep = "\t")
+
+mothur_seq <- readDNAStringSet("~/Projects/mgtst_pipelines/mothur/mgtst.trim.contigs.good.unique.good.ng.fasta")
+
+seq_ids <- data_frame(seq_id = names(mothur_seq)) %>% 
+      left_join(seq_id_df)
+
+names(mothur_seq) <- seq_ids$feature_id 
+
+mothur_gc <- data_frame(feature_id = names(mothur_seq), gc = calc_gc(mothur_seq))
+
+## QIIME  
+qiime_seq <- readDNAStringSet("~/Projects/mgtst_pipelines/qiime/otus_uc_fast/new_refseqs.fna") 
+qiime_gc <- data_frame(feature_id = names(qiime_seq), gc = calc_gc(qiime_seq))
+
+## Unclustered
+unclustered_seq <- readDNAStringSet("~/Projects/mgtst_pipelines/mothur/unclustered_seqs.fasta.gz")
+unclustered_gc <- data_frame(feature_id = names(unclustered_seq), gc = calc_gc(unclustered_seq))
+
+## Combined data frame 
+gc_df <- bind_rows(dada2 = dada_gc, mothur = mothur_gc,
+                   qiime = qiime_gc, unclustered = unclustered_gc,
+                   .id = "pipe")
+```
+
+Different distribution in %GC by pipeline. 
+```{r}
+ggplot(gc_df) + geom_density(aes(x = gc, fill = pipe)) + 
+    facet_wrap(~pipe, ncol = 1) + theme_bw()
+```
+
+
+## GC v. log fold-change metrics
+```{r}
+logFC_gc <- logFC_feature_summary %>% 
+    select(pipe, biosample_id, feature_id, slope_error, adj.r.squared) %>%  left_join(gc_df)
+```
+
+```{r}
+logFC_gc %>% group_by(biosample_id, pipe) %>% 
+    summarise(bias_gc = cor(slope_error, gc, method = "spearman"),
+              variance_gc = cor(adj.r.squared, gc, method = "spearman"))
+```
+
+
+log fold-change feature-level metrics are not correlated with \%GC.
+```{r}
+ggplot(logFC_gc) + 
+    geom_hex(aes(x = slope_error, y = gc)) + 
+    facet_wrap(~pipe) + theme_bw()
+```
+
+```{r}
+ggplot(logFC_gc) + 
+    geom_density(aes(x = gc, fill = biosample_id), alpha = 0.25) + 
+    facet_wrap(~pipe) + theme_bw()
+```
+
+## 16S Copy number 
+
+
+
+## Primer Matches
+
+
+## PCR Efficiency
+
+
+
+# Session information 
+
+## Git repo commit information
+```{r}
+# library(git2r)
+# repo <- repository(path = "../")
+# last_commit <- commits(repo)[[1]]
+
+# <!--
+# The current git commit of this file is `r last_commit@sha`, which is on the `r branches(repo)[[1]]@name` branch and was made by `r last_commit@committer@name` on `r when(last_commit)`. The current commit message is `r last_commit@summary`. The repository is online at https://github.com/nate-d-olson/mgtst-pub  
+# -->
+```
+
+
+## Platform Information
+```{r}
+# s_info <- devtools::session_info()
+# print(s_info$platform)
+```
+
+
+## Package Versions
+```{r}
+# s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+#       knitr::kable()
+```
