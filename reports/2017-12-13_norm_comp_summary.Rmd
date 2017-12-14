@@ -1,0 +1,131 @@
+---
+title: "Normalization Method Comparison"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2: 
+    toc: FALSE
+---
+
+```{r normCompSetup, include=FALSE}
+library(tidyverse)
+```
+
+```{r relAbuErrorCalc, include = FALSE}
+norm_count_df <- readRDS("~/Desktop/norm_count_df.RDS") 
+pa_summary_anno_df <- readRDS("~/Desktop/to_file/mgtst_RDS/pa_summary_anno_df.RDS")
+theta_est <- readRDS("~/Desktop/to_file/mgtst_RDS/bootstrap_theta_estimates.rds")
+
+## Calculating Relative Abundance Error Rate
+pre_post_prop <- norm_count_df %>% 
+      ungroup() %>% 
+      filter(t_fctr %in% c(0,20)) %>% 
+      mutate(end_point = if_else(t_fctr == 0 , "post", "pre")) %>% 
+      select(-t_fctr, -var_count, -sd_count) %>% 
+      ## setting values to 0 when one or more of the PCR replicates are 0 for titration end-points
+      spread(end_point,mean_count, fill = 0)
+
+prop_inferred <- theta_est %>% 
+    filter(pipe == "unclustered") %>% 
+    ungroup() %>%
+    mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
+    select(biosample_id, theta_hat_mean, t_fctr) %>% 
+    right_join(norm_count_df) %>% 
+    right_join(pre_post_prop) %>% 
+    filter(t_fctr %in% c(1:5,10,15)) %>% 
+    filter(theta_hat_mean > 0) %>% 
+    ## Using inferred theta estimates to calculate expected values
+    mutate(inferred_prop = post * theta_hat_mean + pre * (1 - theta_hat_mean))
+
+## Excluding mix and unmix specific features
+## Only including features observed in all or none of the four pre- post- PCR replicates
+pa_filter <- pa_summary_anno_df %>% 
+      filter(pa_specific == "unspecific") %>% 
+      select(biosample_id, pipe, feature_id, full_pre, T00, T20, pa_mixed) %>% 
+      filter(T00 %in% c(0,4), T20 %in% c(04))
+
+#### Error Rate Calculations
+rel_abu_error <- prop_inferred %>% 
+      mutate(t_fctr = factor(t_fctr, levels = c(1:5, 10, 15))) %>% 
+      mutate(inferred_error = abs(mean_count - inferred_prop),
+             inferred_error_rate = inferred_error/inferred_prop)
+```
+
+
+```{r logFCerrorCalc, include = FALSE}
+### Loading Data ---------------------------------------------------------------
+### RDS file generated in 2017-10-19_logFC-error-metrics.RDS 
+logFC_pre <- readRDS("~/Desktop/norm_logFC_pre.RDS")
+
+## Calculating error rate
+logFC_error <- logFC_pre %>% 
+      filter(T1 != 0, T2 != 20) %>% 
+      mutate(abs_error = abs(logFC - exp_logFC),
+             error = logFC - exp_logFC)
+```
+
+
+
+
+
+```{r relAbuObsVExp, fig.cap = "Linear model fit to normalized relative abundance counts averaged across PCR replicates and the expected value by normaization method and individual. The dashed line indicates the expected 1-to-1 relationship.", echo = FALSE, message = FALSE, warning = FALSE}
+rel_abu_error %>% filter(mean_count > 1/76000, inferred_prop > 1/76000) %>% 
+    ggplot() + 
+    geom_abline(aes(intercept = 0, slope = 1), linetype = 2) + 
+    geom_smooth(aes(x = inferred_prop, y = mean_count, color = biosample_id), method = "lm") + 
+    facet_wrap(~norm_method, scales = "free") + 
+    theme_bw() + 
+    labs(x = "Expected", y = "Observed", color = "Individual")
+```
+
+
+```{r relAbuError, fig.cap = "Error rate distribution represented as boxplots across normalization methods by individual. Boxplot outliers were excluded.", echo = FALSE, message = FALSE, warning = FALSE}
+## Removing points with expected and observed average counts less than 1/average library size - should update for normalization method specific values. 
+error_boxplot <- rel_abu_error %>% filter(mean_count > 1/76000, inferred_prop > 1/76000) %>% 
+    ggplot() + 
+    geom_boxplot(aes(x = biosample_id, y = inferred_error_rate, color = norm_method), outlier.shape = NA) + 
+    theme_bw() + 
+    labs(x = "Individual", y = "Error Rate", color = "Normalization Method") 
+
+ymin <- ggplot_build(error_boxplot)$data[[1]]$ymin %>% min()
+ymax <- ggplot_build(error_boxplot)$data[[1]]$ymax %>% max()
+error_boxplot + coord_cartesian(ylim = c(ymin, ymax)) + theme(legend.position = "bottom")
+```
+
+
+```{r logFCobsVexp, fig.cap = "Relationship between observed and expected log fold-change estimates by individual and normalization method.", echo = FALSE, message = FALSE, warning = FALSE}
+logFC_error %>% filter(norm_method != "UQ") %>% ggplot() + 
+    geom_abline(aes(intercept = 0, slope = 1), linetype = 2) +
+    geom_smooth(aes(x = exp_logFC, y = logFC, color = norm_method), method = "lm") + 
+    facet_wrap(~biosample_id, scales = "free") + 
+    labs(x = "Expected", y = "Observed", color = "Normalization Method") +
+    theme_bw()
+```
+
+```{r logFCerror, fig.cap = "Comparison of log fold-change absolute error distribution across normalization methods by individual.", echo = FALSE, message = FALSE, warning = FALSE}
+logFC_error  %>% filter(norm_method != "UQ") %>% ggplot() + 
+    geom_boxplot(aes(x = biosample_id, y = abs_error, color = norm_method)) + 
+    theme_bw() + 
+    labs(x = "Individual", y = "|Error|", color = "Normalization Method") 
+```
+
+Normalization methods compared ; 
+1. TMM - weighted trim mean of M-values (EdgeR),    
+1. RLE - relative log expression (EdgeR),  
+1. CSS - cummulative sum scaling (metagenomeSeq),  
+1. TSS - total sum scaling, proportions,   
+1. UQ - upper quartile scaling.
+
+Globally the observed and expected relative abundance values are consistent across individual and normalization methods excluding the RLE normalization method and E01JH0038 (Fig. \@ref(fig:relAbuObsVExp) and \@ref(fig:relAbuError)). 
+RLE assumes that feature relative abundance is constant across samples, the individual specific effect might be due to variation in how similar samples from the individuals are to the dataset as a whole. 
+Deviation from the expected value for E01JH0038 varied by normalization method with TSS normalized counts being the most consistent with the expected values and UQ the least consistent. 
+The negative binomial relative abundance estimates were used to inferr the theta used to calculate the expected relative abundance values. 
+The negative binomial relative abundance estimates were most consistent with the TSS normalized counts potentially biasing the TSS. 
+For TMM and UQ the E01JH0038 was an outlier relative to the other indivduals. 
+
+The agreement between log fold-change estimates and the expected values varied by both individual and normalization method (Fig. \@ref(fig:logFCobsVexp) and \@ref(fig:logFCerror)). 
+The log fold-change values were calculated using normalized counts averaged across PCR replicates. 
+RLE normalized counts were excluded from the log fold-change error analysis as only 3 features had log fold-change estimates between pre- and post-exposure samples greater than the threshold (> 5) used to define pre-specific and pre-dominant features.
+The slope of the linear model fit to the observed and expected log fold-change estimates for the RLE and TMM normalization method varied between individuals with negative slopes for E01JH0004, E01JH0016, and E01JH0017 (Fig. \@ref(fig:logFCobsVexp)). 
+When EdgeR was used to calculate the log fold-change estimates for the pipeline comparison, the default normalization method was used and the linear model slope was positive for all individuals. 
+

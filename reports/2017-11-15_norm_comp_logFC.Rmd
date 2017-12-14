@@ -11,19 +11,15 @@ library(ggridges)
 library(ggpubr)
 ```
 
+
+
 ```{r logFCmunge, include = FALSE}
 ### Loading Data ---------------------------------------------------------------
 ### RDS file generated in 2017-10-19_logFC-error-metrics.RDS 
 logFC_pre <- readRDS("~/Desktop/norm_logFC_pre.RDS")
 
-logFC_pre$norm_method <- logFC_pre$norm 
-logFC_pre$norm <- NULL
-
 logFC_feature_summary <- readRDS("~/Desktop/norm_logFC_feature_summary.RDS") %>% 
       mutate(slope_error = 1 - slope)
-
-logFC_feature_summary$norm_method <- logFC_pre$norm 
-logFC_feature_summary$norm <- NULL
 
 ## Calculating error rate
 logFC_error <- logFC_pre %>% 
@@ -32,6 +28,28 @@ logFC_error <- logFC_pre %>%
              error = logFC - exp_logFC)
 ```
 
+Log fold-change correlations between normalization method
+```{r}
+prepost_logFC <- readRDS("~/Desktop/norm_logFC_prepost.RDS")
+library(GGally)
+prepost_logFC %>% 
+    select(norm_method, biosample_id, feature_id, logFC) %>% 
+    spread(norm_method, logFC) %>% 
+    ggpairs(aes(color = biosample_id), columns = 3:8) + theme_bw()
+```
+
+Comparison of log fold-change distributions across normalization methods.
+UQ has consistently lower log fold-change estimates compared to the other normalization methods. 
+In general the distribution of logFC estimates is consistent across individuals for the different normalization methods excluding RLE. 
+
+```{r}
+prepost_logFC %>% ggplot() + 
+    geom_boxplot(aes(x = norm_method, y = logFC, color = biosample_id)) + 
+    theme_bw()
+```
+
+Few features categorized a pre-specific and dominant for UQ normalized data due to the lower distribution of log fold-change estimates compared to the other methods. 
+One option is to choose a common sent of features to compare across normalization methods. 
 ```{r preCountTbl, echo = FALSE}
 logFC_pre %>% 
       filter(T1 == 0, T2 == 20) %>%
@@ -41,6 +59,40 @@ logFC_pre %>%
       spread(norm_method, count, fill = 0) %>% 
       dplyr::rename(Individual = biosample_id) %>% 
       knitr::kable(caption = "Number of pre-specific and pre-dominant features by individual and normalization method for Mothur", booktabs = TRUE)
+```
+Overlap in pre specific and pre-dominant features between normalization mehtods. 
+Might want to consider using the features that are classified as pre-specific or pre-dominant in 5 or the 6 method. 
+```{r}
+library(UpSetR)
+logFC_pre_set <- logFC_pre %>% select(biosample_id, norm_method, feature_id) %>% unique() %>% 
+    add_column(x = 1) %>% 
+    spread(norm_method, x, fill = 0)
+upset(as.data.frame(logFC_pre_set), nset = 7)
+```
+```{r}
+logFC_pre_set %>% filter(biosample_id == "E01JH0004") %>% as.data.frame() %>% 
+                             upset(nset = 6)
+```
+
+
+```{r}
+logFC_pre_set %>% filter(biosample_id == "E01JH0011") %>% as.data.frame() %>% 
+                             upset(nset = 6)
+```
+
+```{r}
+logFC_pre_set %>% filter(biosample_id == "E01JH0016") %>% as.data.frame() %>% 
+                             upset(nset = 6)
+```
+
+```{r}
+logFC_pre_set %>% filter(biosample_id == "E01JH0017") %>% as.data.frame() %>% 
+                             upset(nset = 6)
+```
+
+```{r}
+logFC_pre_set %>% filter(biosample_id == "E01JH0038") %>% as.data.frame() %>% 
+                             upset(nset = 6)
 ```
 
 ```{r logfcNormComp, fig.cap = "Impact of normalization methods on the agreement between log fold-change estimates and expected values for pre-specific and pre-dominant features. (A) Linear model relating the log fold-change estimates with the expected values by individual and normalization method. (B) Distribution of log fold-change (B) absolute error and (C) error by normalization method and individual.", echo=FALSE, message = FALSE, fig.height = 8}
@@ -83,4 +135,10 @@ ggarrange(logFCestVexp,
           common.legend = TRUE,
           legend = "bottom")
 ```
+
+```{r}
+logFC_error %>% filter(pa_mixed == 28) %>% 
+    ggplot() + geom_boxplot(aes(x = biosample_id, y = abs_error, color = norm_method))
+```
+
 
