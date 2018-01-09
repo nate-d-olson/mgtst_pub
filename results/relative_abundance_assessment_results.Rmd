@@ -298,5 +298,3 @@ Large variance metric values were observed for all individuals and pipelines (Ta
 The feature-level variance was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuError)D). 
 We evalutated whether poor feature-level relative abundance metrics can be attribtuted to specific taxonomic groups or phylogenetic clades  (Supplemental Fig. __2017-11-16_feature-phyloSignal.pdf__). 
 While a phylogenetic signal was detected for both the bias and variance metric, we were unable to identify specific taxonomic groups or phylogenetic clades that performed poorly in our assessement. 
-
-
