@@ -1,0 +1,78 @@
+%% BioMed_Central_Tex_Template_v1.06
+\documentclass{bmcart}
+\usepackage[utf8]{inputenc} %unicode support
+\def\includegraphic{}
+\def\includegraphics{}
+
+\begin{document}
+  \begin{frontmatter}
+
+    \begin{fmbox}
+      \dochead{Research}
+      \title{$title$}
+
+      $for(author)$
+      \author[%
+        addressref={$author.addressref$}, %
+        $if(author.corref)$corref={$author.corref$}, $endif$ %
+        $if(author.noteref)$noteref={$author.noteref$}, $endif$ %
+        email={$author.email$} %
+      ]{\inits{$author.inits$}\fnm{$author.fnm$} \snm{$author.snm$}}
+      $endfor$
+
+      $for(address)$
+      \address[id=$address.id$]{ %
+        $if(address.orgname)$ \orgname{$address.orgname$}, $endif$ %
+        $if(address.street)$ \street{$address.street$}, $endif$ %
+        $if(address.postcode)$ \postcode{$address.postcode$}, $endif$ %
+        $if(address.city)$ \city{$address.city$}, $endif$ %
+        $if(address.cny)$ \cny{$address.cny$}$endif$ %
+      }
+      $endfor$
+
+      \begin{artnotes}
+        $for(notes)$
+          \note[id=$notes.id$]{$notes.text$} % note, connected to author
+        $endfor$
+      \end{artnotes}
+
+    \end{fmbox}% comment this for two column layout
+
+    \begin{abstractbox}
+
+      \begin{abstract} % abstract
+      \parttitle{First part title} %if any
+        Text for this section.
+
+      \parttitle{Second part title} %if any
+        Text for this section.
+      \end{abstract}
+
+      \begin{keyword}
+        \kwd{sample}
+        \kwd{article}
+        \kwd{author}
+      \end{keyword}
+
+    \end{abstractbox}
+
+  \end{frontmatter}
+
+  %$body$
+
+  \begin{backmatter}
+
+  \section*{Competing interests}
+    The authors declare that they have no competing interests.
+
+  \section*{Author's contributions}
+      Text for this section \ldots
+
+  \section*{Acknowledgements}
+    Text for this section \ldots
+
+  \bibliographystyle{bmc-mathphys} % Style BST file (bmc-mathphys, vancouver, spbasic).
+  \bibliography{bmc_article}      % Bibliography file (usually '*.bib' )
+
+  \end{backmatter}
+\end{document}
