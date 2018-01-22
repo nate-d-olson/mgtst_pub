@@ -1,0 +1,149 @@
+---
+title: "Microbiome-Scale Mixture Use Demonstration"
+author:
+  - fnm: "Nathan"
+    snm: "Olson"
+    inits: "ND"
+    addressref: "aff1"
+    email: "nolson@nist.gov"
+  - fnm: "M. Senthil"
+    snm: "Kumar"
+    inits: "MS"
+    addressref: "aff2"
+  - fnm: "Stephanie"
+    snm: "Hao"
+    inits: "S"
+    addressref: "aff3"
+  - fnm: "Winston"
+    snm: "Timp"
+    inits: "W"
+    addressref: "aff3"
+  - fnm: "Marc"
+    snm: "Salit"
+    inits: "ML"
+    addressref: "aff2"
+  - fnm: "O Colin"
+    snm: "Stine"
+    inits: "O"
+    addressref: "aff4" 
+  - fnm: "Hector"
+    snm: "Corrada Bravo"
+    inits: "H"
+    addressref: "aff2"
+address:
+  - id: "aff1"
+    orgname: "National Institute of Standards and Technology"
+  - id: "aff2"
+    orgname: "University of Maryland, College Park"
+  - id: "aff3"
+    orgname: "Johns Hopkins University"
+  - id: "aff4"
+    orgname: "School of Medicine, University of Maryland"
+date: '`r Sys.Date()`'
+header-includes:
+    - \RequirePackage{hyperref}
+    - \usepackage{lmodern}
+    - \usepackage{graphicx}
+    - \usepackage{booktabs}
+    - \usepackage{lmodern}
+    - \usepackage{graphicx}
+    - \usepackage{booktabs}
+    - \usepackage{multirow}
+    - \usepackage{array}
+    - \usepackage{amsmath}
+output:
+  bookdown::pdf_document2: 
+
+    toc: FALSE
+    template: template.tex
+    keep_tex: TRUE
+bibliography: [mgtst.bib, packages.bib]
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.path = "img/")
+```
+
+<!-- 
+BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
+
+Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-author-details-in-pdf-from-r-markdown-latex-template 
+-->
+
+
+
+# Abstract
+
+# Introduction
+```{r intro, child="Introduction.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+``` 
+
+
+# Methods  
+```{r methods, child="Methods.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+``` 
+
+# Results
+## Dataset characteristics  
+```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+## Titration Series Validation 
+In order to use information from the unmixed samples to obtain expected count values for the titrations we first need to evaluate two assumptions about the mixed samples: 
+1. The samples were mixed volumetrically in a $log_2$ dilution series according to the mixture design. 
+2. The unmixed pre- and post-exposure samples have the same proportion of prokaryotic DNA. 
+Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to the mixture design. 
+To evaluate the second assumption total prokaryotic DNA in the titrations samples was quantified using a qPCR assay targeting the 16S rRNA gene. 
+
+
+### Spike-in qPCR results   
+```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+### Bacterial DNA Concentration 
+```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+### Theta Estimates
+```{r thetaEst, child="results/theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+## Measurement Assessment  
+Next we assessed the qualitative and quanitative nature of 16S rRNA measurement process using our two-sample titration dataset. 
+For the qualitative assessment we analyzed the relative abundance of features only observed in the unmixed samples and titrations. 
+For the quantitative assessment we looked the the relative abundance and differential abundance log fold-change estimates. 
+
+### Qualitative Assessment
+
+<!--
+Proportion of titration and endpoint specific features that could not be explained by sampling alone. 
+-->
+
+```{r qualAnalysis, child="results/qualitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+### Quantitative Assessment
+
+<!--
+Count Error Rate Results
+-->
+```{r quantAnalysis, child="results/relative_abundance_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+<!--
+logFC Error Rate Results
+-->
+```{r logFCanalysis, child="results/logFC_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
+# Discussion
+```{r discussion, child="Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+``` 
+
+# References 
+<div id="refs"></div>
+
+# Supplemental
+```{r supplemental, child="results/Supplemental.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
+
