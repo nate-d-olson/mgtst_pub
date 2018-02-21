@@ -10,10 +10,7 @@ output:
 ```{r ercc_setup, warning=FALSE, message=FALSE, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 library(ProjectTemplate)
-cwd <- getwd()
-setwd("../")
 load.project()
-setwd(cwd)
 library(stringr)
 library(modelr)
 library(ggpubr)

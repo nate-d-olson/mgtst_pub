@@ -22,9 +22,9 @@ library(ggpubr)
 ```{r logFCmunge, include = FALSE}
 ### Loading Data ---------------------------------------------------------------
 ### RDS file generated in 2017-10-19_logFC-error-metrics.RDS 
-logFC_pre <- readRDS("../data/logFC_pre.RDS")
+logFC_pre <- readRDS("data/logFC_pre.RDS")
 
-logFC_feature_summary <- readRDS("../data/logFC_feature_summary.RDS") %>% 
+logFC_feature_summary <- readRDS("data/logFC_feature_summary.RDS") %>% 
       mutate(slope_error = 1 - slope)
 
 ### logFC Est v. Exp Regression ------------------------------------------------

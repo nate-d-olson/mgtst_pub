@@ -18,9 +18,9 @@ library(forcats)
 library(stringr)
 library(ggpubr)
 library(ggridges)
-nb_counts <- readRDS("../data/nb_counts_titrations.RDS")
-pa_summary_anno_df <- readRDS("../data/pa_summary_anno_df.RDS")
-theta_est <- readRDS("../data/bootstrap_theta_estimates.rds")
+nb_counts <- readRDS("data/nb_counts_titrations.RDS")
+pa_summary_anno_df <- readRDS("data/pa_summary_anno_df.RDS")
+theta_est <- readRDS("data/bootstrap_theta_estimates.rds")
 ```
 
 ```{r relAbuMunge, echo = FALSE, message = FALSE, warning = FALSE}
