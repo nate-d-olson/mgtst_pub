@@ -135,7 +135,7 @@ boot_theta_hat <- calc_boot_theta(boot_theta_file, theta_est_df)
 
 To account for differences in the proportion of prokaryotic DNA in the pre- and post-exposure (Fig. \@ref(fig:bacPlot)) we inferred the proportion of post-exposure sample prokaryotic DNA in a titration, using the 16S rRNA sequencing data, $\theta$ (Fig. \@ref(fig:thetaHat)). 
 Overall the relationship between the inferred and mixture design $\theta$ values were consistent across pipelines but not individual whereas the 95\% CI varied by both individual and pipeline. 
-For E01JH0004, E01JH0011, and E01JH0016 the inferred and mixture design $\theta$ values were in better agreement compared to E01JH0017 and E01JH0038.
+For study subjects E01JH0004, E01JH0011, and E01JH0016 the inferred and mixture design $\theta$ values were in close agreement, in contrast to study subjects E01JH0017 and E01JH0038.
 For E01JH0017 the inferred values were consistently less than the mixture design values, and greater than the mixture design values for E01JH0038. 
 These results were consistent with the qPCR prokaryotic DNA concentration results with E01JH0004 and E01JH0017 having a significantly positive slopes then E01JH0016 and E01JH0038 significantly negative slopes (Fig. \@ref(fig:bacPlot)). 
 

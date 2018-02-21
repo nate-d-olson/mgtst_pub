@@ -279,15 +279,14 @@ rel_abu_error_summary %>%
 
 For the relative abundance assessment we evaluated the consistency of the observed and expected relative abundance estimates for a feature across the four titration PCR replicates as well as feature-level bias and variance. 
 The pre- and post-exposure estimated relative abundance and inferred $\theta$ values were used to calculate titration and feature level error rates. 
-To prevent over-fitting, unclustered pipeline $\theta$ estimates were used to calculate the error rates. 
+To prevent over-fitting to each specific pipeline, unclustered pipeline $\theta$ estimates were used to calculate the error rates for all pipelines. 
 Only features observed in all pre- and post-exposure PCR replicates and pre- and post-exposure specific features were included in the analysis (Table \@ref(tab:relAbuFeatTbl)). 
 Pre- and post-exposure specific features were defined as present in all four PCR replicates of the pre-exposure or post-exposure PCR replicates, respectively, but none of the PCR replicates for the other unmixed sample.
 There is lower confidence in the relative abundance of a feature in the pre- or post-exposure unmixed samples when the feature is observed in some of the 4 PCR replicates, therefore these features were not included in the error analysis.
-Overall aggreement between the inferred and observed relative abundance was high for all individuals and bioinformatic pipelines (Fig. \@ref(fig:relAbuError)A). 
+Overall, aggreement between the inferred and observed relative abundance was high for all individuals and bioinformatic pipelines (Fig. \@ref(fig:relAbuError)A). 
 The error rate distribution was similarly consistent across pipelines, including long tails (Fig. \@ref(fig:relAbuError)B)
 
-To assess the feature-level quantitative accuracy of the relative abundance values we compared the the relative abundance feature-level bias, (median error rate, Fig. \@ref(fig:relAbuError)C), and variance, ($RCOV=(IQR)/|median|$ Fig. \@ref(fig:relAbuError)D). 
-Feature-level bias and variance metrics were compared across pipelines and individuals using a mixed effects model. 
+To assess the feature-level quantitative accuracy of the relative abundance values we compared the relative abundance feature-level bias, (median error rate, Fig. \@ref(fig:relAbuError)C), and variance, ($RCOV=(IQR)/|median|$ Fig. \@ref(fig:relAbuError)D) across pipelines and individuals using a mixed effects model. 
 Large bias and variance values were observed for all pipelines (Table  \@ref(tab:relAbuErrorTbl)). 
 Features with large bias and variance metrics, defined as $1.5\times IQR$ from the median, were excluded from the analysis to prevent outliers from biasing the comparison. 
 Multiple comparisons test (Tukey) was used to test for significant differences in feature-level bias and variance between pipelines. 
@@ -296,5 +295,5 @@ The Mothur, DADA2, and QIIME feature-level bias were all signficantly different 
 DADA2 had the lowest mean feature-level bias (`r round(dada_error,2)`), followed by Mothur (`r round(mothur_error,2)`), with QIIME having the highest bias (`r round(qiime_error,2)`) (\@ref(fig:relAbuError)C).  
 Large variance metric values were observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)). 
 The feature-level variance was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuError)D). 
-We evalutated whether poor feature-level relative abundance metrics can be attribtuted to specific taxonomic groups or phylogenetic clades  (Supplemental Fig. __2017-11-16_feature-phyloSignal.pdf__). 
-While a phylogenetic signal was detected for both the bias and variance metric, we were unable to identify specific taxonomic groups or phylogenetic clades that performed poorly in our assessement. 
+We next evalutated whether poor feature-level relative abundance metrics can be attributed to specific taxonomic groups or phylogenetic clades  (Supplemental Fig. __2017-11-16_feature-phyloSignal.pdf__). 
+While a significant overall phylogenetic signal was detected for both the bias and variance metric, we were unable to identify specific taxonomic groups or phylogenetic clades exceedingly poor performance in our assessement. 

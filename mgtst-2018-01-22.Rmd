@@ -85,7 +85,7 @@ Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-auth
 
 # Results
 ## Dataset characteristics  
-```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval=FALSE}
 ```
 
 ## Titration Series Validation 
@@ -97,11 +97,11 @@ To evaluate the second assumption total prokaryotic DNA in the titrations sample
 
 
 ### Spike-in qPCR results   
-```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval=FALSE}
 ```
 
 ### Bacterial DNA Concentration 
-```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval=FALSE}
 ```
 
 ### Theta Estimates
@@ -109,8 +109,8 @@ To evaluate the second assumption total prokaryotic DNA in the titrations sample
 ```
 
 ## Measurement Assessment  
-Next we assessed the qualitative and quanitative nature of 16S rRNA measurement process using our two-sample titration dataset. 
-For the qualitative assessment we analyzed the relative abundance of features only observed in the unmixed samples and titrations. 
+Next we assessed qualitative and quantiative nature of 16S rRNA measurement process using our two-sample titration dataset. 
+For the qualitative assessment we analyzed the relative abundance of features only observed in the unmixed samples or titrations which are not expected to be observed given the tritation experimental design. 
 For the quantitative assessment we looked the the relative abundance and differential abundance log fold-change estimates. 
 
 ### Qualitative Assessment

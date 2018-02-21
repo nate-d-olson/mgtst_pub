@@ -18,7 +18,7 @@ Targeted sequencing of the 16S rRNA gene, 16S metagenomics, is a commonly used m
 There are numerous sources of error and bias in the measurement process, for both the molecular (e.g. PCR and sequencing) and computational steps (e.g. sequence clustering) [@Amore2016;@Goodrich2014;@brooks2015truth]. 
 Appropriate datasets and methods are needed to evaluate the 16S measurement process inorder to characterize how these sources of bias and error impact the measurement results and determine where to focus efforts for improving the measurement process.
 
-In order to characterize the accuracy of a measurement process you need a sample or dataset with an expected value to benchmark against. 
+A sample or dataset with known characteristics to benchmark against are needed in order to characterize the accuracy of a measurement process.
 There have been a number of studies characterizing and evaluating different steps in the 16S rRNA metagenomics measurement process which use mock communities, simulated data, or environmental samples. 
 Mock communities consisting of mixtures of cells or DNA from individual organisms have an expected value but are not representative of the complexity of environmental samples in terms of the of number or abundance distributions of organisms [@bokulich2016mockrobiota]. 
 Similar to mock communities simulated data have an expected value that can be used for benchmarking. 

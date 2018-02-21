@@ -191,14 +191,15 @@ ercc_tbl <- left_join(ercc_stdtbl, ercc_vldtbl)
 
 Volumetric mixing of the two-sample titration was validated using qPCR to quantify ERCC plasmids spiked into the pre- and post-exposure samples. 
 The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves (Table \@ref(tab:erccTable)). 
-The qPCR assays targeting the ERCCs spiked into the post-exposure samples had $R^2$ values and slope estimates  close to 1 (Table \@ref(tab:erccTable)). 
 For a $log_2$ two-sample-titration mixture design the expected slope is 1, corresponding to a doubling in template DNA every PCR cycle. 
+The qPCR assays targeting the ERCCs spiked into the post-exposure samples had $R^2$ values and slope estimates  close to 1 (Table \@ref(tab:erccTable)). 
 Slope estimates less than 1 were attributed to the assay standard curve efficiency less than 1 (Table \@ref(tab:erccTable)). 
+
 For the pre-exposure ERCCs a regression line was fit to the $log_2$ pre-exposure sample proportion for titrations 1-4 and the unmixed pre-exposure sample. 
 The change in pre-exposure sample proportion between titrations 5, 10, and 15 ($0.97$ - $0.99997$) is to small for qPCR to detect changes in ERCC spike-in concentration with an expected Ct difference of `r round(log2((1-2^-8)/(1-2^-5)),2)` between the titrations 5 and 15. 
 For a regression line was fit to the Ct values and $log_2$ pre-exposure sample proportion with a -1 expected slope as the spike-in concentration is expected to increase linearly with the proportion of pre-exposure sample and both Ct and pre-exposure sample proportions are on $log_2$ scales. ERCCs spiked into the pre-exposure samples the $R^2$ values were low, less than 0.6, with slope estimates between -1.5 and -2.1 (Table \@ref(tab:erccTable)). 
 Deviation from the expected slope for the pre-exposure ERCC qPCR results is attributed to the small change in spike-in concentration between samples preventing accurate quantification of changes in spike-in concentration between titrations. 
-When considering the quantitative limitations of the qPCR assay these results indicate that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
+When considering the quantitative limitations of the qPCR assay these results confirm that the unmixed pre- and post-exposure samples were volumetrically mixed according to the mixture design.
 
 ```{r erccTable, echo=FALSE, message=FALSE}
 ercc_tbl %>% 
