@@ -1,5 +1,5 @@
 ---
-title: "Microbiome-Scale Mixture Use Demonstration"
+title: "Assessing 16S marker gene survey data analysis methods using mixtures of human stool sample DNA extracts."
 author:
   - fnm: "Nathan"
     snm: "Olson"
@@ -41,11 +41,12 @@ address:
     orgname: "School of Medicine, University of Maryland"
 date: '`r Sys.Date()`'
 output:
-  bookdown::pdf_document2: 
+  # bookdown::pdf_document2: 
+  bookdown::word_document2: 
     toc: FALSE
     # template: template.tex
-    keep_tex: TRUE
-documentclass: "bmcart"
+    # keep_tex: TRUE
+# documentclass: "bmcart"
 bibliography: [mgtst.bib, packages.bib]
 ---
 
