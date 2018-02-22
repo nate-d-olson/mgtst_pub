@@ -8,8 +8,8 @@ output:
 bibliography: [mgtst.bib, packages.bib]
 ---
 
-We generated a 16S metagenomic benchmarking dataset with the diversity, relative abundance dynamic range, and sequencing artifacts of a real dataset using mixtures of environmental samples 
-We used the dataset to assess the feature presence/ absence, relative abundance, and log fold-change for count tables generated using four different bioinformatic pipelines
+We generated a 16S rRNA marker-gene survey benchmarking dataset with the diversity, relative abundance dynamic range, and sequencing artifacts of a real dataset using mixtures of environmental samples 
+We used the dataset to assess feature presence/ absence, relative abundance, and log fold-change for count tables generated using four different bioinformatic pipelines.
 
 We assessed the performance of three bioinformatic pipelines, open-clustering, _de-novo_ clustering, sequencing inference, and unclustered. 
 Running these pipelines on our mixture dataset resulted in a wide range of total feature abundance and features per sample. 
@@ -18,7 +18,7 @@ The sparsity was comparable to previously publised values, 1-3\% [@paulson2013di
 As the dataset is highly redundant, 180 samples derived from 10 environmental samples lower sparsity was expected. 
 The higher than expected sparsity can be attributed to false positive and false negative or true low abundance features. 
 False positives are sequencing or PCR artifacts that are not appropriately filtered or assigned to an appropriate feature by the bioinformatic pipeline. 
-The 16S region sequenced in the study is larger than the region the de-novo and open clustering pipelines were initially developed for and thus potentailly explaining the higher than expected sparsity [@kozich2013development] __QIIME V4 REF__. 
+The 16S rRNA region sequenced in the study is larger than the region the _de-novo_ and open clustering pipelines were initially developed for, potentailly explaining the higher than expected sparsity [@kozich2013development] __QIIME V4 REF__. 
 The larger region has a smaller overlap between the forward and reverse reads as a result in our study the merging of the forward and reverse reads did not allow for the sequence error correction that occurs when their is greater overlap. 
 However, both the _de-novo_ and open-reference clustering pipelines have produced count tables with magnitudes higher than expected features in evaluation studies using defined mixtures of cell and DNA, mock communities __REF__. 
 The sequence inference method produced a count table with significantly fewer features compared to the _de-novo_ and open-reference clustering pipelines, yet had comparable sparsity. 
@@ -38,7 +38,7 @@ For 16S metagenomic studies using DADA2, missing low abundance features are more
 When a sequencing dataset is processed using DADA2, the user can be more confident that an observed feature represents a member of the microbial community and not a measurement artifact. 
 At the same it is unlikely that the number of features in a sample accurately reflects the true richness of a sample though whether real differences in richness between samples are detectable when a dataset is processed using DADA2 is unknown.
 
-The quantiative assessment results, both relative abundance and log fold-change estimates were individual specific. 
+The quantiative assessment results, both relative abundance and log fold-change estimates were individual specific.
 The individual specific results are a limitation in inferring the proportion of prokaryotic DNA in a titration from post-exposure samples, $\theta$. 
 We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentation of bacterial DNA across titration but we were unable to estimate the proportion of bacterial DNA in the unmixed samples using the qPCR data. 
 Using the 16S sequencing data we inferred the proportion of bacterial DNA from the post-exposure sample in each titration. 

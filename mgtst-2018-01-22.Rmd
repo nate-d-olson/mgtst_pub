@@ -40,23 +40,12 @@ address:
   - id: "aff4"
     orgname: "School of Medicine, University of Maryland"
 date: '`r Sys.Date()`'
-header-includes:
-    - \RequirePackage{hyperref}
-    - \usepackage{lmodern}
-    - \usepackage{graphicx}
-    - \usepackage{booktabs}
-    - \usepackage{lmodern}
-    - \usepackage{graphicx}
-    - \usepackage{booktabs}
-    - \usepackage{multirow}
-    - \usepackage{array}
-    - \usepackage{amsmath}
 output:
   bookdown::pdf_document2: 
-
     toc: FALSE
-    template: template.tex
+    # template: template.tex
     keep_tex: TRUE
+documentclass: "bmcart"
 bibliography: [mgtst.bib, packages.bib]
 ---
 
@@ -85,7 +74,7 @@ Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-auth
 
 # Results
 ## Dataset characteristics  
-```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval=FALSE}
+```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
 ## Titration Series Validation 
@@ -97,11 +86,11 @@ To evaluate the second assumption total prokaryotic DNA in the titrations sample
 
 
 ### Spike-in qPCR results   
-```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval=FALSE}
+```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
 ### Bacterial DNA Concentration 
-```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval=FALSE}
+```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
 ### Theta Estimates

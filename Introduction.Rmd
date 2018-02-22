@@ -8,10 +8,6 @@ output:
 bibliography: [mgtst.bib, packages.bib]
 ---
 
-<!-- 
-BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
--->
-
 Metagenomics, sequencing microbial community DNA, has greatly advanced our understanding of the microbial world. 
 Targeted sequencing of the 16S rRNA gene, 16S metagenomics, is a commonly used method for sequencing a microbial community. 
 16S metagenomics is a complex measurement process comprised of multiple molecular laboratory and computational steps [@goodrich2014conducting;@kim2017optimizing]. 
