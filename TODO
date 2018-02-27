@@ -1,24 +1,20 @@
-Next Steps
-==========
-* Submit data to SRA
+## Project cleanup
+- Cache figure and table data 
+- Move processing code to munge  
+- 00 munge to get phyloseq and MRexp objects
+- Use munge/scripts for scripts to generate intermediate RDS files 
+- Add data descriptions 
+- Comment code 
+- remove pre-processing code from manuscript
 
-Manuscript
-=========
-1. Supplemental table ERCC
-1. Supplemental - justification for in-house bacterial DNA standard curve 
-1. Supplemental - PCR plate layour figure 
-1. Supplemental - 16S PCR figure
+## Supplemental 
+- add phylosignal  
+- logFC norm  
 
-Open Questions
-==============
-Dealing with NTC
-
-## Meeting with Hector Follow-up 10/19/2017
-* calculate negative binomial logFC estimates 
-* Theta corrected log fold-change expected values  
-* Test for pipeline and estimator effect on error bias (slope) and variance (R2)
-* log fold-change estimate sensitivity using PCR replicates
-      * TP - log fold-change for PCR combinantions between titrations 
-      * FP - log fold-change for PCR combinations within titrations 
-            * Include terms in model for PCR plate and plate half
-      * for edgeR - feature dispersion is the variance estimate
+## Potential Relevant References
+* single cell RNAseq
+  - https://www.biorxiv.org/content/early/2017/12/16/235382?%3Fcollection=
+* False negative rate for differentially abundant features
+  - http://msystems.asm.org/content/2/6/e00092-17?etoc=
+* PCR bias characterization
+  - http://onlinelibrary.wiley.com/store/10.1111/1462-2920.12259/asset/emi12259.pdf?v=1&t=jdym5rzg&s=a398d44b62a049dae799d99a7d28b52222d5f2e3
