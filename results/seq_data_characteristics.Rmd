@@ -13,7 +13,7 @@ library(Rqc)
 library(tidyverse)
 library(stringr)
 library(ggpubr)
-pipeline_dir <- "../../mgtst_pipelines/"
+pipeline_dir <- "../mgtst_pipelines/"
 ```
 
 ```{r fq_data_filesp, warning=FALSE, message=FALSE, echo = FALSE}
@@ -35,7 +35,7 @@ read_groups[grepl("/1-.*_R2", dat_files)] <- "plate1_R2"
 read_groups[grepl("/2-.*_R1", dat_files)] <- "plate2_R1"
 read_groups[grepl("/2-.*_R2", dat_files)] <- "plate2_R2"
 
-qa_list <- readRDS("../data/rqcQA_list.rds")
+qa_list <- readRDS("data/rqcQA_list.rds")
 ```
 
 ```{r metadat, warning=FALSE, message=FALSE, echo = FALSE}
@@ -53,7 +53,7 @@ qa_file_info <- perFileInformation(qa_list) %>%
     select(-format,-path)
 
 ## study metadata
-load("../cache/sampleSheet.RData")
+load("cache/sampleSheet.RData")
 
 meta_df <- sampleSheet %>% 
     mutate(pos_ns = str_replace(pos, "_",""),
@@ -80,7 +80,7 @@ qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>%
 ```
 
 ```{r pipeMunge, echo = FALSE}
-pipeline_dir <- "../../mgtst_pipelines"
+pipeline_dir <- "../mgtst_pipelines"
 mrexp_files <- list(
       dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
       mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
