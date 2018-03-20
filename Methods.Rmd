@@ -40,42 +40,37 @@ qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher) a
 Statistical analysis was performed using custom scripts in R. <!-- available at github loc?? -->
 
 ## Sequencing
-000Timp
-The 45 samples (seven titrations and two unmixed samples for the five biological replicates) were processed using a standard 16S rRNA amplicon sequencing workflow based on the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, downloaded from \url{https://support.illumina.com}).
-The protocol consisted of an initial 16S rRNA PCR followed by a separate sample indexing PCR prior to normalization and pooling.
+The 45 samples (seven titrations and two unmixed samples for each of five biological replicates) were processed using a standard 16S amplicon sequencing workflow based on the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, downloaded from \url{https://support.illumina.com}).
+This protocol specifies an initial 16S rRNA PCR followed by a sample indexing PCR.  Samples were then normalized <!-- How? More specifics here to discuss how we did this, it's important to assess the technical variation--> and pooled for sequencing.
 
-A total of 192 PCRs were run including four PCR replicates per sample and 12 no template controls. 
+A total of 192 16S rRNA PCRs were run including four PCR replicates per sample and 12 no template controls, using Kapa HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA). <!-- Kapa is now part of Roche --> 
 The 16S PCR targeted the V3-V5 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
-The V3-V5 target region is `r 805-341` bp, with forward and reverse reads overlapping by `r 600 - (805-341)` bp, assuming 300 bp paired-end reads [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
-The primer sequences include additional overhang adapter sequences to facilitate library preparation (forward primer 5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3' and reverse primer 5'- GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC - 3'). 
-The 16S targeted PCR was performed according to the Illumina protocol using the KAPA HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
-The resulting PCR product was verified using agarose gel electrophoresis.
-Quality control DNA concentration measurements were made after the initial 16S rRNA PCR, indexing PCR, and normalization. 
-DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Molecular Devices LLC. Sunnyvale CA, USA) and fluorescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Molecular Devices LLC. Sunnyvale CA, USA). 
+The V3-V5 target region is <!-- why not just put the number here??? --> `r 805-341` bp, with forward and reverse reads overlapping by `r 600 - (805-341)` bp, as we used 2x300 bp paired-end reads on the MiSeq [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
+Primer sequences include overhang adapter sequences to facilitate library preparation (forward primer 5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3' and reverse primer 5'- GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC - 3'). 
+For quality control, the PCR product was verified using agarose gel electrophoresis to check for appropriate size bands, and concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and normalization steps. 
+DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Molecular Devices LLC. Sunnyvale CA, USA) and fluorescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Molecular Devices LLC. Sunnyvale CA, USA). <!-- Is that true for us as well?  @shao? We don't have such an instrument--> 
 
-The 16S rRNA PCR product was used to generate sequencing libraries. 
-The initial PCR products were purified using AMPure XP beads (Beckman Coulter Genomics, Danvers, MA) following the manufactures protocol. 
-After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D (Illumina Inc., San Diego CA).
+The initial PCR products were purified using AMPure XP beads (Beckman Coulter Genomics, Danvers, MA) following the manufactures protocol. <!-- which?  There are many?  I assume you mean using 1.8X concentration of beads --> 
 After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D (Illumina Inc., San Diego CA).
 Prior to pooling the purified sample concentration was normalized using SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA), according to the manufacturers protocol.
-The pooled library concentration was measured using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
+The pooled library concentration was checked using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
 Due to the low concentration of the pooled amplicon library the modified protocol for low concentration libraries was used.
-The library was run on a Illumina MiSeq and base calls were made using Illumina Real Time Analysis Software version 1.18.54.
+The library was run on an Illumina MiSeq and base calls were made using Illumina Real Time Analysis Software version 1.18.54.
 Sequencing data quality control metrics for the 384 datasets in the study (192 samples with forward and reverse reads) were computed using the bioconductor `Rqc` package [@Rqc] to calculate the quality metrics used in the following analysis. 
 
 ## Sequence Processing
-Sequence data was processed using three bioinformatic pipelines: a _de-novo_clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@caporaso2010qiime], and a sequence inference methods - DADA2 [@callahan2016dada2], unclustered sequences were used as a control. 
+Sequence data was processed using three bioinformatic pipelines: a _de-novo_clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@caporaso2010qiime], and a sequence inference methods - DADA2 [@callahan2016dada2], with unclustered sequences used as a control. 
 Code used to run the bioinformatic pipelines is available at \url{https://github.com/nate-d-olson/mgtst\_pipelines}. 
 The Mothur (version 1.37, \url{http://www.mothur.org/}) pipeline was based on the MiSeq SOP [@schloss2009introducing;@kozich2013development].
-As a different 16S rRNA region was sequenced than the region the SOP was developed for the procedure was modified to account for smaller overlap between the forward and reverse reads relative to the amplicons used in the protocol.
-The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merged using the Needleman-Wunsch algorithm.
+As a different 16S rRNA region was sequenced the procedure was modified to account for smaller overlap between the forward and reverse reads relative to the default amplicons.
+The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merged using the Needleman-Wunsch algorithm. <!-- Again, this feels like you are just listing things, but without even detail -->
 Low quality reads were identified and filtered from the dataset based on: the presence of ambiguous bases, failure to align to the SILVA reference database (V119, \url{https://www.arb-silva.de/}) [@quast2012silva], and identification as chimeras.
 Chimera filtering was performed using UChime without a reference database [@edgar2011uchime].
 OTU clustering was performed using the OptiClust algorithm with a clustering threshold of 0.97 [@westcott2017opticlust].
 The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set [@wang2007naive].
 
 The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (\url{http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina\_overview\_tutorial.ipynb}) using QIIME version 1.9.1 [@caporaso2010qiime]. 
-Briefly the QIIME pipeline uses fastq-join to merge paired-end reads [@aronesty2011ea] and the Usearch algorithm  [@edgar2010search] with Greengenes database version 13.8 with a 97% similarity threshold [@desantis2006greengenes] was used for open-reference clustering. 
+Briefly, the QIIME pipeline uses fastq-join to merge paired-end reads [@aronesty2011ea] and the Usearch algorithm [@edgar2010search] with Greengenes database version 13.8 with a 97% similarity threshold [@desantis2006greengenes] was used for open-reference clustering. 
 
 DADA2, an R native pipeline was also used to process the sequencing data [@callahan2016dada2].
 The pipeline includes a sequence inference step and taxonomic classification using the DADA2 implementation of the RDP naive bayesian classifier [@wang2007naive] and the SILVA database V123 provided by the DADA2 developers [@quast2012silva, \url{https://benjjneb.github.io/dada2/training.html}]. 
@@ -86,7 +81,7 @@ Taxonomic classification of the unclustered sequences was performed using the sa
 To limit the size of the dataset the most abundant 40,000 OTUs (comparable to the mothur dataset), across all samples, were used as the unclustered dataset. 
 
 ## Titration Proportion Estimates 
-We used a regression method to estimate the proportion of prokaryotic DNA in each titration, $\theta$, as follows. First, uninformative and low abundance features were included for the purposes of estimating $\theta$ based on the following criteria: features were observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations), greater than 1 $log_2$ fold-change between the pre- and post-exposure samples, and present in all four or none of the pre- and post-exposure PCR replicates. Next, a negative binomial model was used to calculate the average relative abundance across PCR replicates of each of these features.
+We used a regression method to estimate the proportion of prokaryotic DNA in each titration, $\theta$, as follows. First, uninformative and low abundance features were included to estimate $\theta$ if they met these criteria: features were observed in at least 14 of the 28 total titration PCR replicates (4 pcr replicates per titration, 7 titrations), greater than 1 $log_2$ fold-change between the pre- and post-exposure samples, and present in either all four or none of the pre- and post-exposure PCR replicates. A negative binomial model was used to calculate the average relative abundance across PCR replicates of each of these features.
 
 Next, a linear model was used to infer $\theta$ based on the following equation 
 
@@ -98,7 +93,7 @@ Next, a linear model was used to infer $\theta$ based on the following equation
 where $\mathbf{C}$ is a vector of counts, based on the average relative abundance estimates, for a set of features, $\mathbf{C}_{obs_j}$ observed counts for titration $j$, with $\mathbf{C}_{pre_j}$ cand $\mathbf{C}_{post_j}$ representing the vector of counts for the same features for the unmixed pre- and post-exposure samples. 
 
 16S rRNA sequencing count data is known to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
-Generalized linear models provide an alternative to standard least-squares regression however, the above model is additive and therefore unable to directly infer $\theta_j$ in log-space. 
+Generalized linear models provide an alternative to standard least-squares regression, but the above model is additive and therefore unable to directly infer $\theta_j$ in log-space. 
 To address this issue we fit the model using a standard least-squares regression then obtained non-parametric 95 \% confidence intervals for the $\theta$ estimates by bootstrapping with 1000 replicates. 
 
 
@@ -107,7 +102,7 @@ Quantitative assessment of the count table values obtained from each of the sequ
 Observed feature relative abundance estimates ($obs$) were calculated using a negative binomial model as above, while equation \@ref(eq:mixEq) and the inferred $\theta$ values were used to calculate the expected feature relative abundance ($exp$). Relative abundance error rate was defined as $|exp - obs|/exp$ and were compared across pipelines and biological replicates (study subjects). 
 Mixed effects models were used to compare feature-level error rate bias and variance across pipelines accounting for individual (study subject) effect.
 Feature-level bias and variance were evaluated using the median error rate and robust coefficient of variation ($RCOV=IRQ/median$) respectively. 
-Large feature-level error rate bias and variance outliers were observed, these outliers were excluded from the mixed effects model to minimize biases in the model due to poor fit for a number of features and were characterized independently.
+Large feature-level error rate bias and variance outliers were observed, these outliers were excluded from the mixed effects model to minimize biases due to poor fit and were instead characterized independently.
 
 Log fold-changes between all titration pairs and pre- and post-exposure samples were calculated using EdgeR [@robinson2010;@mccarthy2012]. To assess differential abundance log fold-change estimates, log fold-change between all titrations were compared to the expected log fold-change values for the pre-specific and pre-dominant features. 
 When assuming the feature is only present in pre-exposure samples the expected log fold-change is independent of the observed counts for the unmixed samples. 
@@ -137,9 +132,9 @@ $H_1$ - Given no observed counts and the total abundance for a titration the tru
 
 To test if titration-specific features could be explained by sampling alone we used a Bayesian hypothesis test. 
 Simulation was used to estimate probabilities a feature was observed given the observed counts and sequencing depth.
-For the simulation we assumed a binomial distribution given the observed total abundance and a uniform distribution of proportions, 0 to the minimum expected proportion. 
-The minimum expected proportion, $\pi_{min_{exp}}$, is calculated using the mixture equation \@ref(eq:mixEq) and the minimum observed feature proportion for unmixed pre-exposure, $\pi_{min_{pre}}$, and post-exposure $\pi_{min_{post}}$ samples for each individual and pipeline. 
-For features not present in unmixed samples the assumption is that the feature proportion is less than $\pi_{{min}_{exp}}$. 
+For the simulation we assumed a binomial distribution given the observed total abundance and a uniform distribution of proportions, ranging from 0 to the minimum expected proportion. 
+The minimum expected proportion, $\pi_{min_{exp}}$, was calculated using the mixture equation \@ref(eq:mixEq) and the minimum observed feature proportion for unmixed pre-exposure, $\pi_{min_{pre}}$, and post-exposure $\pi_{min_{post}}$ samples for each individual and pipeline. 
+For features not present in unmixed samples the assumption was that the feature proportion is less than $\pi_{{min}_{exp}}$. 
 
 We formulated our null and alternative hypothesis for the Bayesian test as follows,  
 
