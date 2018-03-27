@@ -36,7 +36,7 @@ address:
   - id: "aff2"
     orgname: "University of Maryland, College Park"
   - id: "aff3"
-    orgname: "Johns Hopkins University"
+    orgname: "Johns Hopkins University, Department of Biomedical Engineering"
   - id: "aff4"
     orgname: "School of Medicine, University of Maryland"
 date: '`r Sys.Date()`'
