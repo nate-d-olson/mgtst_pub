@@ -14,15 +14,15 @@ We used the dataset to assess feature presence/ absence, relative abundance, and
 We assessed the performance of three bioinformatic pipelines, open-clustering, _de-novo_ clustering, sequencing inference, and unclustered. 
 Running these pipelines on our mixture dataset resulted in a wide range of total feature abundance and features per sample. 
 Despite the wide range in number of features the pipelines all generated similarly sparse datasets. 
-The sparsity was comparable to previously published values, 1-3\% [@paulson2013differential].
-As the dataset is highly redundant, 180 samples derived from 10 environmental samples, we expected lower sparsity. <!-- You haven't defined what you mean by sparsity here yet (at least not in the sections I read -->
+The sparsity (percentage of zero-valued elements in a matrix) was comparable to previously published values, 1-3\% [@paulson2013differential].
+As the dataset is highly redundant, 180 samples derived from 10 environmental samples, we expected lower sparsity. 
 We attributed the higher than expected sparsity to false positive and false negative or true low abundance features. 
 False positives are sequencing or PCR artifacts that are not appropriately filtered or assigned to an appropriate feature by the bioinformatic pipeline. 
-The 16S rRNA region sequenced in the study is larger than the region the _de-novo_ and open clustering pipelines were initially developed for, potentially explaining the higher than expected sparsity [@kozich2013development] __QIIME V4 REF__. <!-- then why not cut off/trim the region?? -->
+The 16S rRNA region sequenced in the study is larger than the region the _de-novo_ and open clustering pipelines were initially developed for, potentially explaining the higher than expected sparsity [@kozich2013development] __QIIME V4 REF__. 
 The larger region has a smaller overlap between the forward and reverse reads as a result in our study the merging of the forward and reverse reads did not allow for the sequence error correction that occurs when their is greater overlap. <!-- But it's illumina, I'm surprised if this is a true issue.  What level of sequencing correction is presumed/found typically? -->
-However, both the _de-novo_ and open-reference clustering pipelines produced count tables with magnitudes higher <!-- this is unclear --> than expected features in evaluation studies using defined mixtures of cell and DNA, mock communities __REF__. 
-The sequence inference method produced a count table with significantly fewer features compared to the _de-novo_ and open-reference clustering pipelines, yet had comparable sparsity. 
-False negatives provide a potential explanation for the higher than expected sparsity. <!-- This whole section is a bit hard to follow, which method you are talking about where -->
+However, both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using defined mixtures of cell and DNA, mock communities __REF__. 
+The sequence inference method (DADA2) produced a count table with significantly fewer features compared to the _de-novo_ and open-reference clustering pipelines, yet had comparable sparsity. 
+False negatives provide a potential explanation for the higher than expected sparsity. 
 A false negative occurs when a lower abundance sequence representing an organism within the sample is clustered with a higher abundance sequence inflating the dataset sparsity. 
 
 The qualitative assessment results, specifically the high proportion of titration and unmixed sample specific features that could not be explained by sampling alone, indicate that the sequence inference method had a high false negative feature detection rate. 

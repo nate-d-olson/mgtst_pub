@@ -11,7 +11,7 @@ bibliography: [mgtst.bib, packages.bib]
 ## Two-Sample Titration Design  
 Samples from a vaccine trial were used to generate a two-sample titration dataset for assessing 16S sequencing computational methods [@harro2011refinement].
 Pre- and post-exposure samples from five trial participants were selected based on the following criteria: no _Escherichia coli_ detected in stool samples using qPCR or 16S sequencing before exposure (pre-exposure) to Enterotoxigenic _Escherichia coli_ (ETEC)) and timepoints with the highest concentration of _E. coli_ after exposure (post-exposure) [@pop2016individual, Fig. \@ref(fig:experimentalDesign)A].
-For the two-sample titration, post-exposure samples were titrated into pre-exposure samples with $log_2$ changes in pre to post sample proportions (Fig. \@ref(fig:experimentalDesign)B). <!--specify those changes in text as well as Figure - i.e 1/2, 1/4, 1/8, 1/16, 1/32, 1/1024, 1/32000 -->
+For the two-sample titration, post-exposure samples were titrated into pre-exposure samples with post-exposure proportions of 1/2, 1/4, 1/8, 1/16, 1/32, 1/1,024, and 1/32,768 (Fig. \@ref(fig:experimentalDesign)B). 
 Unmixed samples were diluted to 12.5 $ng/\mu L$ in tris-EDTA buffer prior to making the two-sample titrations.
 Initial DNA concentration was measured using NanoDrop ND-1000 (Thermo Fisher Scientific Inc. Waltham, MA USA).
 
@@ -37,7 +37,7 @@ Plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (
 To check for differences in the proportion of bacterial DNA in the pre- and post-exposure samples, bacterial DNA concentration in the titrations was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA).
 All samples were run in triplicate along with an in-house standard curve consisting of $log_{10}$ dilutions of _E. coli_ DNA. 
 qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher) and amplification data and Ct values were exported from the QuantStudio™ Design and Analysis Software v1.4.1 as tsv files for statistical analysis. 
-Statistical analysis was performed using custom scripts in R. <!-- available at github loc?? -->
+Statistical analysis was performed using custom scripts in R (https://github.com/nate-d-olson/mgtst_pub).
 
 ## Sequencing
 The 45 samples (seven titrations and two unmixed samples for each of five biological replicates) were processed using a standard 16S amplicon sequencing workflow based on the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, downloaded from \url{https://support.illumina.com}).
@@ -45,12 +45,12 @@ This protocol specifies an initial 16S rRNA PCR followed by a sample indexing PC
 
 A total of 192 16S rRNA PCRs were run including four PCR replicates per sample and 12 no template controls, using Kapa HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA). <!-- Kapa is now part of Roche --> 
 The 16S PCR targeted the V3-V5 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
-The V3-V5 target region is <!-- why not just put the number here??? --> `r 805-341` bp, with forward and reverse reads overlapping by `r 600 - (805-341)` bp, as we used 2x300 bp paired-end reads on the MiSeq [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
+The V3-V5 target region is 464 bp, with forward and reverse reads overlapping by 136 bp, as we used 2x300 bp paired-end reads on the MiSeq [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
 Primer sequences include overhang adapter sequences to facilitate library preparation (forward primer 5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3' and reverse primer 5'- GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC - 3'). 
 For quality control, the PCR product was verified using agarose gel electrophoresis to check for appropriate size bands, and concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and normalization steps. 
 DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Molecular Devices LLC. Sunnyvale CA, USA) and fluorescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Molecular Devices LLC. Sunnyvale CA, USA). <!-- Is that true for us as well?  @shao? We don't have such an instrument--> 
 
-The initial PCR products were purified using AMPure XP beads (Beckman Coulter Genomics, Danvers, MA) following the manufactures protocol. <!-- which?  There are many?  I assume you mean using 1.8X concentration of beads --> 
+The initial PCR products were purified using AMPure XP beads (Beckman Coulter Genomics, Danvers, MA) following the manufacturer's protocol. <!-- which?  There are many?  I assume you mean using 1.8X concentration of beads --> 
 After purification the 192 samples were indexed using the Illumina Nextera XT index kits A and D (Illumina Inc., San Diego CA).
 Prior to pooling the purified sample concentration was normalized using SequalPrep Normalization Plate Kit(Catalog n. A10510-01, Invitrogen Corp., Carlsbad, CA), according to the manufacturers protocol.
 The pooled library concentration was checked using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
@@ -60,7 +60,7 @@ Sequencing data quality control metrics for the 384 datasets in the study (192 s
 
 ## Sequence Processing
 Sequence data was processed using three bioinformatic pipelines: a _de-novo_clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@caporaso2010qiime], and a sequence inference methods - DADA2 [@callahan2016dada2], with unclustered sequences used as a control. 
-Code used to run the bioinformatic pipelines is available at \url{https://github.com/nate-d-olson/mgtst\_pipelines}. 
+Code used to run the bioinformatic pipelines is available at \url{https://github.com/nate-d-olson/mgtst_pipelines}. 
 The Mothur (version 1.37, \url{http://www.mothur.org/}) pipeline was based on the MiSeq SOP [@schloss2009introducing;@kozich2013development].
 As a different 16S rRNA region was sequenced the procedure was modified to account for smaller overlap between the forward and reverse reads relative to the default amplicons.
 The Mothur pipeline included an initial pre-processing step where forward and reverse reads were merged using the Needleman-Wunsch algorithm. <!-- Again, this feels like you are just listing things, but without even detail -->
@@ -101,7 +101,7 @@ To address this issue we fit the model using a standard least-squares regression
 Quantitative assessment of the count table values obtained from each of the sequence processing pipelines was based on comparing observed relative abundance and log fold-changes to expected values derived from the titration experimental design.
 Observed feature relative abundance estimates ($obs$) were calculated using a negative binomial model as above, while equation \@ref(eq:mixEq) and the inferred $\theta$ values were used to calculate the expected feature relative abundance ($exp$). Relative abundance error rate was defined as $|exp - obs|/exp$ and were compared across pipelines and biological replicates (study subjects). 
 Mixed effects models were used to compare feature-level error rate bias and variance across pipelines accounting for individual (study subject) effect.
-Feature-level bias and variance were evaluated using the median error rate and robust coefficient of variation ($RCOV=IRQ/median$) respectively. 
+Feature-level bias and variance were evaluated using the median error rate and robust coefficient of variation ($RCOV=IQR/median$) respectively. 
 Large feature-level error rate bias and variance outliers were observed, these outliers were excluded from the mixed effects model to minimize biases due to poor fit and were instead characterized independently.
 
 Log fold-changes between all titration pairs and pre- and post-exposure samples were calculated using EdgeR [@robinson2010;@mccarthy2012]. To assess differential abundance log fold-change estimates, log fold-change between all titrations were compared to the expected log fold-change values for the pre-specific and pre-dominant features. 
