@@ -11,11 +11,11 @@ bibliography: [mgtst.bib, packages.bib]
 We generated a 16S rRNA marker-gene survey benchmarking dataset with the diversity, relative abundance dynamic range, and sequencing artifacts of a real dataset using mixtures of environmental samples 
 We used the dataset to assess feature presence/ absence, relative abundance, and log fold-change for count tables generated using four different bioinformatic pipelines.
 
-We assessed the performance of three bioinformatic pipelines, open-clustering, _de-novo_ clustering, sequencing inference, and unclustered. 
+We assessed the performance of three bioinformatic pipelines, open-clustering, _de-novo_ clustering, and sequencing inference, with unclustered sequences as a control. 
 Running these pipelines on our mixture dataset resulted in a wide range of total feature abundance and features per sample. 
-Despite the wide range in number of features the pipelines all generated similarly sparse datasets. 
-The sparsity (percentage of zero-valued elements in a matrix) was comparable to previously published values, 1-3\% [@paulson2013differential].
-As the dataset is highly redundant, 180 samples derived from 10 environmental samples, we expected lower sparsity. 
+Despite the wide range in total features the pipelines all generated similarly sparse datasets, datasets with a small number of non-zero elements. 
+The dataset sparsity (percentage of zero-valued elements in a matrix) is comparable to previously published values, 97-99\% [@paulson2013differential].
+As the dataset is highly redundant, 180 samples derived from 10 environmental samples, we expected fewer zeros in the count table, lower sparsity. 
 We attributed the higher than expected sparsity to false positive and false negative or true low abundance features. 
 False positives are sequencing or PCR artifacts that are not appropriately filtered or assigned to an appropriate feature by the bioinformatic pipeline. 
 The 16S rRNA region sequenced in the study is larger than the region the _de-novo_ and open clustering pipelines were initially developed for, potentially explaining the higher than expected sparsity [@kozich2013development] __QIIME V4 REF__. 

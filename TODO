@@ -1,15 +1,21 @@
 ## Manuscript Revisions 
 - Revise Text
-      - Scott 
       - Marc
 - Revise figures/ tables 
 - Revise methods 
+- Address other issues 
+      - use of term relative abundance  
+      - log2 for titrations and theta
 - Restructure/ re-org
 
 ## Supplemental 
 - add phylosignal  
 - logFC norm  
 
+## Data Archiving
+* qPCR  
+* seq
+* count tables
 
 ## Project cleanup
 - Cache figure and table data 
