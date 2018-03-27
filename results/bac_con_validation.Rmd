@@ -163,7 +163,7 @@ The slope estimates are significantly different from 1 for individuals all indiv
 These results indicate that the proportion of prokaryotic DNA is lower in the post-exposure when compared to the pre-exposure samples for E01JH0004 and E01JH0017 and higher for E01JH0016 and E01JH0038.  
 
 Across all titrations median prokaryotic DNA concentration varied by individual, with E01JH0011 having the highest concentration, `r round(max(bac_con_summary$median_quant),2)` $ng/\mu l$, and E01JH0038 having the lowest concentration, `r round(min(bac_con_summary$median_quant),2)` $ng/\mu l$. 
-As the DNA concentration for the unmixed samples was normalized to 12.5 $ng/\mu l$ prior to generating the titration series, the proportion of DNA in the samples targeted by 16S sequencing method ranged from `r round(max(bac_con_summary$prok_prop),2)` to `r round(min(bac_con_summary$prok_prop),2)`.
+As the DNA concentration for the unmixed samples was normalized to 12.5 $ng/\mu l$ prior to generating the titration series, the proportion of DNA in the samples targeted by 16S sequencing method ranged from `r round(min(bac_con_summary$prok_prop),2)` to `r round(max(bac_con_summary$prok_prop),2)`.
 
 
 

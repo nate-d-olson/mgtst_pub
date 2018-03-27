@@ -10,7 +10,12 @@ bibliography: [mgtst.bib, packages.bib]
 
 ## Two-Sample Titration Design  
 Samples from a vaccine trial were used to generate a two-sample titration dataset for assessing 16S sequencing computational methods [@harro2011refinement].
-Pre- and post-exposure samples from five trial participants were selected based on the following criteria: no _Escherichia coli_ detected in stool samples using qPCR or 16S sequencing before exposure (pre-exposure) to Enterotoxigenic _Escherichia coli_ (ETEC)) and timepoints with the highest concentration of _E. coli_ after exposure (post-exposure) [@pop2016individual, Fig. \@ref(fig:experimentalDesign)A].
+Samples from five trial participants were selected for use in the study. 
+_Escherichia coli_ abudance data collected using qPCR or 16S sequencing from @pop2106individual were used to select individuals and sampling timepoints used to generate the titration series.
+Only individuals with no _Escherichia coli_ detected in samples collected from trial participants before exposure (pre-exposure) to Enterotoxigenic _Escherichia coli_ (ETEC) were used to generate mixtures.  
+For the vaccine trial samples were collected at multiple timepoints after exposure to ETEC. 
+Post-exposure samples were selected as the post-exposure timepoint with the highest concentration of _E. coli_ for each individual (Fig. \@ref(fig:experimentalDesign)A). 
+Due to limited sample availability the timepoint with the second highest concentrations for E01JH0016 was used as the post-exposure sample. 
 For the two-sample titration, post-exposure samples were titrated into pre-exposure samples with post-exposure proportions of 1/2, 1/4, 1/8, 1/16, 1/32, 1/1,024, and 1/32,768 (Fig. \@ref(fig:experimentalDesign)B). 
 Unmixed samples were diluted to 12.5 $ng/\mu L$ in tris-EDTA buffer prior to making the two-sample titrations.
 Initial DNA concentration was measured using NanoDrop ND-1000 (Thermo Fisher Scientific Inc. Waltham, MA USA).
@@ -30,7 +35,7 @@ knitr::include_graphics("img/experimental_design.png")
 
 ## Titration Validation
 
-qPCR was used to validate the volumetric mixing of the pre- and post-exposure samples and to check differences across titrations. 
+qPCR was used to validate the volumetric mixing and check for differences in the proportion of prokaryotic DNA across titrations. 
 To ensure that the two-sample titrations were volumetrically mixed according to the mixture design, independent ERCC plasmids were spiked into the unmixed pre- and post-exposure samples [@baker2005external] (NIST SRM SRM 2374) (Table \@ref(tab:erccTable)). 
 The ERCC plasmids were resuspendended in 100 $ng/\mu L$ tris-EDTA buffer and 2 $ng/\mu L$ was spiked into the appropriate unmixed sample. 
 Plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) specific to each ERCC plasmid using the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA). 
@@ -43,7 +48,7 @@ Statistical analysis was performed using custom scripts in R (https://github.com
 The 45 samples (seven titrations and two unmixed samples for each of five biological replicates) were processed using a standard 16S amplicon sequencing workflow based on the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, downloaded from \url{https://support.illumina.com}).
 This protocol specifies an initial 16S rRNA PCR followed by a sample indexing PCR.  Samples were then normalized <!-- How? More specifics here to discuss how we did this, it's important to assess the technical variation--> and pooled for sequencing.
 
-A total of 192 16S rRNA PCRs were run including four PCR replicates per sample and 12 no template controls, using Kapa HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA). <!-- Kapa is now part of Roche --> 
+A total of 192 16S rRNA PCRs were run including four PCR replicates per sample and 12 no-template controls, using Kapa HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA). <!-- Kapa is now part of Roche --> 
 The 16S PCR targeted the V3-V5 region, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
 The V3-V5 target region is 464 bp, with forward and reverse reads overlapping by 136 bp, as we used 2x300 bp paired-end reads on the MiSeq [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
 Primer sequences include overhang adapter sequences to facilitate library preparation (forward primer 5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3' and reverse primer 5'- GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC - 3'). 
@@ -92,7 +97,7 @@ Next, a linear model was used to infer $\theta$ based on the following equation
 
 where $\mathbf{C}$ is a vector of counts, based on the average relative abundance estimates, for a set of features, $\mathbf{C}_{obs_j}$ observed counts for titration $j$, with $\mathbf{C}_{pre_j}$ cand $\mathbf{C}_{post_j}$ representing the vector of counts for the same features for the unmixed pre- and post-exposure samples. 
 
-16S rRNA sequencing count data is known to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression. 
+16S rRNA sequencing count data is known to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression [@McMurdie2014]. 
 Generalized linear models provide an alternative to standard least-squares regression, but the above model is additive and therefore unable to directly infer $\theta_j$ in log-space. 
 To address this issue we fit the model using a standard least-squares regression then obtained non-parametric 95 \% confidence intervals for the $\theta$ estimates by bootstrapping with 1000 replicates. 
 

@@ -17,12 +17,12 @@ Appropriate datasets and methods are needed to evaluate 16S sequencing to charac
 A sample or dataset where the "ground truth" is known is needed in order to characterize the accuracy of this technique.  
 Though there have been a number of studies characterizing and evaluating different steps in the 16S rRNA measurement process using mock communities, simulated data, or environmental samples, this analysis is still incomplete.
 Mock communities, i.e. mixtures of cells or DNA from individual organisms, have an known value, but lack the realistic complexity of environmental samples in the of number or abundance distributions <!-- What does this mean in this context --> of organisms [@bokulich2016mockrobiota]. 
-As with mock communities simulated sequencing data has an expected value that can be used for benchmarking. 
-However, the sequencing error profile is not completely understood and therefore simulated sequencing data does not recapitulate the complexity of sequencing data generated from an environmental sample. 
+As with mock communities, simulated sequencing data has an expected value that can be used for benchmarking. 
+However, the sequencing error profile is not completely understood and therefore simulated sequencing data does not recapitulate sequencing data generated from an environmental sample. 
 While simulated data and mock communities are useful in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities and simulated data are not necessarily optimized to handle the biases, noise, and diversity present in real samples. 
-Data generated from environmental samples, which include the biases, error, and diversity of real samples, are often used to benchmark new molecular laboratory and computational methods. 
+Data generated from environmental samples, which include the biases, noise, and diversity of real samples, are often used to benchmark new molecular laboratory and computational methods. 
 However, without an expected value to compare to, only measurement precision can be evaluated. An alternative to these types of data is sequencing data generated from mixtures of environmental samples. 
-By mixing environmental samples at known proportions you can use information obtained from the unmixed samples and how they were mixed to obtain an expected value for use in assessing the measurement process. 
+By mixing environmental samples at known proportions you can use information obtained from the unmixed samples, and how they were mixed, to obtain an expected value for use in assessing the measurement process. 
 Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq data[@parsons2015using;@pine2011adaptable;@thompson2005use]
 
 Mock communities are most commonly used to assess the qualitative characteristics of a dataset. 
@@ -35,11 +35,11 @@ The quantitative characteristics of 16S sequencing are normally assessed using b
 Mock communities of equimolar and staggered concentration are used to assess the quantitative accuracy of the relative abundance estimates __REF__. 
 Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample. 
 These taxonomic specific effects have been attributed to primer mismatches __REF__. <!-- surely GC bias must have a role as well, seems like you generally need more discussion about sources of bias here, since that's the motivation for the whole paper? -->
-To assess differential abundance, simulated datasets are used where specific taxa are artificially over represented in one set of samples compared to another __REF__.  
+To assess differential abundance, simulated datasets are used where specific taxa are artificially over represented in one set of samples compared to another __REF__. 
 Using simulated data to assess log fold-change estimates only evaluates computational steps of the measurement process. 
 
 In the present study we developed a mixture dataset of extracted DNA from human stool samples for assessing 16S sequencing. 
-The mixture datasets was processed using three bioinformatic pipelines. 
+The mixture datasets were processed using three bioinformatic pipelines. 
 We developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results. 
 The quantitative results were similar across pipelines but the qualitative results varied across pipelines. 
 We have made both the dataset and metrics developed in this study publically available for use in evaluation of new bioinformatic pipelines. 

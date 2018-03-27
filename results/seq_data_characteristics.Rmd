@@ -260,9 +260,9 @@ meta_df %>% filter(Read == "R1",
       theme(legend.position = "bottom")
 ```
 
-Quality assessment of sequencing run summarizing number of reads per sample.
-Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:qaPlots)A). 
-The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
+__Intro sentence for paragraph__
+Quality assessment of sequencing runs summarizing number of reads per sample.
+Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:qaPlots)A). The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
 Excluding the one failed reaction with 2,700 reads and the NTCs, the total range in the observed number of sequences per samples is `r min(lib_size)` to `r max(lib_size)` reads with a median library size of $`r median(lib_size)`$. 
 For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
 
