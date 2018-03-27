@@ -1,3 +1,17 @@
+## Manuscript Revisions 
+- Revise Text
+      - Winston 
+      - Scott 
+      - Marc
+- Revise figures/ tables 
+- Revise methods 
+- Restructure/ re-org
+
+## Supplemental 
+- add phylosignal  
+- logFC norm  
+
+
 ## Project cleanup
 - Cache figure and table data 
 - Move processing code to munge  
@@ -7,9 +21,7 @@
 - Comment code 
 - remove pre-processing code from manuscript
 
-## Supplemental 
-- add phylosignal  
-- logFC norm  
+
 
 ## Potential Relevant References
 * single cell RNAseq
