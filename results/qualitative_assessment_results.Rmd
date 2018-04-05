@@ -23,7 +23,7 @@ unmix_binom_tidy <- readRDS("data/unmix_binom_test.RDS")
 ## Feature-PCR rep level tidy data frame
 ## Relevant raw_count factors 
 count_df <- raw_counts %>% 
-      select(biosample_id, t_fctr, id, pipe, feature_id, count)
+      dplyr::select(biosample_id, t_fctr, id, pipe, feature_id, count)
 
 count_df <- count_df %>% 
       group_by(id) %>% 
@@ -34,7 +34,7 @@ count_df <- count_df %>%
 
 ## Annotating with feature type
 count_df <- pa_summary_anno_df %>% 
-      select(biosample_id, pipe, feature_id, pa_specific) %>% 
+      dplyr::select(biosample_id, pipe, feature_id, pa_specific) %>% 
       left_join(count_df)
 
 ## Inferred Feature Proportions
@@ -43,7 +43,7 @@ pre_post_prop <- nb_counts %>%
       ungroup() %>% 
       filter(t_fctr %in% c(0,20)) %>% 
       mutate(end_point = if_else(t_fctr == 0 , "post", "pre")) %>% 
-      select(-t_fctr) %>% 
+      dplyr::select(-t_fctr) %>% 
       ## setting values to 0 when one or more of the PCR replicates are 0 for titration end-points
       spread(end_point,nb_prop, fill = 0)
 
@@ -51,7 +51,7 @@ prop_inferred <- theta_est %>%
       filter(pipe == "unclustered") %>% 
       ungroup() %>%
       mutate(t_fctr = factor(t_fctr, levels = c(0:5, 10, 15, 20))) %>% 
-      select(biosample_id, theta_hat_mean, t_fctr) %>% 
+      dplyr::select(biosample_id, theta_hat_mean, t_fctr) %>% 
       right_join(nb_counts) %>% right_join(pre_post_prop) %>% 
       filter(t_fctr %in% c(1:5,10,15)) %>% 
       ## Setting negative inferrred theta values to 0
@@ -60,7 +60,7 @@ prop_inferred <- theta_est %>%
       mutate(inferred_prop = post * theta_hat_mean + pre * (1 - theta_hat_mean))
 
 count_df <- prop_inferred %>% 
-      select(biosample_id, t_fctr, pipe, feature_id, 
+      dplyr::select(biosample_id, t_fctr, pipe, feature_id, 
              pre, post, inferred_prop, theta_hat_mean) %>% 
       left_join(count_df)
 
@@ -84,8 +84,9 @@ unmix_plot_df <- unmix_count_df %>%
 unmix_count_plot <- ggplot(unmix_plot_df) +
       geom_boxplot(aes(x = biosample_id, y = exp_count + 1), 
                    alpha = 0.25) + 
-      geom_hline(aes(yintercept = 1 + 1), linetype = 2, color = "darkorange") + 
-      scale_y_log10() + theme_bw() + 
+      geom_hline(aes(yintercept = 1), linetype = 2, color = "darkorange") + 
+      scale_y_log10(breaks = c(1,10,100,1000)) + 
+      theme_bw() + 
       labs(x = "Individual", y = "Expected Counts") +
       theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
       facet_wrap(~pipe, nrow = 1)
@@ -110,10 +111,11 @@ unmix_test_plot <- unmix_binom_prop %>%
       ylim(0, 1)
 
 mix_count_plot <- mix_count_df %>% filter(pipe != "unclustered") %>% ggplot() + 
-      geom_boxplot(aes(x = biosample_id, y = count + 1),
+      geom_boxplot(aes(x = biosample_id, y = count),
                    alpha = 0.25) + 
-      geom_hline(aes(yintercept = 1 + 1), linetype = 2, color = "darkorange") + 
-      scale_y_log10() + theme_bw() + 
+      geom_hline(aes(yintercept = 1), linetype = 2, color = "darkorange") + 
+      scale_y_log10(breaks = c(1,10,100,1000)) + 
+      theme_bw() + 
       labs(x = "Individual", y = "Observed Counts") +
       theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
       facet_wrap(~pipe, nrow = 1)

@@ -140,23 +140,33 @@ For E01JH0017 the inferred values were consistently less than the mixture design
 These results were consistent with the qPCR prokaryotic DNA concentration results with E01JH0004 and E01JH0017 having a significantly positive slopes then E01JH0016 and E01JH0038 significantly negative slopes (Fig. \@ref(fig:bacPlot)). 
 
 
-```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black line indicates the expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
+```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicate mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black bar indicate expected theta values. Theta estimates below the expected theta indicate that the titrations contains less than expected bacterial DNA from the post-treatment sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the pre-treatment sample than expected."}
+# boot_theta_hat %>% 
+#       ungroup() %>% 
+#       mutate(pipe = factor(pipe, levels = c("unclustered","dada2","mothur","qiime"))) %>% 
+#       ggplot() + 
+#       geom_bar(aes(x = t_fctr, y =  theta), stat = "identity") + 
+#       geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
+#       geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, 
+#                         ymax = theta_hat_uci, color = pipe),width = 0.2) + 
+#       facet_grid(biosample_id~pipe, scale = "free_y") + theme_bw() +
+#       labs(x = "Titration Factor", y = expression(theta), 
+#            color = "Pipeline", shape = "Pipeline") + 
+#       theme(legend.position = "bottom")
+
 boot_theta_hat %>% 
       ungroup() %>% 
-      mutate(pipe = factor(pipe, levels = c("unclustered","dada2","mothur","qiime"))) %>% 
+      mutate(pipe = factor(pipe, levels = c("unclustered","dada2","mothur","qiime"))) %>%
+      mutate(xpos = (as.numeric(pipe) - 2.5)/5 + as.numeric(t_fctr))  %>%  
       ggplot() + 
-      geom_point(aes(x = t_fctr, y = theta_hat_mean, color = pipe, shape = pipe)) + 
-      geom_errorbar(aes(x = t_fctr, ymin = theta_hat_lci, 
+      geom_bar(aes(x = t_fctr, y =  theta), stat = "identity", position = "dodge") + 
+      geom_point(aes(x = xpos, y = theta_hat_mean, color = pipe, shape = pipe)) + 
+      geom_errorbar(aes(x = xpos, ymin = theta_hat_lci, 
                         ymax = theta_hat_uci, color = pipe),width = 0.2) + 
-      geom_line(aes(x = as.numeric(t_fctr), y =  theta)) + 
-      facet_grid(biosample_id~pipe, scale = "free_y") + theme_bw() +
+      facet_wrap(~biosample_id, ncol = 2) + theme_bw() +
       labs(x = "Titration Factor", y = expression(theta), 
            color = "Pipeline", shape = "Pipeline") + 
-      theme(legend.position = "bottom")
+      theme(legend.position = c(0.8, 0.2))
 # ggsave("~/Desktop/theta_estimates.png", dpi = 450)
 ```
-
-
-
-
 
