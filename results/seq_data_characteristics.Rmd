@@ -50,7 +50,7 @@ grp_df <- data_frame(read_group = read_groups,
 
 ## read count data 
 qa_file_info <- perFileInformation(qa_list) %>% 
-    select(-format,-path)
+    dplyr::select(-format,-path)
 
 ## study metadata
 load("cache/sampleSheet.RData")
@@ -160,10 +160,10 @@ count_summary <- count_df %>% group_by(pipe) %>%
                 count_min = min(counts) %>% round(0),
                 count_max = max(counts) %>% round(0)) %>% 
       mutate(`Sample Coverage` = paste0(count_med, " (", count_min, "-", count_max,")")) %>% 
-      select(pipe, `Sample Coverage`)
+      dplyr::select(pipe, `Sample Coverage`)
 
 reads_df <- meta_df %>% filter(Read == "R1") %>% 
-      select(ill_id, reads, group) %>% dplyr::rename(id = ill_id) 
+      dplyr::select(ill_id, reads, group) %>% dplyr::rename(id = ill_id) 
 
 filter_rate_df <- count_df %>% left_join(reads_df) %>%
       mutate(filter_rate = 1 - counts/reads) 
@@ -173,14 +173,14 @@ filter_rate_summary <- filter_rate_df %>% group_by(pipe) %>%
                 filt_min = min(filter_rate) %>% round(2),
                 filt_max = max(filter_rate) %>% round(2)) %>% 
       mutate(`Filter Rate` = paste0(filt_med, " (", filt_min, "-", filt_max,")")) %>% 
-      select(pipe, `Filter Rate`)
+      dplyr::select(pipe, `Filter Rate`)
 
 ### Total feature counts by sample
 raw_feat_count_df <- meta_df %>% 
       filter(Read == "R1", biosample_id != "NTC") %>%
       dplyr::rename(id = ill_id, counts = reads) %>% 
       mutate(pipe = "Reads") %>% 
-      select(pipe, id, counts) %>% 
+      dplyr::select(pipe, id, counts) %>% 
       bind_rows(count_df)
 
 
@@ -198,7 +198,7 @@ obs_feat_df <- feature_counts %>%
 
 obs_feat_df <- meta_df %>% 
       filter(Read == "R1") %>% 
-      select(biosample_id, t_fctr, ill_id) %>% 
+      dplyr::select(biosample_id, t_fctr, ill_id) %>% 
       dplyr::rename(id = ill_id) %>% 
       right_join(obs_feat_df)
 ```
@@ -214,16 +214,17 @@ data_frame(pipe = names(mrexp),
 ```
 
 
-```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size. (B) Smoothing spline of the base quality score (BQS) by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads. (C) Distribution of the number of features per sample. "}
+```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Dashed horizontal line indicates overall median library size. Excluding one PCR replicate from subject E01JH0016 titration 5	that had only 3,195 reads. (B) Smoothing spline of the base quality score (BQS) by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads."}
 lib_size_fig <- meta_df %>% 
       filter(Read == "R1", biosample_id != "NTC") %>% unique() %>% 
+      filter(reads > 10000) %>% 
       ggplot() + 
       geom_boxplot(aes(x = biosample_id, y = reads, color = biosample_id)) + 
-      scale_y_log10() + 
+      # scale_y_log10() + 
       geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
       theme_bw() + labs(y = "Reads", 
-                        x = "Individual", 
-                        color = "Individual")
+                        x = "Subject", 
+                        color = "Subject")
 
 qual_fig <- qa_cycle_q_df %>% 
       sample_frac(0.25) %>% ## To speed up runtime
@@ -236,28 +237,39 @@ qual_fig <- qa_cycle_q_df %>%
       scale_x_continuous(breaks = c(0,150,300, 450)) +
       labs(x = "Amplicon Position",
            y = "BQS",
-           color = "Individual") +
+           color = "Subject") +
       theme(legend.position = "bottom")
 
-feat_fig <- obs_feat_df %>% ggplot() + 
-      geom_boxplot(aes(x = pipe, y = obs_feat, color = biosample_id)) + theme_bw() + 
-      labs(x = "Pipeline", y = "Features", color = "Individual")
-
-
-ggarrange(lib_size_fig, feat_fig, qual_fig, ncol = 1, nrow = 3, 
+ggarrange(lib_size_fig, qual_fig, ncol = 1, nrow = 2, 
           labels = "AUTO", common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
-```{r readsVfeats, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline."}
-meta_df %>% filter(Read == "R1", 
+```{r readsVfeats, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "(Relationship between the number of reads and features per sample by bioinformatic pipeline. (A) Scatter plot of observed features per sample versus number of reads. (B) Observed feature distribution by pipeline and individual. Excluding one PCR replicate from subject E01JH0016 titration 5 with only 3,195 reads and all the Mothur PCR replicates for E01JH0017 titration 4, with 1,777 observed features."}
+feat_read_df <- meta_df %>% filter(Read == "R1", 
                    biosample_id != "NTC") %>% 
-      left_join(obs_feat_df) %>% 
+      left_join(obs_feat_df)  %>% 
+      filter(reads > 4000, obs_feat < 1400) 
+
+feat_v_reads <- feat_read_df %>% 
       ggplot() + 
       geom_point(aes(x = reads, y = obs_feat, fill = biosample_id), shape = 21) + 
-      facet_wrap(~pipe) + 
+      facet_grid(.~pipe) + 
       theme_bw() + 
+      scale_y_log10(breaks = c(1, 10,100, 500, 1000)) + 
       labs(x = "Reads", y = "Features", fill = "Individual") + 
       theme(legend.position = "bottom")
+
+feat_box <- feat_read_df %>% 
+      ggplot() + 
+      geom_boxplot(aes(x = pipe, y = obs_feat, fill = biosample_id), shape = 21) + 
+      # facet_grid(.~pipe) + 
+      theme_bw() + 
+      scale_y_log10(breaks = c(1, 10, 100, 500, 1000)) +
+      labs(x = "Pipeline", y = "Features", fill = "Subject") + 
+      theme(legend.position = "bottom") 
+
+ggarrange(feat_v_reads, feat_box, ncol = 1, nrow = 2, 
+          labels = "AUTO", common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
 __Intro sentence for paragraph__

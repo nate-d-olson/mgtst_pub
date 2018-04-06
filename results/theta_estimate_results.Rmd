@@ -166,7 +166,7 @@ boot_theta_hat %>%
       facet_wrap(~biosample_id, ncol = 2) + theme_bw() +
       labs(x = "Titration Factor", y = expression(theta), 
            color = "Pipeline", shape = "Pipeline") + 
-      theme(legend.position = c(0.8, 0.2))
+      theme(legend.position = c(0.8, 0.05))
 # ggsave("~/Desktop/theta_estimates.png", dpi = 450)
 ```
 
