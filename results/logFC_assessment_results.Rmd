@@ -127,16 +127,66 @@ r2_p <- r2_anova$`p-value`
 r2_var <- ape::varcomp(r2_fit)
 ```
 
-```{r logFCerror, fig.cap = "(A) Linear model or the relationship between log fold-change estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual, line color indicates pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribtion by pipeline and individual. Distribution of feature-level log-fold change error bias (C) and variance (D) metrics by individual and pipeline. The bias ($1 - slope$) and variance ($R^2$) metrics are derived from the linear model fit to the estimated and expected log fold-change values for individual features. To prevent extreme metric values from obscuring metric value visual comparisons, boxplot outliers, $1.5\times IQR$ from the median were excluded from the figure.", echo = FALSE, message = FALSE, fig.height = 8}
-ggarrange(logFCestVexp, 
-          logFC_error_dist + rremove("y.text"), 
-          slope_logFC + rremove("x.text"), 
-          r2_logFC + rremove("x.text"), 
-          labels = "AUTO",
-          # align = "v", 
-          ncol = 4, nrow = 1, 
-          common.legend = TRUE,
-          legend = "bottom")
+
+```{r logFCerror, fig.cap = "(A) Linear model or the relationship between log fold-change estimates and expeced values for pre-specific and pre-domiant features by pipeline and individual, line color indicates pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribtion by pipeline and individual.", echo = FALSE, warning=FALSE, message = FALSE}
+
+logFCestVexp <- logFC_pre %>% filter(T1 != 0, T2 != 20) %>% 
+      ggplot() + 
+      geom_smooth(aes(x = exp_logFC, y = logFC, color = pipe), method = "lm") +
+      geom_abline(aes(intercept = 0, slope = 1), color = "grey60", 
+                  linetype = 2) +
+      facet_wrap( ~ biosample_id, nrow = 1) +
+      theme_bw() +
+      labs(x = "Expected", y = "Estimate", color = "Pipeline") 
+
+
+logFC_error_dist <- logFC_error %>% 
+      mutate(error = if_else(error < 1e-2, 1e-2, error)) %>%
+      ggplot() +
+      geom_boxplot(aes(x = biosample_id, y = error, fill = pipe)) +
+      theme_bw() +
+      labs(y = "|Error|", x = "Subject", fill = "Pipeline") + 
+      scale_y_log10(breaks = c(0.01, 0.1, 1.0, 10))
+
+ggarrange(logFCestVexp,
+          logFC_error_dist,
+          labels = "AUTO", align = "v",
+          ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom")
+```
+
+```{r logFcErrorMetrics, fig.cap = "Distribution of feature-level log-fold change error bias (A) and variance (B) metrics by subject and pipeline. The bias ($1 - slope$) and variance ($R^2$) metrics are derived from the linear model fit to the estimated and expected log fold-change values for individual features. To prevent extreme metric values from obscuring metric value visual comparisons, boxplot outliers, $1.5\\times IQR$ from the median were excluded from the figure.", echo = FALSE, warning=FALSE, message = FALSE}
+
+slope_logFC <- logFC_feature_summary %>% 
+      ggplot() + 
+      
+      geom_boxplot(aes(x = biosample_id, y = slope_error, fill = pipe), 
+                   outlier.shape = NA) + 
+      geom_hline(aes(yintercept = 0), color = "grey20", linetype = 2) + 
+      theme_bw() +
+      labs(x = "Subject", y = "Bias", fill = "Pipeline") 
+
+ymin <- ggplot_build(slope_logFC)$data[[1]]$ymin %>% min()
+ymax <- ggplot_build(slope_logFC)$data[[1]]$ymax %>% max()
+slope_logFC <- slope_logFC + coord_cartesian(ylim = c(ymin, ymax))
+
+
+### logFC Variance: R2 ---------------------------------------------------------
+r2_logFC <- logFC_feature_summary %>% 
+    ggplot() + 
+      geom_boxplot(aes(x = biosample_id, y = adj.r.squared, fill = pipe), 
+                   outlier.shape = NA) + 
+      geom_hline(aes(yintercept = 1), color = "grey20", linetype = 2) + 
+      theme_bw() + 
+      labs(x = "Pipeline", y = expression(R^2), color = "Pipeline") 
+
+ymin <- ggplot_build(r2_logFC)$data[[1]]$ymin %>% min()
+ymax <- ggplot_build(r2_logFC)$data[[1]]$ymax %>% max()
+r2_logFC <- r2_logFC + coord_cartesian(ylim = c(ymin, ymax))
+
+ggarrange(slope_logFC + rremove("x.text") + rremove("xlab"), 
+          r2_logFC ,nrow = 2, ncol = 1, heights = c(0.45, 0.55),
+          common.legend = TRUE, legend = "bottom", 
+          align = "v",labels = "AUTO")
 ```
 
 The agreement between the log-fold change estimates and expected values were individual specific and generally consistent across pipelines (Fig. \@ref(fig:logFCerror)A). 

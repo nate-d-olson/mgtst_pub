@@ -79,7 +79,9 @@ mix_count_df <- filter(count_df,
 ## Multipannel plots
 unmix_plot_df <- unmix_count_df %>% 
       filter(pipe != "unclustered") %>% 
-      mutate(exp_count = inferred_prop * total_count) 
+      mutate(exp_count = inferred_prop * total_count) %>% 
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime"))
       
 unmix_count_plot <- ggplot(unmix_plot_df) +
       geom_boxplot(aes(x = biosample_id, y = exp_count + 1), 
@@ -103,6 +105,8 @@ unmix_binom_prop <- unmix_binom_tidy %>%
       filter(pval_cat == "p < 0.05")
 
 unmix_test_plot <- unmix_binom_prop %>% 
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime")) %>% 
       ggplot() + 
       geom_bar(aes(x = biosample_id, y = pval_prop), stat = "identity") + 
       facet_wrap(~pipe, nrow = 1) + 
@@ -110,7 +114,10 @@ unmix_test_plot <- unmix_binom_prop %>%
       labs(x = "Individual", y = "Proportion") +
       ylim(0, 1)
 
-mix_count_plot <- mix_count_df %>% filter(pipe != "unclustered") %>% ggplot() + 
+mix_count_plot <- mix_count_df %>% filter(pipe != "unclustered") %>% 
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime")) %>% 
+      ggplot() + 
       geom_boxplot(aes(x = biosample_id, y = count),
                    alpha = 0.25) + 
       geom_hline(aes(yintercept = 1), linetype = 2, color = "darkorange") + 
@@ -132,6 +139,8 @@ mix_binom_prop <- mix_binom_tidy %>%
       filter(pval_cat == "p < 0.05")
 
 mix_test_plot <- mix_binom_prop %>% 
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime")) %>% 
       ggplot() + 
       geom_bar(aes(x = biosample_id, y = pval_prop), stat = "identity") + 
       facet_wrap(~pipe, nrow = 1) + 
@@ -143,7 +152,7 @@ mix_test_plot <- mix_binom_prop %>%
 ```{r qualPlot, message = FALSE, echo = FALSE, warning = FALSE, fig.cap = "Distribution of (A) observed count values for titration-specific features and (B) expected count values for unmixed-specific features by pipeline and individual. The orange horizontal dashed line indicates a count value of 1. (C) Proportion of unmix-specific features and (D) titration-specific features with an adjusted p-value < 0.05 for the bayesian hypothesis test and binomial test respectively. We failed to accept the null hypothesis when the p-value < 0.05, indicating that the discrepancy between the feature only being observed in the titrations or unmixed samples cannot be not explained by sampling alone."}
 ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text"), 
           mix_test_plot, unmix_test_plot, 
-          labels = c("A", "B", "C","D"),
+          labels = "AUTO",
           ncol = 2, nrow = 2, heights = c(4, 5))
 #ggsave("~/Desktop/qual_assessment.png", dpi = 450)
 ```
@@ -151,5 +160,5 @@ ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text
 A number of unmixed- and titration-specific features were observed (titration-specific: Fig. \@ref(fig:qualPlot)A, unmixed-specific: Fig. \@ref(fig:qualPlot)B). 
 There were unmixed-specific features with expected counts that could not be explained by sampling alone for all individuals and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C). 
 However, the proportion of unmixed-specific features that could not be explained by sampling alone varied by bioinformatic pipeline. 
-DADA2 had the highest rate of unmixed-specific features could not be explained by sampling alone whereas QIIME had the lowest rate of unmixed-specific features. 
+DADA2 had the highest rate of unmixed-specific features not explained by sampling whereas QIIME had the lowest rate. 
 Consistent with the distribution of observed counts for titration-specific features more of the DADA2 features could not be explained by sampling alone compared to the other pipelines (Fig. \@ref(fig:qualPlot)D). Overall, DADA2 resulted in the largest number of observed features inconsistent with the tritation experiment design, while the same phenomenon is significantly reduced in the other pipelines.
