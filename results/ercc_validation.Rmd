@@ -187,7 +187,7 @@ ercc_tbl <- left_join(ercc_stdtbl, ercc_vldtbl)
 ```
 
 Volumetric mixing of the two-sample titration was validated using qPCR to quantify ERCC plasmids spiked into the pre- and post-exposure samples. 
-The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves (Table \@ref(tab:erccTable)). 
+The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves indicating the assays were suitable for validating volumetric mixing (Table \@ref(tab:erccTable)). 
 For a $log_2$ two-sample-titration mixture design the expected slope is 1, corresponding to a doubling in template DNA every PCR cycle. 
 The qPCR assays targeting the ERCCs spiked into the post-exposure samples had $R^2$ values and slope estimates  close to 1 (Table \@ref(tab:erccTable)). 
 Slope estimates less than 1 were attributed to the assay standard curve efficiency less than 1 (Table \@ref(tab:erccTable)). 

@@ -13,7 +13,7 @@ library(Rqc)
 library(tidyverse)
 library(stringr)
 library(ggpubr)
-pipeline_dir <- "../mgtst_pipelines/"
+pipeline_dir <- "~/Projects/mgtst_pipelines/"
 ```
 
 ```{r fq_data_filesp, warning=FALSE, message=FALSE, echo = FALSE}
@@ -80,7 +80,6 @@ qa_cycle_q_df <- qa_list %>% map_df(perCycleQuality) %>%
 ```
 
 ```{r pipeMunge, echo = FALSE}
-pipeline_dir <- "../mgtst_pipelines"
 mrexp_files <- list(
       dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
       mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
@@ -209,8 +208,9 @@ data_frame(pipe = names(mrexp),
            Sparsity = round(sparsity,2)) %>% 
       left_join(count_summary) %>% 
       left_join(filter_rate_summary) %>% 
+      mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime")) %>% 
       dplyr::rename(Pipelines = pipe, `Total Abundance` = `Sample Coverage`, `Drop-out Rate` = `Filter Rate`) %>% 
-      knitr::kable(caption = "Summary statistics for the different bioinformatic pipelines. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total abundance. Drop-out rate is the proportion of reads that were removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
+      knitr::kable(caption = "Summary statistics for the different bioinformatic pipelines. DADA2 is a denoising sequence inference pipeline, QIIME is a open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum - maximum) per sample total abundance. Drop-out rate is the proportion of reads removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
 ```
 
 
@@ -219,12 +219,12 @@ lib_size_fig <- meta_df %>%
       filter(Read == "R1", biosample_id != "NTC") %>% unique() %>% 
       filter(reads > 10000) %>% 
       ggplot() + 
-      geom_boxplot(aes(x = biosample_id, y = reads, color = biosample_id)) + 
+      geom_boxplot(aes(x = biosample_id, y = reads, fill = biosample_id)) + 
       # scale_y_log10() + 
       geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
       theme_bw() + labs(y = "Reads", 
                         x = "Subject", 
-                        color = "Subject")
+                        fill = "Subject")
 
 qual_fig <- qa_cycle_q_df %>% 
       sample_frac(0.25) %>% ## To speed up runtime
@@ -248,7 +248,8 @@ ggarrange(lib_size_fig, qual_fig, ncol = 1, nrow = 2,
 feat_read_df <- meta_df %>% filter(Read == "R1", 
                    biosample_id != "NTC") %>% 
       left_join(obs_feat_df)  %>% 
-      filter(reads > 4000, obs_feat < 1400) 
+      filter(reads > 4000, obs_feat < 1400) %>% 
+      mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime"))
 
 feat_v_reads <- feat_read_df %>% 
       ggplot() + 
@@ -272,20 +273,24 @@ ggarrange(feat_v_reads, feat_box, ncol = 1, nrow = 2,
           labels = "AUTO", common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
-__Intro sentence for paragraph__
-Quality assessment of sequencing runs summarizing number of reads per sample.
-Two barcoded experimental samples have less than 35,000 reads (Fig. \@ref(fig:qaPlots)A). The rest of the samples with less than 35,000 reads are no template PCR controls (NTC). 
-Excluding the one failed reaction with 2,700 reads and the NTCs, the total range in the observed number of sequences per samples is `r min(lib_size)` to `r max(lib_size)` reads with a median library size of $`r median(lib_size)`$. 
-For the expected overlap region, based on primer positions and read lengths (16S PCR fig), the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
+We first characterize the number of reads per sample and distribution of base quality scores. 
+The number of reads per sample and distribution of base quality scores by position was consistent across subjects (Fig. \@ref(fig:qaPlots)). 
+Two barcoded experimental samples had less than 35,000 reads. 
+The rest of the samples with less than 35,000 reads were no template PCR controls (NTC). 
+Excluding the one failed reaction with 2,700 reads and NTCs, there were `r median(lib_size)` (`r min(lib_size)`-`r max(lib_size)`, median and range) sequnces per sample. 
+For the expected overlap region, based on primer positions and read lengths, the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
 
-The sequencing dataset was processed using four bioinformatic pipelines. 
-The resulting count tables were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:qaPlots)C).
-The pipelines evaluated have different approaches for handling low quality reads resulting in the large variability in filter rate (Table \@ref(tab:pipeQA)). 
-QIIME pipeline has the highest filter rate and highest number of features per sample. 
+The resulting count tables generated using the four bioinoformatic pipelines, were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:qaPlots)C).
+The pipelines evaluated employ different approaches for handling low quality reads resulting in the large variability in drop-out rate, fraction of raw sequences not included in the count table (Table \@ref(tab:pipeQA)). 
+QIIME pipeline has the highest drop-out rate and highest number of features per sample. 
 The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired end reads. 
-The high filtration rate is due to the drop in base calling accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B). 
+The high drop-off rate is due to low basecall accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B). 
 Additionally, to remove potential sequencing artifacts from the dataset QIIME excludes singletons, OTUs only observed once in the dataset. 
+QIIME and DADA2 pipelines were similarly sparse, fraction of zero values in count tables, despite differences in the number of features and drop-out rate. 
 The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples and there are four PCR replicates for each sample. 
-Sparsity was lower for _de-novo_ clustering (QIIME) than sequence inference (DADA2) even though DADA2 has fewer total features. 
+Sparsity was lower for _de-novo_ clustering (Mothur) than sequence inference (DADA2) even though DADA2 has fewer total features. 
 With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts. 
 
+
+<!-- The end of the second paragraph reads more like a discussion  -->
+<!-- Not sure what I want to say/ trying to say here -->
