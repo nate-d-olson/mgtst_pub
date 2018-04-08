@@ -277,7 +277,7 @@ We first characterize the number of reads per sample and distribution of base qu
 The number of reads per sample and distribution of base quality scores by position was consistent across subjects (Fig. \@ref(fig:qaPlots)). 
 Two barcoded experimental samples had less than 35,000 reads. 
 The rest of the samples with less than 35,000 reads were no template PCR controls (NTC). 
-Excluding the one failed reaction with 2,700 reads and NTCs, there were `r median(lib_size)` (`r min(lib_size)`-`r max(lib_size)`, median and range) sequnces per sample. 
+Excluding the one failed reaction with 2,700 reads and NTCs, there were $`r median(lib_size)`$ (`r min(lib_size)`-`r max(lib_size)`, median and range) sequnces per sample. 
 For the expected overlap region, based on primer positions and read lengths, the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
 
 The resulting count tables generated using the four bioinoformatic pipelines, were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:qaPlots)C).
