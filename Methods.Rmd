@@ -120,40 +120,6 @@ and were present in either all four or none of the pre- and post-exposure PCR re
 Generalized linear models provide an alternative to standard least-squares regression, but the above model is additive and therefore unable to directly infer $\theta_j$ in log-space.
 To address this issue we fit the model using a standard least-squares regression then obtained non-parametric 95 \% confidence intervals for the $\theta$ estimates by bootstrapping with 1000 replicates.
 
-
-## Quantitative Assessment
-Quantitative assessment compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.
-
-The average relative abundance across PCR replicates calculated using a negative binomial model were used as observed relative abundance values ($obs$) for the relative abundance assessment.
-Average relative abundance values were used to reduce PCR replicate outliers from biasis the assessment results.
-Equation \@ref(eq:mixEq) and inferred $\theta$ values were used to calculate the expected relative abundance values ($exp$).
-Relative abundance error rate is defined as $|exp - obs|/exp$.
-Mixed effects models were used to compare feature-level error rate bias and variance metrics across pipelines with subject as a random effect.
-We defined the feature-level bias and variance metrics as the median error rate and robust coefficient of variation ($RCOV=IQR/median$) respectively.
-Extreme feature-level error rate bias and variance metric outliers were observed,
-these outliers were excluded from the mixed effects model to minimize biases due to poor model fit and were instead characterized independently.
-
-
-To assess differential abundance log fold-change estimates, log fold-change between samples in the titration series including pre- and post-exposure were compared to the expected log fold-change values.
-Log fold-change estimates were calculated using EdgeR [@robinson2010;@mccarthy2012].
-For features only present in pre-exposure samples the expected log fold-change is independent of the observed counts for the unmixed samples.
-The expected log fold-change between titrations $l$ and $m$ for features only in pre-exposure samples is calculated using \@ref(eq:expLogFC), where $\theta$ is the proportion of post-exposure bacterial DNA in a titration.
-Due to a limited number of features only observed in pre-exposure samples (pre-specific), both pre-specific and pre-dominant features were used in the differential abundance assessment.
-Pre-dominant and pre-specific features were defined as features observed in all four pre-exposure PCR replicates and a log fold-change between pre- and post-exposure samples greater than 5.
-Pre-specific features were not observed in any of the post-exposure PCR replicates and pre-dominant features were observed in one or more of the post-exposure PCR replicates.
-
-<!--
-Show how the following equation is derived
--->
-\begin{equation}
-  \begin{split}
-      logFC_{lm,i} & = \log_2\left(\frac{\theta_l \phi_{post,i} + (1 - \theta_l) \phi_{pre,i}}{\theta_m \phi_{post,i} + (1 - \theta_m) \phi_{pre,i}}\right) \\
-                   & = log_2\left(\frac{1-\theta_l}{1-\theta_m}\right)
-  \end{split}
-  (\#eq:expLogFC)
-\end{equation}
-
-
 ## Qualitative Assessment
 Our qualitative measurement assessment evaluated features only observed in unmixed samples, _unmixed-specific_, or titrations,_titration-specific_.
 Unmixed- or titration-specific features are due to differences in sampling depth (number of sequences) between the unmixed samples and titrations, artifacts of the feature inference process,
@@ -189,5 +155,36 @@ Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed 
   (\#eq:bht2)
 \end{equation}
 
+## Quantitative Assessment
+Quantitative assessment compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.
+
+The average relative abundance across PCR replicates calculated using a negative binomial model were used as observed relative abundance values ($obs$) for the relative abundance assessment.
+Average relative abundance values were used to reduce PCR replicate outliers from biasis the assessment results.
+Equation \@ref(eq:mixEq) and inferred $\theta$ values were used to calculate the expected relative abundance values ($exp$).
+Relative abundance error rate is defined as $|exp - obs|/exp$.
+Mixed effects models were used to compare feature-level error rate bias and variance metrics across pipelines with subject as a random effect.
+We defined the feature-level bias and variance metrics as the median error rate and robust coefficient of variation ($RCOV=IQR/median$) respectively.
+Extreme feature-level error rate bias and variance metric outliers were observed,
+these outliers were excluded from the mixed effects model to minimize biases due to poor model fit and were instead characterized independently.
+
+
+To assess differential abundance log fold-change estimates, log fold-change between samples in the titration series including pre- and post-exposure were compared to the expected log fold-change values.
+Log fold-change estimates were calculated using EdgeR [@robinson2010;@mccarthy2012].
+For features only present in pre-exposure samples the expected log fold-change is independent of the observed counts for the unmixed samples.
+The expected log fold-change between titrations $l$ and $m$ for features only in pre-exposure samples is calculated using \@ref(eq:expLogFC), where $\theta$ is the proportion of post-exposure bacterial DNA in a titration.
+Due to a limited number of features only observed in pre-exposure samples (pre-specific), both pre-specific and pre-dominant features were used in the differential abundance assessment.
+Pre-dominant and pre-specific features were defined as features observed in all four pre-exposure PCR replicates and a log fold-change between pre- and post-exposure samples greater than 5.
+Pre-specific features were not observed in any of the post-exposure PCR replicates and pre-dominant features were observed in one or more of the post-exposure PCR replicates.
+
+<!--
+Show how the following equation is derived
+-->
+\begin{equation}
+  \begin{split}
+      logFC_{lm,i} & = \log_2\left(\frac{\theta_l \phi_{post,i} + (1 - \theta_l) \phi_{pre,i}}{\theta_m \phi_{post,i} + (1 - \theta_m) \phi_{pre,i}}\right) \\
+                   & = log_2\left(\frac{1-\theta_l}{1-\theta_m}\right)
+  \end{split}
+  (\#eq:expLogFC)
+\end{equation}
 
 \pagebreak
