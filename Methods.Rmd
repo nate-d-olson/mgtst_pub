@@ -11,11 +11,11 @@ bibliography: [mgtst.bib, packages.bib]
 ## Two-Sample Titration Design
 Samples collected at multiple timepoints during a vaccine trial were used to generate a two-sample titration dataset for assessing the 16S rRNA marker-gene survery measurement process [@harro2011refinement].
 Samples from five trial participants were selected for our two-sample titration dataset.
-Trial participants (subjects) and sampling timepoints were selected based on _E. coli_ abudance data collected using qPCR and 16S rRNA targeted sequencing from @pop2106individual.
+Trial participants (subjects) and sampling timepoints were selected based on _E. coli_ abudance data collected using qPCR and 16S rRNA targeted sequencing from @pop2016individual.
 Only individuals with no _E. coli_ detected in samples collected from trial participants before exposure (pre-exposure) to Enterotoxigenic _E. coli_ (ETEC) were used for our two-samples titrations.
-Post-exposure samples were identified as the timepoint after exposure to ETEC with the highest _E. coli_ concentration for each subject (Fig. \@ref(fig:experimentalDesign)A).
+Post-exposure samples were identified as the timepoint after exposure to ETEC with the highest _E. coli_ concentration for each subject (Fig. \@ref(fig:countExperimentalDesign)A).
 Due to limited sample availability the timepoint with the second highest concentrations for E01JH0016 was used as the post-exposure sample.
-Independent titration series were generated for each subject, where post-exposure samples were titrated into pre-exposure samples with post-exposure proportions of 1/2, 1/4, 1/8, 1/16, 1/32, 1/1,024, and 1/32,768 (Fig. \@ref(fig:experimentalDesign)B).
+Independent titration series were generated for each subject, where post-exposure samples were titrated into pre-exposure samples with post-exposure proportions of 1/2, 1/4, 1/8, 1/16, 1/32, 1/1,024, and 1/32,768 (Fig. \@ref(fig:countExperimentalDesign)B).
 Unmixed (pre- and post-exposure) sample DNA concentration was measured using NanoDrop ND-1000 (Thermo Fisher Scientific Inc. Waltham, MA USA).
 Unmixed samples were diluted to 12.5 $ng/\mu L$ in tris-EDTA buffer prior to making the two-sample titrations.
 
@@ -99,16 +99,15 @@ Taxonomic classification of the unclustered sequences was performed using the sa
 To limit the size of the dataset the most abundant 40,000 OTUs (comparable to the mothur dataset), across all samples, were used as the unclustered dataset.
 
 ## Titration Proportion Estimates
-The following linear model \@ref(thetaInf) was used to infer the proportion of prokaryotic DNA in each titration, $\theta$.
-Where $\mathbf{\phi_{j}}$ is vector of titration $j$ feature relative abundance estimates.
-$\mathbf{\phi}_{pre}$ and $\mathbf{\phi}_{post}$ are vectors of feature relative abundance estimates for the unmixed pre- and post-exposure samples.
-PCR replicate relative abundance values were calculated using a negative binomial model.
-
 \begin{equation}
-  \mathbf{\phi_{j}} = \theta_j (\mathbf{\phi_{post}} - \mathbf{\phi_{pre}}) + \mathbf{\phi_{pre}}
+  \Phi_{j} = \theta_j (\Phi_{post} - \Phi_{pre}) + \Phi_{pre}
   (\#eq:thetaInf)
 \end{equation}
 
+The following linear model \@ref(eq:thetaInf) was used to infer the proportion of prokaryotic DNA in each titration, $\theta$.
+Where $\Phi$ is vector of titration $j$ feature relative abundance estimates.
+$\Phi_{pre}$ and $\Phi_{post}$ are vectors of feature relative abundance estimates for the unmixed pre- and post-exposure samples.
+PCR replicate relative abundance values were calculated using a negative binomial model.
 
 Only informative features meeting the following criteria were use to fit the model to prevent uninformative and low abundance features from biasing $\theta$ estimates.
 Features included in the model were observed in at least 14 of the 28 total titration PCR replicates (4 replicates per 7 titrations),
@@ -134,14 +133,6 @@ Given observed counts and the titration total feature abundance the true feature
 As non-zero counts were observed the true feature proportion is non-zero and the test always fails. 
 Therefore, we formulated a Bayesian hypothesis test for _titration-specific_ features.
 
-The our Bayesian hypothesis test was used to evaluate if the true feature proportion is __less than__ the minimum detected proportion. 
-The Bayesian hypothesis test was formulated using equation \@ref(eq:bht).
-Which when assuming equal priors, $P(\pi < \pi_{min}) = P(\pi \geq \pi_{min})$, reduces to \@ref(eq:bht2).
-For equations \@ref(eq:bht) and \@ref(eq:bht2) $\pi$ is the true feature proportion, $\pi_{min}$ is the minimum detected proportion, $C$ is the expected feature counts, and $C_{obs}$ is the observed feature counts.
-Simulation was used generate possible values of $C$, assuming $C$ has a binomial distribution given the observed sample total feature abundance, $T$, and a uniform probability distribution for $\pi$ between 0 and 1.
-$\pi_{min}$ was calculated using the mixture equation \@ref(eq:mixEq) where $\phi_{pre}$ and $\phi_{post}$ are $min(\phi_{pre})$ and $min(\phi_{post})$ across all features for a subject and pipeline.
-Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed in the unmixed samples due to random sampling.
-
 \begin{equation}
   \begin{split}
     p & = P(\pi < \pi_{min} | C \geq C_{obs}) \\
@@ -154,6 +145,14 @@ Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed 
     p = \frac{P(C \geq C_{obs}| \pi < \pi_{min})}{P(C \geq C_{obs})}
   (\#eq:bht2)
 \end{equation}
+
+The our Bayesian hypothesis test was used to evaluate if the true feature proportion is __less than__ the minimum detected proportion. 
+The Bayesian hypothesis test was formulated using equation \@ref(eq:bht).
+Which when assuming equal priors, $P(\pi < \pi_{min}) = P(\pi \geq \pi_{min})$, reduces to \@ref(eq:bht2).
+For equations \@ref(eq:bht) and \@ref(eq:bht2) $\pi$ is the true feature proportion, $\pi_{min}$ is the minimum detected proportion, $C$ is the expected feature counts, and $C_{obs}$ is the observed feature counts.
+Simulation was used generate possible values of $C$, assuming $C$ has a binomial distribution given the observed sample total feature abundance, $T$, and a uniform probability distribution for $\pi$ between 0 and 1.
+$\pi_{min}$ was calculated using the mixture equation \@ref(eq:mixEq) where $\phi_{pre}$ and $\phi_{post}$ are $min(\phi_{pre})$ and $min(\phi_{post})$ across all features for a subject and pipeline.
+Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed in the unmixed samples due to random sampling.
 
 ## Quantitative Assessment
 Quantitative assessment compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.
