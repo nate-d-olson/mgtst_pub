@@ -3,61 +3,80 @@ title: "Introduction"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 output:
-  bookdown::pdf_document2: 
+  bookdown::pdf_document2:
     toc: FALSE
 bibliography: [mgtst.bib, packages.bib]
 ---
 
-<!-- I don't think we should call 16S "metagenomics" - it engenders debate in the community.  How about just 16S sequencing -->
-Metagenomics, sequencing microbial community DNA, has greatly advanced our understanding of the microbial world. 
-Targeted sequencing of the 16S rRNA gene, 16S metagenomics, is a commonly used method for sequencing a microbial community. 
-But in this process, it is possible for error and bias to creep in through both the molecular (e.g. PCR and sequencing) and computational steps (e.g. sequence clustering) [@Amore2016;@Goodrich2014;@brooks2015truth]. 
-Appropriate datasets and methods are needed to evaluate 16S sequencing to characterize both how these sources of bias impact the measurement and to determine where to focus our efforts for improvement.
-
-A sample or dataset where the "ground truth" is known is needed in order to characterize the accuracy of this technique.  
-Though there have been a number of studies characterizing and evaluating different steps in the 16S rRNA measurement process using mock communities, simulated data, or environmental samples, this analysis is still incomplete.
-Mock communities, i.e. mixtures of cells or DNA from individual organisms, have an known value, but lack the realistic complexity of environmental samples in the of number or abundance distributions <!-- What does this mean in this context --> of organisms [@bokulich2016mockrobiota]. 
-As with mock communities, simulated sequencing data has an expected value that can be used for benchmarking. 
-However, the sequencing error profile is not completely understood and therefore simulated sequencing data does not recapitulate sequencing data generated from an environmental sample. 
-While simulated data and mock communities are useful in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities and simulated data are not necessarily optimized to handle the biases, noise, and diversity present in real samples. 
-Data generated from environmental samples, which include the biases, noise, and diversity of real samples, are often used to benchmark new molecular laboratory and computational methods. 
-However, without an expected value to compare to, only measurement precision can be evaluated. An alternative to these types of data is sequencing data generated from mixtures of environmental samples. 
-By mixing environmental samples at known proportions you can use information obtained from the unmixed samples, and how they were mixed, to obtain an expected value for use in assessing the measurement process. 
-Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq data[@parsons2015using;@pine2011adaptable;@thompson2005use]
-
-Mock communities are most commonly used to assess the qualitative characteristics of a dataset. 
-As the number of organisms in the mock community is known the total number of features can be compared to the expected number. 
-The number of observed features in a mock community is often significantly higher than the expected number of organism __REF__. 
-The higher than expected number of features is often attributed to sequencing and PCR artifacts as well as reagent contaminants __REF__. 
-A notable exception to this is mock community benchmarking studies evaluating sequencing inference method, such as DADA2 [@callahan2016dada2]. 
-
-The quantitative characteristics of 16S sequencing are normally assessed using both mock communities and simulated data. 
-Mock communities of equimolar and staggered concentration are used to assess the quantitative accuracy of the relative abundance estimates __REF__. 
-Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample. 
-These taxonomic specific effects have been attributed to primer mismatches __REF__. <!-- surely GC bias must have a role as well, seems like you generally need more discussion about sources of bias here, since that's the motivation for the whole paper? -->
-To assess differential abundance, simulated datasets are used where specific taxa are artificially over represented in one set of samples compared to another __REF__. 
-Using simulated data to assess log fold-change estimates only evaluates computational steps of the measurement process. 
-
-In the present study we developed a mixture dataset of extracted DNA from human stool samples for assessing 16S sequencing. 
-The mixture datasets were processed using three bioinformatic pipelines. 
-We developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results. 
-The quantitative results were similar across pipelines but the qualitative results varied across pipelines. 
-We have made both the dataset and metrics developed in this study publically available for use in evaluation of new bioinformatic pipelines. 
+<!-- Outline
+- 16S measurement process
+- Measurement process assessment
+- Quantitative assessment
+- Qualitative assessment
+- Using mixtures for measurement assessment
+- Study overview
+      - using mixtures
+      - quanitative assessment
+      - qualitative assessment -->
 
 
-```{r include = FALSE}
-### -------------------------- Old text to save --------------------------------
-# A key step in the measurement process is clustering, the grouping of sequences into biologically relevant units, or operational taxonomic units (OTUs). 
-# There are a number of different clustering methods.  
-# The two most commonly used clustering methods are _de-novo_ clustering and open-reference clustering. 
-# _de-novo_ clustering algorithms group sequences based on a defined similarity threshold [@westcott2015novo]. 
-# Open-reference clustering matches sequences to a set of previously clustered reference sequences (_de-novo_) then perform _de-novo_ clustering on the sequences in the dataset that do not match to sequences in the reference dataset with the desired similarity threshold [@he2015stability]. 
-# A third methods for clustering, sequence inference, uses statistical models or algorithms to differentiate true biological sequences within a dataset from sequencing errors [@callahan2016dada2;@amir2017deblur;@eren2015minimum].
-# 
-# Further challenging the measurement process is the compositional nature of the 16S data, that is the proportion of an organism within a sample is being measured and not the absolute abundance [@tsilimigras2016compositional]. 
-# Sequencing data only provide information regarding the relative abundance of organisms within a samples to other organisms within the same sample. 
-# When comparing the relative abundance of an organism across samples you are comparing organismal abundance relative to the rest of the organisms within the sample. 
-# As a result an organism can have the same absolute abundance in two samples but due to differences in either the microbial community composition or for targeted assays such as 16S metagenomics differences in the proportion of human DNA in the sample. 
-```
- 
- 
+Targeted sequencing of the 16S rRNA gene, 16S rRNA marker-gene-surveys, is a commonly used method for sequencing a microbial community.
+The 16S rRNA marker-gene-survey measurement process includes molecular (e.g. PCR and sequencing) and computational steps (e.g., sequence clustering) [@Goodrich2014].
+Molecular steps are used to selective target and sequence the 16S rRNA gene from prokaryotic organisms within a sample.
+The computational steps, convert the raw sequence data into a matrix with features (e.g., operational taxonomic units)relative abundance values for each sample [@;@Goodrich2014].
+Both molecular and computational measurement process steps contribute to the overall measurement bias and dispersion [@Amore2016;@Goodrich2014;@brooks2015truth].
+Proper measurement method evaluation allows for the characterization of how individual steps impact the measurement processes as a whole and determine where to focus efforts on improving the measurement process.
+Appropriate datasets and methods are needed to evaluate the 16S rRNA marker-gene-survey measurement process.
+A sample or dataset with "ground truth" is needed to characterize measurement process accuracy.
+Numerous studies have characterized the 16S rRNA measurement process using mock communities, simulated data, and environmental samples.
+
+
+Mock communities are most commonly used to assess the qualitative characteristics of a dataset.
+As the number of organisms in the mock community is known, the total number of features can be compared to the expected number.
+The number of observed features in a mock community is often significantly higher than the expected number of organism __REF__.
+The higher than expected number of features is often attributed to sequencing and PCR artifacts as well as reagent contaminants __REF__.
+Sequence inference methods aim to improve ....
+A notable exception to this is mock community benchmarking studies evaluating sequencing inference method, such as DADA2 [@callahan2016dada2].
+__False negatives__  Reference for total feature abundance comparisons for different pipelines
+Mock communities, mixtures of cells or DNA from individual organisms, have a known value but lack the feature diversity and relative abundance dynamic range of real samples [@bokulich2016mockrobiota].
+
+
+The quantitative characteristics of 16S rRNA sequence data are normally assessed using mock communities and simulated data.
+Mock communities of equimolar and staggered concentration are used to assess the relative abundance estimates quantitative accuracy __REF__.
+Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample.
+These taxonomic specific effects have been attributed to primer mismatches and DNA extraction biases __REF__. <!-- surely GC bias must have a role as well, seems like you generally need more discussion about sources of bias here, since that's the motivation for the whole paper? -->
+Simulated count tables have been used to assess differential abundance method, where specific taxa are artificially overrepresented in one set of samples compared to another __REF__.
+Using simulated data to assess log fold-change estimates only evaluates computational steps of the measurement process.
+
+
+Quantitative and qualitative assessment can also be performed using sequence data generated from mixtures of environmental samples.
+While simulated data and mock communities are useful in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities and simulated data are not necessarily optimized for the the sequencing error profile and feature diversity of real samples.
+Data from environmental samples, which are real samples, are often used to benchmark new molecular laboratory and computational methods.
+However, without an expected value to compare to, only measurement precision can be evaluated.
+By mixing environmental samples, an expected value can be calculated using information from the unmixed samples and how they were mixed.
+Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq data[@parsons2015using;@pine2011adaptable;@thompson2005use].
+
+
+In the present study, we developed a mixture dataset of extracted DNA from human stool samples for assessing 16S sequencing.
+The mixture datasets were processed using three bioinformatic pipelines.
+We developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results.
+The quantitative results were similar across pipelines but the qualitative results varied across pipelines.
+We have made both the dataset and metrics developed in this study publically available for evaluating new bioinformatic pipelines.
+
+
+<!-- A key step in the measurement process is clustering, the grouping of sequences into biologically relevant units, or operational taxonomic units (OTUs).
+There are a number of different clustering methods.
+The two most commonly used clustering methods are _de-novo_ clustering and open-reference clustering.
+_de-novo_ clustering algorithms group sequences based on a defined similarity threshold [@westcott2015novo].
+Open-reference clustering matches sequences to a set of previously clustered reference sequences (_de-novo_) then perform _de-novo_ clustering on the sequences in the dataset that do not match to sequences in the reference dataset with the desired similarity threshold [@he2015stability].
+A third methods for clustering, sequence inference, uses statistical models or algorithms to differentiate true biological sequences within a dataset from sequencing errors [@callahan2016dada2;@amir2017deblur;@eren2015minimum].
+
+Further challenging the measurement process is the compositional nature of the 16S data, that is the proportion of an organism within a sample is being measured and not the absolute abundance [@tsilimigras2016compositional].
+Sequencing data only provide information regarding the relative abundance of organisms within a samples to other organisms within the same sample.
+# When comparing the relative abundance of an organism across samples you are comparing organismal abundance relative to the rest of the organisms within the sample.
+As a result an organism can have the same absolute abundance in two samples but due to differences in either the microbial community composition or for targeted assays such as 16S metagenomics differences in the proportion of human DNA in the sample.  -->
+
+
+
+<!-- As with mock communities, simulated sequencing data has an expected value that can be used for benchmarking.  -->
+<!-- However, as the sequencing error profile is not completely understood, simulated data does not recapitulate sequencing data generated from an environmental sample.  -->
