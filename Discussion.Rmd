@@ -19,15 +19,15 @@ The differential abundance expected values were derived using only mixture desig
 ### Count Table Assessment Demonstration
 We demonstrate our novel assessment approach using count tables generated using four different bioinformatic pipelines.
 The pipelines used represent the two most commonly used, Mothur and QIIME, as well as the sequence inference pipeline DADA2.
-The Mothur pipeline uses _de novo_ clustering for feature inference [__MOTHUR__].
+The Mothur pipeline uses _de novo_ clustering for feature inference [@westcott2017opticlust;schloss2009introducing].
 Pairwise distances used in clustering are calculated using a multiple sequence alignment.
 The quality filtered paired-end reads are merged into contigs.
 The pipeline the aligns contigs to a reference multiple sequence alignment and removes uninformative positions in the multiple sequence alignment.
-The QIIME pipeline uses open-reference clustering where merged paired-end reads are first assigned to reference cluster centers [__QIIME__].
+The QIIME pipeline uses open-reference clustering where merged paired-end reads are first assigned to reference cluster centers [@Rideout2014;@Caporaso2010].
 Next QIIME clusters unassigned reads _de novo_.
 Unlike Mothur, the QIIME clustering method uses pairwise sequence distances calculated from pairwise sequence alignments.
 As a result, the QIIME pairwise distances are calculated using the full ~436 bp sequences whereas Mothur pairwise distances were calculated using a 270 bp multiple sequence alignment.
-The DADA2 pipeline uses a probability model and maximization expectation algorithm for feature inference [__DADA2__].
+The DADA2 pipeline uses a probability model and maximization expectation algorithm for feature inference [@callahan2016dada2].
 Unlike distance-based clustering methods employed by the Mothur and QIIME pipelines, DADA2 parameters determine if low abundance sequences are grouped with a higher abundance sequence.
 As a control, we compared our quantitative assessment results for the three pipelines to a count table of unclustered features.
 The unclustered features were generated using the Mothur pipeline preprocessing methods.
@@ -53,7 +53,7 @@ Outlier features are not likely a pipeline artifact as they were observed in cou
 We were unable to attribute outlier features to relative abundance values, log fold-change between unmixed samples, and sequence GC content.
 Features with extreme metric values were not limited to any specific taxonomic group or phylogenetic clade.
 PCR amplification is a well-known bias molecular biology component of the measurement process.
-Mismatches in the primer binding regions impact PCR efficiency and are a potential cause for poor feature-specific performance __REF__.
+Mismatches in the primer binding regions impact PCR efficiency and are a potential cause for poor feature-specific performance [@wright2014exploiting].
 Additional research is needed before outlier features are attributed to mismatches in the primer binding regions.
 
 
@@ -71,7 +71,7 @@ A high rate of false negative features is a potential explanation for the  DADA2
 The DADA2 feature inference algorithm may be aggressively grouping lower abundance true sequences with higher abundance sequences.
 As a result, the low abundance sequences are not present in samples leading to increased sparsity and higher abundance unmixed- and titration-specific features.
 Adjusting the DADA2 parameters, specifically the `OMEGA_A` parameter in `setDadaOpt`.
-Along these lines, the DADA2 documentation states that the default setting for `OMEGA_A` is conservative to prevent false positives at the cost of increasing false negatives[__DADA__].
+Along these lines, the DADA2 documentation states that the default setting for `OMEGA_A` is conservative to prevent false positives at the cost of increasing false negatives[@callahan2016dada2].
 
 False positive features provide an explanation for Mothur and QIIME pipelines having lower proportion of unmixed- and titration-specific features not explained by sampling but high sparsity [_FIG&Table__].
 The statistical tests used to determine if the specific features could be explained by sampling only considers feature abundance.
@@ -85,12 +85,12 @@ False positive features can be reduced, but not eliminated, using smaller amplic
 The 16S rRNA region sequenced in the study is larger than the region the _de-novo_, and open clustering pipelines were initially developed for, potentially explaining the higher than expected sparsity [@kozich2013development] __QIIME V4 REF__.
 The larger region has a smaller overlap between the forward and reverse reads. As a result merging of the forward and reverse reads did not allow for the sequence error correction that occurs when a smaller amplicon is used (__REF-Schloss__). <!-- But it's illumina, I'm surprised if this is a true issue.  What level of sequencing correction is presumed/found typically? -->
 However, even when targeting smaller regions of the 16S rRNA gene both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using mock communities __REF__.
-Prevalence filtering is used to exclude low abundance features, likely predominantly measurement artifacts [__Callahan__].
+Prevalence filtering is used to exclude low abundance features, likely predominantly measurement artifacts [@callahan2016].
 For example, a study exploring the microbial ecology of the Red-necked stint _Calidris ruficollis_, a migratory shorebird, used a hard filter to validate their study conclusions are not biases by false positive features.
 The study authors compared results with and without prevalence filter ensuring that the study conclusions were not biased by using the arbitrary filter or including the low abundant features [@risely2017gut].
 
-### Implications for 16S rRNA marker-gene-surveys
-__COMMENTED OUT__
+<!-- ### Implications for 16S rRNA marker-gene-surveys -->
+<!-- __COMMENTED OUT__ -->
 <!-- - Implications for false positives and false negatives
   - Primary implication is regarding more likely to impact presence/absence ecological diversity analysis specifically alpha and beta diversity.
   - Alpha diversity
@@ -111,7 +111,7 @@ __COMMENTED OUT__
   - feature-level analysis results should be validated using orthogonal methods when appropriate -->
 
 
-### Using mixtures to assess 16S
+### Using Mixtures to Assess 16S rRNA Sequencing
 Mixtures of environmental samples have previously been used to assess RNAseq and microarray gene expression measurements.
 However, this is the first time mixtures have been used to assess microbiome measurement methods.
 Our mixture dataset allowed us to develop novel methods for assessing marker-gene-survey computational methods.

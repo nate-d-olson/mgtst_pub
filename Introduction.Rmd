@@ -37,7 +37,7 @@ The number of observed features in a mock community is often significantly highe
 The higher than expected number of features is often attributed to sequencing and PCR artifacts as well as reagent contaminants __REF__.
 Sequence inference methods aim to improve ....
 A notable exception to this is mock community benchmarking studies evaluating sequencing inference method, such as DADA2 [@callahan2016dada2].
-__False negatives__  Reference for total feature abundance comparisons for different pipelines
+<!-- __False negatives__  Reference for total feature abundance comparisons for different pipelines -->
 Mock communities, mixtures of cells or DNA from individual organisms, have a known value but lack the feature diversity and relative abundance dynamic range of real samples [@bokulich2016mockrobiota].
 
 
@@ -45,7 +45,7 @@ The quantitative characteristics of 16S rRNA sequence data are normally assessed
 Mock communities of equimolar and staggered concentration are used to assess the relative abundance estimates quantitative accuracy __REF__.
 Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample.
 These taxonomic specific effects have been attributed to primer mismatches and DNA extraction biases __REF__. <!-- surely GC bias must have a role as well, seems like you generally need more discussion about sources of bias here, since that's the motivation for the whole paper? -->
-Simulated count tables have been used to assess differential abundance method, where specific taxa are artificially overrepresented in one set of samples compared to another __REF__.
+Simulated count tables have been used to assess differential abundance method, where specific taxa are artificially overrepresented in one set of samples compared to another [@McMurdie2014].
 Using simulated data to assess log fold-change estimates only evaluates computational steps of the measurement process.
 
 
