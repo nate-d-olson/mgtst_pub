@@ -345,5 +345,5 @@ The Mothur, DADA2, and QIIME feature-level bias were all significantly different
 DADA2 had the lowest mean feature-level bias (`r round(dada_error,2)`), followed by Mothur (`r round(mothur_error,2)`), with QIIME having the highest bias (`r round(qiime_error,2)`) (\@ref(fig:relAbuErrorMetrics)B).
 Large variance metric values were observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)).
 The feature-level variance was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuErrorMetrics)B).
-We next evaluated whether poor feature-level relative abundance metrics can be attributed to specific taxonomic groups or phylogenetic clades  (Supplemental Fig. __2017-11-16_feature-phyloSignal.pdf__).
+We next evaluated whether poor feature-level relative abundance metrics can be attributed to specific taxonomic groups or phylogenetic clades.
 While a significant overall phylogenetic signal was detected for both the bias and variance metric, we were unable to identify specific taxonomic groups or phylogenetic clades exceedingly poor performance in our assessment.

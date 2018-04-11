@@ -199,7 +199,7 @@ However, ss $\theta$ was not corrected for differences in the proportion of prok
 The log fold-change error distribution was consistent across pipelines (Fig. \@ref(fig:logFCerror)B).
 There was a long tail of high error features in the error distribution for all pipelines and individuals.
 The log fold-change estimates responsible for the long tail could not be attributed to specific titration comparisons.
-Additionally, we compared the log-fold change error distribution for log-fold change estimates using different normalization methods (Supplemental Fig. __2017-11-15_norm_comp_logFC.pdf__).
+Additionally, we compared the log-fold change error distribution for log-fold change estimates using different normalization methods.
 The error rate distributions, including the long tails, were consistent across normalization methods.
 Furthermore,S as the long tail was observed for the unclustered data as well, the log-fold change estimates contributing to the long tail are likely due to a bias associated with the molecular laboratory portion of the measurement process and not the bioinformatic pipelines.
 Based on exploratory analysis of the relationship between the log fold-change estimates and expected values for individual features indicated that the long tails were attributed to feature specific performance.
@@ -209,5 +209,5 @@ A bias metric of $1 - slope$ was used, where 0 is the desired value (i.e., log f
 The linear model $R^2$ value was used to characterize the feature-level log fold-change variance as it indicates the consistency of the relationship between the log fold-change estimates and expected values are across titration comparisons.
 Similar to the relative abundance assessment we used a mixed-effects model to account for differences in individuals when comparing bias and variance metrics across pipelines.
 The log fold-change bias metric and variance metrics were not significantly different between pipelines (Bias: F = `r round(slope_f,2)`, p = `r round(slope_p,2)`, \@ref(fig:logFCerror)B, (Variance: F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, Fig. \@ref(fig:logFCerror)C).
-Next, we evaluated whether poor feature-level metrics could be attributed to specific clades for taxonomic groups (Supplemental Fig. __2017-11-16_feature-phyloSignal.pdf__).
+Next, we evaluated whether poor feature-level metrics could be attributed to specific clades for taxonomic groups.
 Similar to the relative abundance estimate, while a phylogenetic signal was detected for both the bias and variance metrics, we were unable to identify specific taxonomic groups or phylogenetic clades that performed poorly in our assessment.

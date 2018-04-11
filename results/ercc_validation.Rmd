@@ -202,6 +202,7 @@ When considering the quantitative limitations of the qPCR assay these results co
 ```{r erccTable, echo=FALSE, message=FALSE}
 ercc_tbl %>%
       left_join(erccMeta) %>%
+      mutate(ercc_id = str_remove(ercc_id, "ERCC-00")) %>%
       arrange(treatment) %>%
       dplyr::rename(Individual = biosample_id,
              Treatment = treatment,
