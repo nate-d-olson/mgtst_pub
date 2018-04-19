@@ -78,7 +78,7 @@ logFC_pre %>% filter(T1 == 0, T2 == 20) %>%
       summarise(count = n()) %>%
       spread(pipe, count,fill = 0) %>%
       dplyr::rename(Individual = biosample_id) %>%
-      knitr::kable(caption = "Number of pre-specific and pre-dominant features by individual and pipeline", booktabs = TRUE)
+      knitr::kable(caption = "Number of PRE-specific and PRE-dominant features by individual and pipeline", booktabs = TRUE)
 ```
 
 ```{r logFCestVexp, fig.cap = "Relationship between log fold-change estimates and expected values. Orange line represents the expected 1-to-1 relationshion."}
@@ -120,10 +120,10 @@ logFC_pre %>%
       summarise(count = n()) %>%
       spread(norm_method, count, fill = 0) %>%
       dplyr::rename(Individual = biosample_id) %>%
-      knitr::kable(caption = "Number of pre-specific and pre-dominant features by individual and normalization method for Mothur", booktabs = TRUE)
+      knitr::kable(caption = "Number of PRE-specific and PRE-dominant features by individual and normalization method for Mothur", booktabs = TRUE)
 ```
 
-```{r logfcNormComp, fig.cap = "Impact of normalization methods on the agreement between log fold-change estimates and expected values for pre-specific and pre-dominant features. (A) Linear model relating the log fold-change estimates with the expected values by individual and normalization method. (B) Distribution of log fold-change (B) absolute error and (C) error by normalization method and individual.", echo=FALSE, message = FALSE, fig.height = 8}
+```{r logfcNormComp, fig.cap = "Impact of normalization methods on the agreement between log fold-change estimates and expected values for PRE-specific and PRE-dominant features. (A) Linear model relating the log fold-change estimates with the expected values by individual and normalization method. (B) Distribution of log fold-change (B) absolute error and (C) error by normalization method and individual.", echo=FALSE, message = FALSE, fig.height = 8}
 logFCestVexp <- logFC_error %>%
       filter(T1 != 0, T2 != 20) %>%
       ggplot() +

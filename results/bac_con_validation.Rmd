@@ -154,13 +154,13 @@ bac_con_plot_dat %>%
 ```
 
 
-The observed changes in prokaryotic DNA concentration across titrations indicate the proportion of bacterial DNA from the unmixed pre- and post-exposure samples in a titration is inconsistent with the mixture design (Fig. \@ref(fig:bacPlot)).
+The observed changes in prokaryotic DNA concentration across titrations indicate the proportion of bacterial DNA from the unmixed PRE and POST samples in a titration is inconsistent with the mixture design (Fig. \@ref(fig:bacPlot)).
 A qPCR assay targeting the 16S rRNA gene was used to quantify the concentration of prokaryotic DNA in the titrations.
 An in-house standard curve with concentrations of 20 ng/ul, 2ng/ul, and 0.2 ng/ul was used, with efficiency `r round(efficiency,2)`, and $R^2$ `r round(std_r2,3)`.
-If the proportion of prokaryotic DNA is the same between pre- and post-exposure samples the slope of the concentration estimates across the two-sample titration would be 0.
-For subjects where the proportion of prokaryotic DNA is higher in the pre-exposure samples, the slope will be negative and positive when the proportion is higher for post-exposure samples.
+If the proportion of prokaryotic DNA is the same between PRE and POST samples the slope of the concentration estimates across the two-sample titration would be 0.
+For subjects where the proportion of prokaryotic DNA is higher in the PRE samples, the slope will be negative and positive when the proportion is higher for POST samples.
 The slope estimates are significantly different from 1 for all subjects excluding E01JH0011 (Fig. \@ref(fig:bacPlot)).
-These results indicate that the proportion of prokaryotic DNA is lower the post-exposure when compared to the pre-exposure samples for E01JH0004 and E01JH0017 and higher for E01JH0016 and E01JH0038.
+These results indicate that the proportion of prokaryotic DNA is lower the POST when compared to the PRE samples for E01JH0004 and E01JH0017 and higher for E01JH0016 and E01JH0038.
 <!-- Include statements about unmixed sample qPCR- maybe in discussion? -->
 <!-- Unable to measure prokaryotic DNA using qPCR -->
 

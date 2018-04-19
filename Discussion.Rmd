@@ -19,7 +19,7 @@ The differential abundance expected values were derived using only mixture desig
 ### Count Table Assessment Demonstration
 We demonstrate our novel assessment approach using count tables generated using four different bioinformatic pipelines.
 The pipelines used represent the two most commonly used, Mothur and QIIME, as well as the sequence inference pipeline DADA2.
-The Mothur pipeline uses _de novo_ clustering for feature inference [@westcott2017opticlust;schloss2009introducing].
+The Mothur pipeline uses _de novo_ clustering for feature inference [@westcott2017opticlust; @schloss2009introducing].
 Pairwise distances used in clustering are calculated using a multiple sequence alignment.
 The quality filtered paired-end reads are merged into contigs.
 The pipeline the aligns contigs to a reference multiple sequence alignment and removes uninformative positions in the multiple sequence alignment.
@@ -133,7 +133,7 @@ Differences in the proportion of prokaryotic DNA in the samples used to generate
 We attempted to account for differences in mixture proportion from mixture design by estimating mixture proportions using sequence data.
 Similar to how the proportion of mRNA in RNA samples used in a previous mixture study.
 We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentration of bacterial DNA across titration, but unable to quantify the proportion of bacterial DNA in the unmixed samples using qPCR data.
-Using the 16S sequencing data we inferred the proportion of bacterial DNA from the post-exposure sample in each titration.
+Using the 16S sequencing data we inferred the proportion of bacterial DNA from the POST sample in each titration.
 However, the uncertainty and accuracy of the inference method are not known resulting in an unaccounted for error source.
 
 
@@ -165,14 +165,14 @@ Addressing both of these issues requires advances in both the molecular biology 
 
 
 <!-- There were two primary limitations of the study that were a product of the experimental design.
-Only features that were differentially abundant between the pre- and post-exposure were used in the assessment.
+Only features that were differentially abundant between the PRE and POST were used in the assessment.
 Using samples from the vaccine trial provided a specific features, _E. coli_ that could be used during method development.
-However, only a limited number of features were differentially abundant between the pre- and post-exposure samples resulting in a smaller set of features that could be used in our assessment.
+However, only a limited number of features were differentially abundant between the PRE and POST samples resulting in a smaller set of features that could be used in our assessment.
 Generating mixtures of samples with less similarity would increase the number of features used in the assessment.
 Additionally, using samples from other environments would increase the taxonomic diversity of features used in the assessment and potentially allowing for a more rigorus evaluation of the relationship between the assessment metrics and phylogeny.
-The second limitation of the experimental design was the difference in the proportion of bacterial DNA between the pre- and post-exposure samples.
+The second limitation of the experimental design was the difference in the proportion of bacterial DNA between the PRE and POST samples.
 We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentation of bacterial DNA across titration but we were unable to estimate the proportion of bacterial DNA in the unmixed samples using the qPCR data.
-Using the 16S sequencing data we inferred the proportion of bacterial DNA from the post-exposure sample in each titration.
+Using the 16S sequencing data we inferred the proportion of bacterial DNA from the POST sample in each titration.
 However, the uncertainty and accuracy of the inferrence method is not known resulting in an unaccounted for error source.
 A better method for estimating the proportion of bacterial DNA in the unmixed samples would increase the accuracy of the error metrics.
 Alternatively samples that are primarily prokaryotic DNA could be used -->
