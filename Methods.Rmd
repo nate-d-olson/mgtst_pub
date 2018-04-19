@@ -120,8 +120,8 @@ Generalized linear models provide an alternative to standard least-squares regre
 To address this issue, we fit the model using a standard least-squares regression then obtained non-parametric 95 \% confidence intervals for the $\theta$ estimates by bootstrapping with 1000 replicates.
 
 ### Qualitative Assessment
-Our qualitative measurement assessment evaluated features only observed in unmixed samples, _unmixed-specific_, or titrations,_titration-specific_.
-Unmixed- or titration-specific features are due to differences in sampling depth (number of sequences) between the unmixed samples and titrations, artifacts of the feature inference process,
+Our qualitative measurement assessment evaluated features only observed in unmixed samples (PRE or POST), _unmixed-specific_, or titrations,_titration-specific_.
+_Unmixed-_ or _titration-specific_ features are due to differences in sampling depth (number of sequences) between the unmixed samples and titrations, artifacts of the feature inference process,
 or PCR/sequencing artifacts.
 Measurement process artifacts should be considered false positives or negatives.
 Hypothesis tests were used to determine if differences in sampling depth could account for _unmixed-specific_ and _titration-specific_ features.
@@ -173,10 +173,10 @@ these outliers were excluded from the mixed effects model to minimize biases due
 Log fold-change between samples in the titration series including PRE and POST were compared to the expected log fold-change values to assess differential abundance log fold-change estimates.
 Log fold-change estimates were calculated using EdgeR [@Robinson2010;@McCarthy2012].
 For features only present in PRE samples the expected log fold-change is independent of the observed counts for the unmixed samples.
-The expected log fold-change between titrations $l$ and $m$ for features only in PRE samples is calculated using \@ref(eq:expLogFC), where $\theta$ is the proportion of POST bacterial DNA in a titration.
-Due to a limited number of features only observed in PRE samples (PRE-specific), both PRE-specific and PRE-dominant features were used in the differential abundance assessment.
-Pre-dominant and PRE-specific features were defined as features observed in all four PRE PCR replicates and a log fold-change between PRE and POST samples greater than 5.
-PRE-specific features were not observed in any of the POST PCR replicates and PRE-dominant features were observed in one or more of the POST PCR replicates.
+The expected log fold-change between titrations $l$ and $m$ for features only in PRE samples, _PRE-specific_, is calculated using \@ref(eq:expLogFC), where $\theta$ is the proportion of POST bacterial DNA in a titration.
+Due to a limited number of _PRE-specific_ features , both _PRE-specific_ and _PRE-dominant_ features were used in the differential abundance assessment.
+_Pre-dominant_ and _PRE-specific_ features were defined as features observed in all four PRE PCR replicates.
+_PRE-specific_ features were not observed in any of the POST PCR replicates and _PRE-dominant_ features were observed in one or more of the POST PCR replicates, but with a log fold-change between PRE and POST samples greater than 5.
 
 
 \begin{equation}
