@@ -40,7 +40,7 @@ knitr::include_graphics("~/Projects/mgtst_pub/img/experimental_design.png")
 qPCR was used to validate the volumetric mixing and check for differences in the proportion of prokaryotic DNA across titrations.
 To ensure that the two-sample titrations were volumetrically mixed according to the mixture design, independent ERCC plasmids were spiked into the unmixed PRE and POST samples [@baker2005external] (NIST SRM SRM 2374) (Table \@ref(tab:erccTable)).
 The ERCC plasmids were resuspended in 100 $ng/\mu L$ tris-EDTA buffer and 2 $ng/\mu L$ was spiked into the appropriate unmixed sample.
-Plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) specific to each ERCC plasmid using the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA).
+POST sample ERCC plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) specific to each ERCC plasmid using the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA).
 To check for differences in the proportion of bacterial DNA in the PRE and POST samples, titration bacterial DNA concentration was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA).
 All samples were run in triplicate along with an in-house _E. coli_ DNA $log_{10}$ dilution standard curve.
 qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher).
