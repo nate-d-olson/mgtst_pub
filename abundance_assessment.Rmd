@@ -25,7 +25,7 @@ author:
   - fnm: "O Colin"
     snm: "Stine"
     inits: "O"
-    addressref: "aff4" 
+    addressref: "aff4"
   - fnm: "Hector"
     snm: "Corrada Bravo"
     inits: "H"
@@ -41,11 +41,12 @@ address:
     orgname: "School of Medicine, University of Maryland"
 date: '`r Sys.Date()`'
 output:
-  # bookdown::pdf_document2: 
-  bookdown::word_document2: 
+  bookdown::pdf_document2:
+  # bookdown::word_document2:
     toc: FALSE
     # template: template.tex
-    # keep_tex: TRUE
+    keep_tex: TRUE
+    citation_package: "biblatex"
 # documentclass: "bmcart"
 bibliography: [mgtst.bib, packages.bib]
 ---
@@ -54,10 +55,10 @@ bibliography: [mgtst.bib, packages.bib]
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.path = "img/")
 ```
 
-<!-- 
-BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology 
+<!--
+BMC Microbiome Submission https://microbiomejournal.biomedcentral.com/submission-guidelines/preparing-your-manuscript/methodology
 
-Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-author-details-in-pdf-from-r-markdown-latex-template 
+Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-author-details-in-pdf-from-r-markdown-latex-template
 -->
 
 
@@ -65,32 +66,32 @@ Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-auth
 # Abstract
 
 # Introduction
-```{r intro, child="Introduction.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-``` 
+```{r intro, child="docs/Introduction.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
 
 
-# Methods  
-```{r methods, child="Methods.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-``` 
+# Methods
+```{r methods, child="docs/Methods.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
 
 # Results
-## Dataset characteristics  
+## Dataset characteristics
 ```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-## Titration Series Validation 
-In order to use information from the unmixed samples to obtain expected count values for the titrations we first need to evaluate two assumptions about the mixed samples: 
-1. The samples were mixed volumetrically in a $log_2$ dilution series according to the mixture design. 
-2. The unmixed pre- and post-exposure samples have the same proportion of prokaryotic DNA. 
-Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate the samples were volumetrically mixed according to the mixture design. 
-To evaluate the second assumption total prokaryotic DNA in the titrations samples was quantified using a qPCR assay targeting the 16S rRNA gene. 
+## Titration Series Validation
+In order to use information from the unmixed samples to obtain expected count values for the titrations we first need to evaluate two assumptions about the mixed samples:
+1. The samples were mixed volumetrically in a $log_2$ dilution series according to the mixture design.
+2. The unmixed pre- and post-exposure samples have the same proportion of prokaryotic DNA.
+Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate that the samples were volumetrically mixed according to the mixture design.
+To evaluate the second assumption total prokaryotic DNA in the titration samples was quantified using a qPCR assay targeting the 16S rRNA gene.
 
 
-### Spike-in qPCR results   
+### Spike-in qPCR results
 ```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-### Bacterial DNA Concentration 
+### Bacterial DNA Concentration
 ```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
@@ -98,22 +99,22 @@ To evaluate the second assumption total prokaryotic DNA in the titrations sample
 ```{r thetaEst, child="results/theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-## Measurement Assessment  
-Next we assessed qualitative and quantiative nature of 16S rRNA measurement process using our two-sample titration dataset. 
-For the qualitative assessment we analyzed the relative abundance of features only observed in the unmixed samples or titrations which are not expected to be observed given the tritation experimental design. 
-For the quantitative assessment we looked the the relative abundance and differential abundance log fold-change estimates. 
+## Measurement Assessment
+Next we assessed qualitative and quantiative nature of 16S rRNA measurement process using our two-sample titration dataset.
+For the qualitative assessment we analyzed the relative abundance of features only observed in the unmixed samples or titrations which are not expected to be observed given the tritation experimental design.
+For the quantitative assessment we looked the the relative abundance and differential abundance log fold-change estimates.
 
 ### Qualitative Assessment
 
 <!--
-Proportion of titration and endpoint specific features that could not be explained by sampling alone. 
+Proportion of titration and endpoint specific features that could not be explained by sampling alone.
 -->
 
 ```{r qualAnalysis, child="results/qualitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
 ### Quantitative Assessment
-
+__Quant Assessment Intro__
 <!--
 Count Error Rate Results
 -->
@@ -127,13 +128,12 @@ logFC Error Rate Results
 ```
 
 # Discussion
-```{r discussion, child="Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-``` 
+```{r discussion, child="docs/Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```
 
-# References 
+# References
 <div id="refs"></div>
 
 # Supplemental
 ```{r supplemental, child="results/Supplemental.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
-
