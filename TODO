@@ -1,29 +1,47 @@
-## Manuscript Revisions 
-- Revise Text
-      - Marc
-- Revise figures/ tables 
-- Revise methods 
-- Address other issues 
-      - use of term relative abundance  
-      - log2 for titrations and theta
-- Restructure/ re-org
+## Manuscript Revisions
+Google doc with notes for revisions
+      https://docs.google.com/document/d/1edrGulddMo1-PMYqaNwiWAFx_aZ5fJDjmxdDdZ7pzeg/edit#
 
-## Supplemental 
-- add phylosignal  
-- logFC norm  
+- Revise methods
+  - more pipeline details
+    - QIIME
+    - DADA2
+
+- Revise figures/ tables
+  - logFC to match relative abundance
+  - figure 1 based on Scott's recommendations
+  - figures 2 and 3 merge, incorporate some values into table?
+  - Table with relative abundance exp v. obs slopes
+- Revise methods
+
+- post-specific feature logFC why not use
+
+- Address other issues
+      - use of term relative abundance
+      - log2 for titrations and theta
+
+- qualitative assessment results
+  - number of PCR replicates: unmix specific
+  - titration specific: #titrations and PCR reps
+  - relate to false positive and false negative conclusions
+    - prevalence plot?
+
+## Supplemental
+- add phylosignal
+- logFC norm
 
 ## Data Archiving
-* qPCR  
+* qPCR
 * seq
 * count tables
 
 ## Project cleanup
-- Cache figure and table data 
-- Move processing code to munge  
+- Cache figure and table data
+- Move processing code to munge
 - 00 munge to get phyloseq and MRexp objects
-- Use munge/scripts for scripts to generate intermediate RDS files 
-- Add data descriptions 
-- Comment code 
+- Use munge/scripts for scripts to generate intermediate RDS files
+- Add data descriptions
+- Comment code
 - remove pre-processing code from manuscript
 
 
@@ -35,3 +53,5 @@
   - http://msystems.asm.org/content/2/6/e00092-17?etoc=
 * PCR bias characterization
   - http://onlinelibrary.wiley.com/store/10.1111/1462-2920.12259/asset/emi12259.pdf?v=1&t=jdym5rzg&s=a398d44b62a049dae799d99a7d28b52222d5f2e3
+* Differential abundance method
+  - https://www.biorxiv.org/content/early/2018/04/04/294678

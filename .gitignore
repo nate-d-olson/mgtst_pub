@@ -18,5 +18,15 @@ reports/*cache
 *toc
 *out
 
+
+## figures 
+img/*pdf 
+img/*png
+
+## Compiled results 
+results/*pdf
+results/*html 
+reports/*html 
+reports/*pdf  
 ## ProjectTemplate Directories
 cache
