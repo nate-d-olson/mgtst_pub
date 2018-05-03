@@ -5,7 +5,7 @@ date: '`r Sys.Date()`'
 output:
   bookdown::pdf_document2:
     toc: FALSE
-bibliography: [mgtst.bib, packages.bib]
+bibliography: [mgtst.bib]
 ---
 
 <!-- Outline
@@ -20,22 +20,21 @@ bibliography: [mgtst.bib, packages.bib]
       - qualitative assessment -->
 
 
-Targeted sequencing of the 16S rRNA gene, 16S rRNA marker-gene-surveys, is a commonly used method for sequencing a microbial community.
+Targeted sequencing of the 16S rRNA gene, 16S rRNA marker-gene-surveys, is a commonly used method for characterizing microbial communities, microbiomes.
 The 16S rRNA marker-gene-survey measurement process includes molecular (e.g. PCR and sequencing) and computational steps (e.g., sequence clustering) [@Goodrich2014].
-Molecular steps are used to selective target and sequence the 16S rRNA gene from prokaryotic organisms within a sample.
-The computational steps, convert the raw sequence data into a matrix with features (e.g., operational taxonomic units)relative abundance values for each sample [@Goodrich2014].
+Molecular steps are used to selectively target and sequence the 16S rRNA gene from prokaryotic organisms within a sample.
+The computational steps, convert the raw sequence data into a matrix with feature (e.g., operational taxonomic units) relative abundance values for each sample [@Goodrich2014].
 Both molecular and computational measurement process steps contribute to the overall measurement bias and dispersion [@Amore2016; @Goodrich2014; @brooks2015truth].
-Proper measurement method evaluation allows for the characterization of how individual steps impact the measurement processes as a whole and determine where to focus efforts on improving the measurement process.
+Proper measurement method evaluation allows for the characterization of how individual steps impact the measurement processes as a whole and determine where to focus efforts for improving the measurement process.
 Appropriate datasets and methods are needed to evaluate the 16S rRNA marker-gene-survey measurement process.
 A sample or dataset with "ground truth" is needed to characterize measurement process accuracy.
-Numerous studies have characterized the 16S rRNA measurement process using mock communities, simulated data, and environmental samples.
+Numerous studies have evaluated quantitative and qualitative characteristics of the 16S rRNA measurement process using mock communities, simulated data, and environmental samples.
 
 
-Mock communities are used to assess the qualitative characteristics of a dataset [@bokulich2016mockrobiota].
+To assess the 16S rRNA sequencing measurement process qualitative characteristics of a mock communities are commonly used [@bokulich2016mockrobiota].
 As the number of organisms in the mock community is known, the total number of features can be compared to the expected value.
 The number of observed features in a mock community is often significantly higher than the expected number of organism [@Kopylova2014].
 The higher than expected number of features is often attributed to sequencing and PCR artifacts as well as reagent contaminants [@Brooks2015; @Huse2010].
-
 A notable exception to this is mock community benchmarking studies evaluating sequencing inference method, such as DADA2 [@callahan2016dada2].
 Sequence inference methods aim to reduce the number of sequence artifacts features.
 While mock communities have a known value, they lack the feature diversity and relative abundance dynamic range of real samples [@bokulich2016mockrobiota].
@@ -44,7 +43,7 @@ While mock communities have a known value, they lack the feature diversity and r
 
 
 The quantitative characteristics of 16S rRNA sequence data are normally assessed using mock communities and simulated data.
-Mock communities of equimolar and staggered concentration are used to assess the relative abundance estimates quantitative accuracy [@Kopylova2014].
+Mock communities of equimolar and staggered concentration are used to assess relative abundance estimate quantitative accuracy [@Kopylova2014].
 Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample.
 These taxonomic specific effects have been attributed to primer mismatches and DNA extraction biases [@Brooks2015]. <!-- surely GC bias must have a role as well, seems like you generally need more discussion about sources of bias here, since that's the motivation for the whole paper? -->
 Simulated count tables have been used to assess differential abundance method, where specific taxa are artificially overrepresented in one set of samples compared to another [@McMurdie2014].
@@ -52,14 +51,14 @@ Using simulated data to assess log fold-change estimates only evaluates computat
 
 
 Quantitative and qualitative assessment can also be performed using sequence data generated from mixtures of environmental samples.
-While simulated data and mock communities are useful in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities and simulated data are not necessarily optimized for the the sequencing error profile and feature diversity of real samples.
+While simulated data and mock communities are useful in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities and simulated data are not necessarily optimized for the sequencing error profile and feature diversity of real samples.
 Data from environmental samples, which are real samples, are often used to benchmark new molecular laboratory and computational methods.
 However, without an expected value to compare to, only measurement precision can be evaluated.
 By mixing environmental samples, an expected value can be calculated using information from the unmixed samples and how they were mixed.
 Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq data[@parsons2015using; @pine2011adaptable; @thompson2005use].
 
 
-In the present study, we developed a mixture dataset of extracted DNA from human stool samples for assessing 16S sequencing.
+In the present study, we developed a mixture dataset of extracted DNA from human stool samples for assessing 16S rRNA sequencing.
 The mixture datasets were processed using three bioinformatic pipelines.
 We developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results.
 The quantitative results were similar across pipelines but the qualitative results varied across pipelines.

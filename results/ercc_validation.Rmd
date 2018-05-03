@@ -186,12 +186,12 @@ ercc_tbl <- left_join(ercc_stdtbl, ercc_vldtbl)
 #       theme_bw()
 ```
 
-Volumetric mixing of the two-sample titration was validated using qPCR to quantify ERCC plasmids spiked into the POST samples.
-The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves indicating the assays were suitable for validating volumetric mixing (Table \@ref(tab:erccTable)).
-For a $log_2$ two-sample-titration mixture design the expected slope is 1, corresponding to a doubling in template DNA every PCR cycle.
+Titration series volumetric mixing was validated by quantify ERCC plasmids spiked into the POST samples using qPCR.
+The qPCR assay standard curves had a high level of precision with $R^2$ values close to 1 and amplification efficiencies between 0.84 and 0.9 for all standard curves indicating the assays were suitable for validating the titration series volumetric mixing (Table \@ref(tab:erccTable)).
+For our $log_2$ two-sample-titration mixture design the expected slope of the regression line between titration factor and Ct is 1, corresponding to a doubling in template DNA every PCR cycle.
 The qPCR assays targeting the ERCCs spiked into the POST samples had $R^2$ values and slope estimates close to 1 (Table \@ref(tab:erccTable)).
-Slope estimates less than one were attributed to the assay standard curve efficiency less than 1 (Table \@ref(tab:erccTable)).
-ERCCs were not used to validate PRE sample volumetric mixing as PRE sample proportion differences were too small for qPCR quantification.
+Slope estimates less than one were attributed to assay standard curve efficiency less than 1 (Table \@ref(tab:erccTable)).
+ERCCs spiked into PRE samples were not used to validate volumetric mixing as PRE sample proportion differences were too small for qPCR quantification.
 The expected $C_t$ difference for the entire range of PRE concentrations in only 1.
 When considering the quantitative limitations of the qPCR assay these results confirm that the unmixed samples were volumetrically mixed according to the design.
 
@@ -201,7 +201,7 @@ When considering the quantitative limitations of the qPCR assay these results co
 ercc_tbl %>%
       left_join(erccMeta) %>%
       mutate(ercc_id = str_remove(ercc_id, "ERCC-00")) %>%
-      filter(treatment == "Post") %>% 
+      filter(treatment == "Post") %>%
       dplyr::rename(Individual = biosample_id,
              `Std. $R^2$` = std_R2,
              `$R^2$` = R2,

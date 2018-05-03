@@ -214,14 +214,14 @@ data_frame(pipe = names(mrexp),
 ```
 
 
-```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequencing dataset summary. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. The dashed horizontal line indicates overall median library size. Excluding one PCR replicate from subject E01JH0016 titration 5	that had only 3,195 reads. (B) Smoothing spline of the base quality score (BQS) by sequencing cycle. Vertical lines indicate approximate overlap region between forward and reverse reads."}
+```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequence dataset characteristics. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. The dashed horizontal line indicates overall median library size. Excluding one PCR replicate from subject E01JH0016 titration 5	that had only 3,195 reads. (B) Smoothing spline of the base quality score (BQS) across the amplicon by subject. Vertical lines indicate approximate overlap region between forward and reverse reads. Forward reads go from position 0 to 300 and reverse reads from 464 to 164."}
 lib_size_fig <- meta_df %>%
       filter(Read == "R1", biosample_id != "NTC") %>% unique() %>%
       filter(reads > 10000) %>%
       ggplot() +
       geom_boxplot(aes(x = biosample_id, y = reads, fill = biosample_id)) +
       # scale_y_log10() +
-      geom_hline(aes(yintercept = median(lib_size)), color = "grey60", linetype = 2) +
+      geom_hline(aes(yintercept = median(lib_size)), color = "grey40", linetype = 2) +
       theme_bw() + labs(y = "Reads",
                         x = "Subject",
                         fill = "Subject")
@@ -230,8 +230,8 @@ qual_fig <- qa_cycle_q_df %>%
       sample_frac(0.25) %>% ## To speed up runtime
       filter(biosample_id != "NTC", ill_id != "1-F9") %>%
       ggplot(aes(x = amp_pos, y = score)) +
-      geom_vline(aes(xintercept = 300), color = "grey60") +
-      geom_vline(aes(xintercept = 160), color = "grey60") +
+      geom_vline(aes(xintercept = 300), color = "grey40") +
+      geom_vline(aes(xintercept = 160), color = "grey40") +
       geom_smooth(aes(weight = count, group = paste(Read, biosample_id), color = biosample_id)) +
       theme_bw() +
       scale_x_continuous(breaks = c(0,150,300, 450)) +
@@ -244,7 +244,7 @@ ggarrange(lib_size_fig, qual_fig, ncol = 1, nrow = 2,
           labels = "AUTO", common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
-```{r readsVfeats, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline. (A) Scatter plot of observed features versus the number of reads per sample. (B) Observed feature distribution by pipeline and individual. Excluding one PCR replicate from subject E01JH0016 titration 5 with only 3,195 reads, and all the Mothur PCR replicates for E01JH0017 titration 4, with 1,777 observed features."}
+```{r readsVfeats, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Relationship between the number of reads and features per sample by bioinformatic pipeline. (A) Scatter plot of observed features versus the number of reads per sample. (B) Observed feature distribution by pipeline and individual. Excluding one PCR replicate from subject E01JH0016 titration 5 with only 3,195 reads, and the Mothur E01JH0017 titration 4 (all four PCR replicates), with 1,777 observed features."}
 feat_read_df <- meta_df %>% filter(Read == "R1",
                    biosample_id != "NTC") %>%
       left_join(obs_feat_df)  %>%
@@ -252,43 +252,47 @@ feat_read_df <- meta_df %>% filter(Read == "R1",
       mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime"))
 
 feat_v_reads <- feat_read_df %>%
+      mutate(reads = reads/1000) %>%
       ggplot() +
       geom_point(aes(x = reads, y = obs_feat, fill = biosample_id), shape = 21) +
       facet_grid(.~pipe) +
       theme_bw() +
-      scale_y_log10(breaks = c(1, 10,100, 500, 1000)) +
-      labs(x = "Reads", y = "Features", fill = "Individual") +
-      theme(legend.position = "bottom")
+      # scale_y_log10(breaks = c(1, 10,100, 500, 1000)) +
+      scale_y_log10() +
+      labs(x = "Reads (1K)", y = "Features", fill = "Individual") +
+      theme(legend.position = "bottom") +
+      annotation_logticks(sides = "l")
 
 feat_box <- feat_read_df %>%
       ggplot() +
       geom_boxplot(aes(x = pipe, y = obs_feat, fill = biosample_id), shape = 21) +
       # facet_grid(.~pipe) +
       theme_bw() +
-      scale_y_log10(breaks = c(1, 10, 100, 500, 1000)) +
+      # scale_y_log10(breaks = c(1, 10, 100, 500, 1000)) +
+      scale_y_log10() +
       labs(x = "Pipeline", y = "Features", fill = "Subject") +
-      theme(legend.position = "bottom")
+      theme(legend.position = "bottom") +
+      annotation_logticks(sides = "l")
 
 ggarrange(feat_v_reads, feat_box, ncol = 1, nrow = 2,
           labels = "AUTO", common.legend = TRUE, align = "v", legend = "bottom")
 ```
 
-We first characterize the number of reads per sample and distribution of base quality scores.
+We first characterize the number of reads per sample and base quality score distribution.
 The number of reads per sample and distribution of base quality scores by position was consistent across subjects (Fig. \@ref(fig:qaPlots)).
 Two barcoded experimental samples had less than 35,000 reads.
 The rest of the samples with less than 35,000 reads were no template PCR controls (NTC).
 Excluding the one failed reaction with 2,700 reads and NTCs, there were $`r median(lib_size)`$ (`r min(lib_size)`-`r max(lib_size)`, median and range) sequnces per sample.
-For the expected overlap region, based on primer positions and read lengths, the forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
+The forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
 
-The resulting count tables generated using the four bioinformatic pipelines were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:qaPlots)C).
-The pipelines evaluated employ different approaches for handling low quality reads resulting in the large variability in drop-out rate, the fraction of raw sequences not included in the count table (Table \@ref(tab:pipeQA)).
-QIIME pipeline has the highest drop-out rate and the highest number of features per sample.
-The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired-end reads.
-The high drop-off rate is due to low basecall accuracy at the ends of the reads especially the reverse reads resulting in a high frequency of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B).
-Additionally, to remove potential sequencing artifacts from the dataset QIIME excludes singletons, OTUs only observed once in the dataset.
-QIIME and DADA2 pipelines were similarly sparse, the fraction of zero values in count tables, despite differences in the number of features and drop-out rate.
-The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples, and there are four PCR replicates for each sample.
-Sparsity was lower for _de-novo_ clustering (Mothur) than sequence inference (DADA2) even though DADA2 has fewer total features.
+The resulting count tables generated using the four bioinformatic pipelines were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Fig. \@ref(fig:readsVfeats)B).
+The pipelines evaluated employ different approaches for handling low quality reads resulting in the large differences in drop-out rate and  the fraction of raw sequences not included in the count table (Table \@ref(tab:pipeQA)).
+QIIME pipeline has the highest drop-out rate and number of features per sample but fewer total features than Mothur.
+The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired-end reads, compared to other commonly used amplicons (__REF__).
+The high drop-off rate is due to low basecall accuracy at the ends of the reads especially the reverse reads resulting in a high proportion of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B).
+Furthermore increasing the drop-out rate, QIIME excludes singletons, OTUs only observed once in the dataset, to remove potential sequencing artifacts from the dataset.
+QIIME and DADA2 pipelines were similarly sparse (the fraction of zero values in count tables) despite differences in the number of features and drop-out rate.
+The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples, and four PCR replicates for each sample.
 With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts.
 
 
