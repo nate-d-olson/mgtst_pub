@@ -1,0 +1,210 @@
+---
+title: "Taxonomy Venn Diagram"
+author: "Nate Olson"
+date: "5/1/2018"
+output: html_document
+---
+
+## Comparison of Taxonomic Assignments By Pipeline
+- Venn diagram showing overlap between pipelines
+      - threshold by abundance 
+      - aggregating at different taxonomic levels 
+
+## Approach 
+- generate data frame for comparison: taxa heirarchy and count totals by pipeline 
+      - load phyloseq objects for the pipelines 
+      - merge objects: try merge_phyloseq or generate new tibbles 
+
+```{r}
+library(phyloseq)
+library(tidyverse)
+library(UpSetR)
+library(grid)
+library(ggplotify)
+library(ggpubr)
+
+pipeline_dir <- "~/Projects/mgtst_pipelines"
+ps_list <- list(
+      dada2 = file.path(pipeline_dir, "dada2/dada_ps.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_ps.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_ps.rds")
+      ) %>% 
+      map(readRDS)
+```
+
+
+```{r}
+get_taxa_df <- function(ps){
+      taxa_df <- tax_table(ps) %>% 
+            as.data.frame() %>%
+            tibble::rownames_to_column(var = "feature_id") %>% 
+            mutate_all(funs(str_remove(.,".__")))
+      
+      taxa_df <- tibble(feature_id = taxa_names(ps), 
+                        f_counts = taxa_sums(ps)) %>% 
+            left_join(taxa_df) 
+      
+      taxa_df %>% 
+             group_by(Rank1, Rank2, Rank3, Rank4, Rank5, Rank6) %>% 
+             summarise(total_count = sum(f_counts))
+}
+
+taxa_df <- ps_list %>% map_dfr(get_taxa_df, .id = "pipe")
+
+taxa_df <- taxa_df %>% 
+      group_by(pipe) %>% 
+      mutate(rel_abu = total_count / sum(total_count))
+```
+Relative abundance distributions vary by pipeline. 
+Single relative abundance thresholds are used for all pipelines in the set plots. 
+With differences in  distributions, different feature fractions will be represented for the pipelines. 
+This may skew results for pipelines with high proportion of taxonomic groups only observed in one pipeline, e.g. DADA2. 
+
+```{r}
+taxa_df %>% ggplot() + 
+      geom_density(aes(x = rel_abu, fill = pipe)) + 
+      facet_wrap(~pipe, nrow = 1) + 
+      scale_x_log10() + 
+      theme_bw() + 
+      theme(legend.position = "bottom")
+```
+Comparison to phylum level relative abundance. 
+The phylum level relative abundance break down is similar across pipelines. 
+Differences are attributed to different taxonomic classification methods and databases. 
+Mothur and unclustered are the most similar.
+This is not unexpected as both pipeline use the same taxonomic classification methods. 
+The DADA2 and QIIME pipelines differed from mothur and QIIME for Proteobacteria and Bacteriodetes. 
+
+
+```{r}
+taxa_df %>% group_by(pipe, Rank2) %>% 
+      summarise(total_abu = sum(rel_abu)) %>% 
+      mutate(Rank2 = if_else(total_abu < 0.01, "Other", Rank2)) %>% 
+      ungroup() %>% 
+      mutate(Rank2 = fct_reorder(Rank2, .x = total_abu, .fun = mean, .desc = TRUE)) %>% 
+      ggplot() +
+      geom_bar(aes(x = Rank2, y = total_abu, fill = pipe),
+               stat = "identity", position = "dodge") +
+      theme_bw() + 
+      labs(x = "Phylum", y = "Relative Abundance", fill = "Pipeline") + 
+      theme(legend.position = "bottom")
+```
+
+
+
+```{r}
+taxa_df %>% group_by(pipe, Rank3) %>% 
+      summarise(total_abu = sum(rel_abu)) %>% 
+      mutate(Rank3 = if_else(total_abu < 0.01, "Other", Rank3)) %>% 
+      ungroup() %>% 
+      mutate(Rank3 = fct_reorder(Rank3, .x = total_abu, .fun = mean, .desc = TRUE)) %>% 
+      ggplot() +
+      geom_bar(aes(x = Rank3, y = total_abu, fill = pipe),
+               stat = "identity", position = "dodge") +
+      theme_bw() + 
+      labs(x = "Class", y = "Relative Abundance", fill = "Pipeline") + 
+      theme(legend.position = "bottom", axis.text.x = element_text(angle = -25, hjust = 0))
+```
+
+```{r}
+taxa_df %>% group_by(pipe, Rank4) %>% 
+      summarise(total_abu = sum(rel_abu)) %>% 
+      mutate(Rank4 = if_else(total_abu < 0.01, "Other", Rank4)) %>% 
+      ungroup() %>% 
+      mutate(Rank4 = fct_reorder(Rank4, .x = total_abu, .fun = mean, .desc = TRUE)) %>% 
+      ggplot() +
+      geom_bar(aes(x = Rank4, y = total_abu, fill = pipe),
+               stat = "identity", position = "dodge") +
+      theme_bw() + 
+      labs(x = "Order", y = "Relative Abundance", fill = "Pipeline") + 
+      theme(legend.position = "bottom", axis.text.x = element_text(angle = -25, hjust = 0))
+```
+
+
+Regardless of threshold, for genus sets most genera were unique to individual pipelines. 
+Excluding unclustered where all but two genera were also observed in mothur. 
+One was unique to the unclustered dataset and one was also observed in the DADA2 dataset. 
+DADA2 had the most unique genera.  
+Sets with QIIME had the fewest genera, excluding the DADA2-QIIME set. 
+QIIME pipeline was the only one to use the open-reference clustering and the Greengenes database. 
+Mothur, DADA2, and unclustered all used the SILVA dataset. 
+The Mothur and DADA2 pipeline use different implentations of the RDP naive bayesian classifier, which may be partially responsible for the mothur, unclustered, and DADA2 differences. 
+Additionally, DADA2 might have used a different version of the silva databse.
+
+```{r}
+make_wide_taxa_df <- function(cutoff_val, taxa_df){
+      ntile_taxa_df <- taxa_df %>% group_by(pipe) %>% 
+            mutate(feature_ntile = ntile(rel_abu, 4))
+      
+      ntile_taxa_df %>%
+            tidyr::unite(genus_name, Rank1, Rank2, Rank3, Rank4, Rank5, Rank6, sep = "-") %>%
+            filter(feature_ntile > cutoff_val) %>%
+            mutate(obs = 1) %>%
+            select(pipe, genus_name, obs) %>%
+            tidyr::spread(pipe, obs, fill = 0) %>%
+            as.data.frame()
+}
+
+plot_df <- tibble::tibble(cutoff_vals = c(0, 3)) %>% 
+      mutate(wide_df = map(cutoff_vals, make_wide_taxa_df, taxa_df)) %>% 
+      mutate(set_plot = map(wide_df, ~{upset(.,order.by = "degree", empty.intersections = TRUE)}),
+             set_gg = map(set_plot, as.ggplot))
+```
+
+```{r taxaSets, fig.cap = "Pipeline genus-level feature taxonomic assignment set overlap for the all features (A) and the 25 most abundance genera by pipeline (B)."}
+ggarrange(plotlist = plot_df$set_gg, ncol = 2, nrow = 1, labels = "AUTO")
+```
+
+
+```{r}
+phylum_abu <- taxa_df %>% 
+      group_by(pipe, Rank2) %>% 
+      summarise(total_abu = sum(rel_abu)) %>% 
+      mutate(Rank2 = if_else(total_abu < 0.01, "Other", Rank2)) %>% 
+      ungroup() %>% 
+      mutate(Rank2 = fct_reorder(Rank2, .x = total_abu, .fun = mean, .desc = TRUE)) %>% 
+      ggplot() +
+      geom_bar(aes(x = Rank2, y = total_abu, fill = pipe),
+               stat = "identity", position = "dodge") +
+      theme_bw() + 
+      labs(x = "Phylum", y = "Rel Abu", fill = "Pipeline") + 
+      theme(legend.position = "bottom", axis.text.x = element_text(angle = -25, hjust = 0))
+
+ord_abu <- taxa_df %>% group_by(pipe, Rank2, Rank4) %>% 
+      summarise(total_abu = sum(rel_abu)) %>% 
+      mutate(Rank4 = if_else(total_abu < 0.01, "Other", Rank4)) %>%
+      ungroup() %>% 
+      mutate(Rank4 = fct_reorder(Rank4, .x = total_abu, .fun = mean, .desc = TRUE)) %>% 
+      ggplot() +
+      geom_bar(aes(x = Rank4, y = total_abu, fill = pipe),
+               stat = "identity", position = "dodge") +
+      theme_bw() + 
+      labs(x = "Order", y = "Rel Abu", fill = "Pipeline") + 
+      theme(legend.position = "bottom", axis.text.x = element_text(angle = -25, hjust = 0))
+
+make_wide_taxa_df <- function(cutoff_val, taxa_df){
+      ntile_taxa_df <- taxa_df %>% group_by(pipe) %>% 
+            mutate(feature_ntile = ntile(rel_abu, 4))
+      
+      ntile_taxa_df %>%
+            tidyr::unite(genus_name, Rank1, Rank2, Rank3, Rank4, Rank5, Rank6, sep = "-") %>%
+            filter(feature_ntile > cutoff_val) %>%
+            mutate(obs = 1) %>%
+            select(pipe, genus_name, obs) %>%
+            tidyr::spread(pipe, obs, fill = 0) %>%
+            as.data.frame()
+}
+
+plot_df <- tibble::tibble(cutoff_vals = c(0, 3)) %>% 
+      mutate(wide_df = map(cutoff_vals, make_wide_taxa_df, taxa_df)) %>% 
+      mutate(set_plot = map(wide_df, ~{upset(.,order.by = "degree", empty.intersections = TRUE)}),
+             set_gg = map(set_plot, as.ggplot))
+
+
+ggarrange(
+      ggarrange(phylum_abu, ord_abu, ncol = 2, nrow = 1, labels = c("A","B"), 
+                common.legend = TRUE, legend = "bottom"),
+      ggarrange(plotlist = plot_df$set_gg, ncol = 2, nrow = 1, labels = c("C","D")),
+      ncol = 1, nrow = 2)
+```
+
