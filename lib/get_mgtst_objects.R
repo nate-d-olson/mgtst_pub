@@ -1,7 +1,7 @@
 ## Loading MRexperiment objects ------------------------------------------------
 ## argument - path to mgtst_pipelines
 ## returns a list pipelines objects
-get_mrexp <- function(pipelines_dir){
+get_mrexp <- function(pipeline_dir){
       mrexp_files <- list(
             dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
             mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
@@ -16,7 +16,7 @@ get_mrexp <- function(pipelines_dir){
 ## Loading Phyloseq objects ------------------------------------------------
 ## argument - path to mgtst_pipelines
 ## returns a list pipelines objects
-get_phyloseq <- function(pipelines_dir){
+get_phyloseq <- function(pipeline_dir){
       ps_files <- list(
             dada2 = file.path(pipeline_dir, "dada2/dada_ps.rds"),
             mothur =  file.path(pipeline_dir, "mothur/mothur_ps.rds"),
