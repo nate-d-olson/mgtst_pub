@@ -261,7 +261,7 @@ mix_binom_tidy %>%
       mutate(pval_cat = if_else(adj.pvalue < 0.05, "p < 0.05", "p >= 0.05"))
 ```
 
-```{r presFig echo = FALSE, eval = FALSE}
+```{r presFig, echo = FALSE, eval = FALSE}
 ggarrange(mix_count_plot, mix_test_plot, ncol = 2, nrow = 1)
 
 tmp_img <- tempfile(fileext = ".png")
@@ -274,7 +274,7 @@ googledrive::drive_upload(media = tmp_img, type = "png",
 # googledrive::drive_update(paste0("defense_presentation/", img_filename), tmp_img)
 ```
 
-```{r presMethodFig echo = FALSE, eval = FALSE}
+```{r presMethodFig, echo = FALSE, eval = FALSE}
 dada_mix_count_plot <- mix_count_df %>% filter(pipe == "dada2") %>%
       ungroup() %>%
       mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2")) %>%

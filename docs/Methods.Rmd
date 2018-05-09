@@ -138,7 +138,7 @@ The Bayesian hypothesis test was formulated using equation \@ref(eq:bht).
 Which when assuming equal priors, $P(\pi < \pi_{min}) = P(\pi \geq \pi_{min})$, reduces to \@ref(eq:bht2).
 For equations \@ref(eq:bht) and \@ref(eq:bht2) $\pi$ is the true feature proportion, $\pi_{min}$ is the minimum detected proportion, $C$ is the expected feature counts, and $C_{obs}$ is the observed feature counts.
 Simulation was used to generate possible values of $C$, assuming $C$ has a binomial distribution given the observed sample total feature abundance, and a uniform probability distribution for $\pi$ between 0 and 1.
-$\pi_{min}$ was calculated using the mixture equation \@ref(eq:mixEq) where $\q_{pre,j}$ and $\q_{post,j}$ are $min(\textbf{Q}_{pre})$ and $min(\textbf{Q}_{post})$ across all features for a subject and pipeline.
+$\pi_{min}$ was calculated using the mixture equation \@ref(eq:mixEq) where $q_{pre,j}$ and $q_{post,j}$ are $min(\textbf{Q}_{pre})$ and $min(\textbf{Q}_{post})$ across all features for a subject and pipeline.
 Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed in unmixed samples due to random sampling.
 
 
@@ -179,7 +179,6 @@ _PRE-specific_ features were defined as features observed in all four PRE PCR re
 
 
 \begin{equation}
-  \begin{split}
       logFC_{lm,j} = \log_2\left(\frac{\theta_l q_{post,j} + (1 - \theta_l) q_{pre,i}}{\theta_m q_{post,j} + (1 - \theta_m) q_{pre,j}}\right)
   (\#eq:expLogFC)
 \end{equation}

@@ -5,25 +5,23 @@ date: '`r Sys.Date()`'
 output:
   bookdown::pdf_document2:
     toc: FALSE
-bibliography: [mgtst.bib, packages.bib]
+bibliography: [mgtst.bib]
 ---
 
 
-We assessed the quantitative and qualitative characteristics of count tables generated using different bioinformatic pipelines using a 16S rRNA marker-gene survey mixture dataset.
-The mixture dataset followed a two-sample titration mixture design, where DNA collected before and after exposure to pathogenic _Escherichia coli_ from five vaccine trial participants (subjects) were mixed following a $log_2$ dilution series.
+We assessed the quantitative and qualitative characteristics of count tables generated using different bioinformatic pipelines and 16S rRNA marker-gene survey mixture dataset.
+The mixture dataset followed a two-sample titration mixture design, where DNA collected before and after exposure to pathogenic _Escherichia coli_ from five vaccine trial participants (subjects) were mixed following a $log_2$ dilution series (Fig. \@ref(fig:countExperimentalDesign)).
 Qualitative count table characteristics were assessed using relative abundance information for features observed only in titrations and unmixed samples.
-We compared feature relative abundance and differential abundance estimates to expected values to quantitatively assess count tables.
-Relative abundance expected values were estimated using information from the unmixed samples and mixture design.
-The differential abundance expected values were derived using only mixture design information.
+We quantitatively assed count tables by comparing feature relative and differential abundance to expected values.
+
 
 ### Count Table Assessment Demonstration
-We demonstrate our novel assessment approach using count tables generated using four different bioinformatic pipelines.
-The pipelines used represent the two most commonly used, Mothur and QIIME, as well as the sequence inference pipeline DADA2.
+We demonstrated our novel assessment approach by evaluating count tables generated using different bioinformatic pipelines, QIIME, Mothur, and DADA2.
 The Mothur pipeline uses _de novo_ clustering for feature inference [@westcott2017opticlust; @schloss2009introducing].
 Pairwise distances used in clustering are calculated using a multiple sequence alignment.
 The quality filtered paired-end reads are merged into contigs.
 The pipeline the aligns contigs to a reference multiple sequence alignment and removes uninformative positions in the multiple sequence alignment.
-The QIIME pipeline uses open-reference clustering where merged paired-end reads are first assigned to reference cluster centers [@Rideout2014;@Caporaso2010].
+The QIIME pipeline uses open-reference clustering where merged paired-end reads are first assigned to reference cluster centers [@Rideout2014; @Caporaso2010].
 Next QIIME clusters unassigned reads _de novo_.
 Unlike Mothur, the QIIME clustering method uses pairwise sequence distances calculated from pairwise sequence alignments.
 As a result, the QIIME pairwise distances are calculated using the full ~436 bp sequences whereas Mothur pairwise distances were calculated using a 270 bp multiple sequence alignment.
@@ -35,7 +33,9 @@ The unclustered features were generated using the Mothur pipeline preprocessing 
 
 
 #### Quantitative Assesssment
-<!-- - Quantitative results
+<!--
+Outline
+- Quantitative results
   - Relative abundance
     - Error rates
     - Bias metric
@@ -44,10 +44,13 @@ The unclustered features were generated using the Mothur pipeline preprocessing 
     - error rates
     - bias metric
     - variance metric -->
+<!--
+Notes
+- GC issue with other sequencing mehtods but not 16S???
+-->
+
 While the relative abundance bias metric was significantly different between pipelines overall, pipeline choice had minimal impact on the quantitative assessment results when accounting for subject-specific effects.
 Outlier features, those with extreme quantitative analysis bias and variance metrics, were observed for all pipelines and both relative and differential abundance assessments.
-
-<!-- GC issue with other sequencing mehtods but not 16S??? -->
 Outlier features could not be attributed to bioinformatic pipelines and are likely due to biases in the molecular biology part of the measurement process.
 Outlier features are not likely a pipeline artifact as they were observed in count tables generated using the unclustered pipeline as well as standard bioinformatic pipelines.
 We were unable to attribute outlier features to relative abundance values, log fold-change between unmixed samples, and sequence GC content.
@@ -152,10 +155,13 @@ Using more diverse samples to generate mixtures would address this issue.
 
 ## Conclusions
 This two-sample-titration dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.
-The sequence dataset presented in this study can be processed with any 16S bioinformatic pipeline to generate a count table.
+The sequence dataset presented in this study can be processed with any 16S bioinformatic pipeline.
 Our quantitative and qualitative assessment can then be performed on the count table and the results compared to those obtained using the pipelines included in this study.
-Based on the results of our assessment the pipelines generate sets of features varying in total feature abundance, number of features per samples, and total features.
+The threee pipelines we evaluated produced sets of features varying in total feature abundance, number of features per samples, and total features.
 The objective of any pipeline is to differentiate true biological sequences from artifacts of the measurement process.
+In general based on our evalutation results we recommend using for DADA2 for feature-level abundance analysis, e.g. differential abundance testing.
+While DADA2 performed poorly in our qualitative assessment, the pipeline had performed better in the quantiative assessment compared to the other pipelines. 
+Additionally, the DADA2 poor qualitative assessment results due to false-negative features are unlikely to negatively impact feature-level abundance analysis, though additional research is needed to validate this claim.
 When determining which pipeline to use for a study, users should consider whether minimizing false positives (DADA2) or false negatives (Mothur) is more appropriate for their study objectives.
 When a sequencing dataset is processed using DADA2, the user can be more confident that an observed feature represents a member of the microbial community and not a measurement artifact.
 Pipeline parameter optimization could address DADA2 false-negative issue.
