@@ -163,7 +163,7 @@ slope_logFC <- logFC_feature_summary %>%
                    outlier.shape = NA) +
       geom_hline(aes(yintercept = 0), color = "grey20", linetype = 2) +
       theme_bw() +
-      labs(x = "Subject", y = "Bias", fill = "Pipeline")
+      labs(x = "Subject", y = "1-slope", fill = "Pipeline")
 
 ymin <- ggplot_build(slope_logFC)$data[[1]]$ymin %>% min()
 ymax <- ggplot_build(slope_logFC)$data[[1]]$ymax %>% max()

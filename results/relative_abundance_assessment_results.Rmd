@@ -324,13 +324,14 @@ rel_abu_error_summary %>%
       arrange(Metric) %>%
      dplyr::select(Metric, Pipeline, E01JH0004, E01JH0011, E01JH0016, E01JH0017, E01JH0038) %>%
       knitr::kable(booktabs = TRUE, caption = "Maximum feature-level error rate bias (median error rate) and variance (robust COV) by pipeline and individual.", digits = 2) %>%
-      collapse_rows(columns = 1)
+      collapse_rows(columns = 1) %>% 
+    kable_styling(latex_options = c("scale_down"))
 ```
 
 For the relative abundance assessment, I evaluated the consistency of the observed and expected relative abundance estimates for a feature and titration as well as feature-level bias and variance.
 The PRE and POST estimated relative abundance and inferred $\theta$ values were used to calculate titration and feature level error rates.
 Unclustered pipeline $\theta$ estimates were used to calculate the error rates for all pipelines to prevent over-fitting.
-Only features observed in all PRE and POST PCR replicates and PRE and POST specific features were included in the analysis (Table \@ref(tab:relAbuFeatTbl)).
+Only features observed in all PRE and POST PCR replicates and PRE and POST specific features were included in the analysis (Table \@ref(tab:relAbuErrorTbl)).
 PRE and POST specific features were defined as present in all four PCR replicates of the PRE or POST PCR replicates, respectively, but none of the PCR replicates for the other unmixed samples.
 There is lower confidence in PRE or POST feature relative abundance when the feature is not observed in some of the 4 PCR replicates, therefore these features were not included in the error analysis.
 Overall, agreement between the inferred and observed relative abundance was high for all individuals and bioinformatic pipelines (Fig. \@ref(fig:relAbuError)A).
