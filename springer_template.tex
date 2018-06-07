@@ -1,0 +1,105 @@
+% !TeX program = pdfLaTeX
+\documentclass[smallextended]{svjour3}       % onecolumn (second format)
+%\documentclass[twocolumn]{svjour3}          % twocolumn
+%
+% \smartqed  % flush right qed marks, e.g. at end of proof
+%
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{graphicx}
+
+\usepackage[hyphens]{url} % not crucial - just used below for the URL
+\usepackage{hyperref}
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+%
+% \usepackage{mathptmx}      % use Times fonts if available on your TeX system
+%
+% insert here the call for the packages your document requires
+%\usepackage{latexsym}
+% etc.
+%
+% please place your own definitions here and don't use \def but
+% \newcommand{}{}
+%
+% Insert the name of "your journal" with
+% \journalname{myjournal}
+%
+
+%% load any required packages here
+$preamble$
+
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+
+\begin{document}
+
+\title{$title$}
+$if(subtitle)$ \subtitle{$subtitle$} $endif$
+
+$if(titlerunning)$
+    \titlerunning{$titlerunning$}
+$endif$
+
+\author{
+      ND Olson \and%  
+      MS Kumar \and%  
+      S Hao \and% 
+      W Timp \and%  
+      ML Salit \and%  
+      OC Stine \and%  
+      H Corrada Bravo% 
+}
+
+\authorrunning{Olson et al.}
+
+\institute{
+      ND Olson \and ML Salit \at
+      Material Measurement Laboratory, National Institute of Standards and Technology, Gaithersburg, MD 20899, USA \\
+      \email{nolson@nist.gov}
+\and
+      ND Olson \and MS Kumar \and H Corrada Bravo \at
+      Center for Bioinformatics and Computational Biology, University of Maryland, College Park, MD 20742, USA \\
+      University of Maryland Institute for Advanced Computer Studies, College Park, MD 20742, USA
+\and
+      S Hao \and W Timp \at
+      Department of Biomedical Engineering, Johns Hopkins University
+\and
+      OC Stine \at School of Medicine, University of Maryland
+\and
+      H Corrada Bravo \at
+      Department of Computer Science, University of Maryland, College Park, MD 20742, USA
+}
+
+\date{Received: date / Accepted: date}
+% The correct dates will be entered by the editor
+
+
+\maketitle
+
+\begin{abstract}
+$abstract$
+\\
+\keywords{
+    $for(keywords)$
+    $keywords$ \and
+    $endfor$
+}
+
+\end{abstract}
+
+
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+
+$body$
+
+\bibliographystyle{spbasic}
+\bibliography{$for(bibliography)$$bibliography$$sep$,$endfor$}
+
+\end{document}
