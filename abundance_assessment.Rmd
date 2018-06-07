@@ -1,5 +1,6 @@
 ---
 title: "Assessing 16S marker gene survey data analysis methods using mixtures of human stool sample DNA extracts."
+abstract: 16S rRNA marker-gene surveys use targeted sequencing to characterize prokaryotic microbial communities. Analysis of these studies is confronted with numerous bioinformatic pipelines and downstream analysis methods, with limited guidance on how to decide between appropriate methods from simulation studies or limited complexity benchmark studies. Appropriate data sets and statistics for assessing these methods are needed. A mixture of environmental samples is one approach for generating assessment data sets with the real data complexity while providing an expected value.We developed a mixture dataset for assessing 16S rRNA bioinformatic pipelines and downstream analysis methods using samples collected from participants in a Enterotoxigenic _Escherichia coli_ (ETEC) vaccine trial participants. A two-sample titration mixture design was used where DNA from stool samples prior to ETEC exposure was titrated into stools samples collected after exposure, in effect diluting the amount of ETEC in the mixed sample. The sequencing data were processed using multiple bioinformatic pipelines, DADA2 a sequence inference method, Mothur a _de novo_ clustering method, and QIIME with open-reference clustering. The pipelines varied in the number of features and proportion of reads passing quality control but had similar sparsity. The mixture dataset was used to qualitatively and quantitatively assess the count tables generated using the pipelines. Statistical tests were used to determine if features only present in unmixed samples and titrations, _unmixed_- and _titration_-specific features, were had abundance value that could be explained by sampling alone. For Mothur and QIIME less than 5\% of  _unmixed_- and _titration_-specific feature abundance could not be explained by sampling alone where as for DADA2 greater than 50\% of _unmixed_-specific features and 10\% of _titration_- specific features could not be explained by sampling alone. The quantitative assessment evaluated pipeline performance by comparing observed to expected relative and differential abundance values. Expected relative abundance and differential abundance values were calculated using information from the unmixed samples and mixture design. Overall the observed relative abundance and differential abundance values were consistent with the expected values. We developed feature-level bias and variance metric to further characterize relative abudance and differential abundance quantitative performance.Relative abundance feature-level bias metric was significantly different across the three platforms with DADA2 having the lowest bias, followed by Mothur, and QIIME.The relative abundance feature-level variance metric and both the differential abundance feature-level bias and variance metrics did not differ significantly across the three pipelines.The dataset and methods developed for this study will serve as a valuable community resource for assessing 16S rRNA marker-gene survey bioinformatic methods.
 author:
   - fnm: "Nathan"
     snm: "Olson"
@@ -44,11 +45,11 @@ output:
   bookdown::pdf_document2:
   # bookdown::word_document2:
     toc: FALSE
-    # template: template.tex
+    template: template.tex
     keep_tex: TRUE
-    citation_package: "biblatex"
-# documentclass: "bmcart"
-bibliography: [mgtst.bib, packages.bib]
+    citation_package: "natbib"
+documentclass: "bmcart"
+bibliography: "bibliography.bib"
 ---
 
 ```{r include = FALSE}
@@ -63,7 +64,9 @@ Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-auth
 
 
 
-# Abstract
+<!-- # Abstract -->
+<!-- ```{r abstract, child="docs/Abstract.Rmd", warning=FALSE, message=FALSE, echo = FALSE} -->
+<!-- ``` -->
 
 # Introduction
 ```{r intro, child="docs/Introduction.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
@@ -71,38 +74,38 @@ Rmarkdown with BMC template https://stackoverflow.com/questions/44373540/no-auth
 
 
 # Methods
-```{r methods, child="docs/Methods.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r methods, child="docs/Methods.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 # Results
 ## Dataset characteristics
-```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r seqChar, child="results/seq_data_characteristics.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 ## Titration Series Validation
-In order to use information from the unmixed samples to obtain expected count values for the titrations we first need to evaluate two assumptions about the mixed samples:
+To validate the two-sample titration dataset for use in abundance assessment we evaluated two assumptions about the titrations:
 1. The samples were mixed volumetrically in a $log_2$ dilution series according to the mixture design.
-2. The unmixed pre- and post-exposure samples have the same proportion of prokaryotic DNA.
-Exogenous DNA was spiked into the unmixed samples prior to mixing and quantified using qPCR to validate that the samples were volumetrically mixed according to the mixture design.
-To evaluate the second assumption total prokaryotic DNA in the titration samples was quantified using a qPCR assay targeting the 16S rRNA gene.
+2. The unmixed PRE and POST samples have the same proportion of prokaryotic DNA.
+To validate the sample volumetric mixing exogenous DNA was spiked into the unmixed samples before mixing and quantified using qPCR .
+To evaluate if the PRE and POST samples had the same proportion of prokaryotic DNA total prokaryotic DNA in the titrations samples was quantified using a qPCR assay targeting the 16S rRNA gene.
 
 
 ### Spike-in qPCR results
-```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 ### Bacterial DNA Concentration
-```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 ### Theta Estimates
-```{r thetaEst, child="results/theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r thetaEst, child="results/theta_estimate_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 ## Measurement Assessment
-Next we assessed qualitative and quantiative nature of 16S rRNA measurement process using our two-sample titration dataset.
-For the qualitative assessment we analyzed the relative abundance of features only observed in the unmixed samples or titrations which are not expected to be observed given the tritation experimental design.
-For the quantitative assessment we looked the the relative abundance and differential abundance log fold-change estimates.
+Next, we assessed the qualitative and quantitative nature of 16S rRNA measurement process using our two-sample titration dataset.
+For the qualitative assessment, we analyzed the relative abundance of features only observed in the unmixed samples or titrations which are not expected given the titration experimental design.
+The quantitative assessment evaluated relative and differential abundance estimates.
 
 ### Qualitative Assessment
 
@@ -110,30 +113,34 @@ For the quantitative assessment we looked the the relative abundance and differe
 Proportion of titration and endpoint specific features that could not be explained by sampling alone.
 -->
 
-```{r qualAnalysis, child="results/qualitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r qualAnalysis, child="results/qualitative_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 ### Quantitative Assessment
-__Quant Assessment Intro__
+<!-- __Quant Assessment Intro__ -->
 <!--
 Count Error Rate Results
 -->
-```{r quantAnalysis, child="results/relative_abundance_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r quantAnalysis, child="results/relative_abundance_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 <!--
 logFC Error Rate Results
 -->
-```{r logFCanalysis, child="results/logFC_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r logFCanalysis, child="results/logFC_assessment_results.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
 # Discussion
-```{r discussion, child="docs/Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
+```{r discussion, child="docs/Discussion.Rmd", warning=FALSE, message=FALSE, echo = FALSE, eval = FALSE}
 ```
 
-# References
-<div id="refs"></div>
+<!-- \newpage -->
 
-# Supplemental
-```{r supplemental, child="results/Supplemental.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
-```
+<!-- # References -->
+<!-- <div id="refs"></div> -->
+
+<!-- \newpage -->
+
+<!-- # Supplemental -->
+<!-- ```{r supplemental, child="results/Supplemental.Rmd", warning=FALSE, message=FALSE, echo = FALSE} -->
+<!-- ``` -->

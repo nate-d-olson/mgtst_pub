@@ -1,6 +1,6 @@
 ---
 title: "Assessing 16S marker gene survey data analysis methods using mixtures of human stool sample DNA extracts."
-titlerunning: "Abundance Assessment"
+shorttitle: "Abundance Assessment"
 authorrunning: Olson et al
 thanks: | 
     Grants or other notes about the article that should go on the front 
