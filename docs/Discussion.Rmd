@@ -29,26 +29,9 @@ The DADA2 pipeline uses a probability model and maximization expectation algorit
 Unlike distance-based clustering methods employed by the Mothur and QIIME pipelines, DADA2 parameters determine if low abundance sequences are grouped with a higher abundance sequence.
 As a control, we compared our quantitative assessment results for the three pipelines to a count table of unclustered features.
 The unclustered features were generated using the Mothur pipeline preprocessing methods.
-<!-- The quantitative and qualitative assessment results provide new insight into the marker-gene-survey measurement process. -->
 
 
 #### Quantitative Assesssment
-<!--
-Outline
-- Quantitative results
-  - Relative abundance
-    - Error rates
-    - Bias metric
-    - Variance metric
-  - Differential abundance
-    - error rates
-    - bias metric
-    - variance metric -->
-<!--
-Notes
-- GC issue with other sequencing mehtods but not 16S???
--->
-
 While the relative abundance bias metric was significantly different between pipelines overall, pipeline choice had minimal impact on the quantitative assessment results when accounting for subject-specific effects.
 Outlier features, those with extreme quantitative analysis bias and variance metrics, were observed for all pipelines and both relative and differential abundance assessments.
 Outlier features could not be attributed to bioinformatic pipelines and are likely due to biases in the molecular biology part of the measurement process.
@@ -57,7 +40,7 @@ We were unable to attribute outlier features to relative abundance values, log f
 Features with extreme metric values were not limited to any specific taxonomic group or phylogenetic clade.
 PCR amplification is a well-known bias molecular biology component of the measurement process.
 Mismatches in the primer binding regions impact PCR efficiency and are a potential cause for poor feature-specific performance [@wright2014exploiting].
-Additional research is needed before outlier features are attributed to mismatches in the primer binding regions.
+Additional research is needed before outlier features are attributed to mismatches in the primer binding regions. 
 
 
 #### Qualitative Assessment
@@ -67,7 +50,6 @@ These artifacts can be categorized as false negative or false positive features.
 A false negative occurs when a lower abundance sequence representing an organism within the sample is clustered with a higher abundance sequence from a different organism.
 False positives are sequencing or PCR artifacts not appropriately filtered or assigned to an appropriate feature by the bioinformatic pipeline.
 
-<!-- Summary of qualitative assessment results -->
 
 Count table sparsity, the proportion of zero-valued cells, provides additional insight into the qualitative assessment results.
 A high rate of false negative features is a potential explanation for the  DADA2 count table's poor performance in the qualitative assessment and comparable sparsity to the other pipelines despite having significantly fewer features (Fig. \@ref(fig:qualPlot), \@ref(tab:pipeQA)).
@@ -86,32 +68,11 @@ Similarly, significantly more features than expected are commonly observed for m
 
 False positive features can be reduced, but not eliminated, using smaller amplicon and prevalence filtering.
 The 16S rRNA region sequenced in the study is larger than the region the _de-novo_, and open clustering pipelines were initially developed for, potentially explaining the higher than expected sparsity [@kozich2013development].
-The larger region has a smaller overlap between the forward and reverse reads. As a result merging of the forward and reverse reads did not allow for the sequence error correction that occurs when a smaller amplicon is used. <!-- But it's illumina, I'm surprised if this is a true issue.  What level of sequencing correction is presumed/found typically? -->
-However, even when targeting smaller regions of the 16S rRNA gene both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using mock communities.
+@kozich2013development were reduced the sequence error rate from 0.29\% to 0.06\% when using paired-end reads that completely overlap.
+The larger region has a smaller overlap between the forward and reverse reads. As a result merging of the forward and reverse reads did not allow for the sequence error correction that occurs when a smaller amplicon is used.  However, even when targeting smaller regions of the 16S rRNA gene both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using mock communities.
 Prevalence filtering is used to exclude low abundance features, likely predominantly measurement artifacts [@callahan2016].
 For example, a study exploring the microbial ecology of the Red-necked stint _Calidris ruficollis_, a migratory shorebird, used a hard filter to validate their study conclusions are not biases by false positive features.
 The study authors compared results with and without prevalence filter ensuring that the study conclusions were not biased by using the arbitrary filter or including the low abundant features [@risely2017gut].
-
-<!-- ### Implications for 16S rRNA marker-gene-surveys -->
-<!-- __COMMENTED OUT__ -->
-<!-- - Implications for false positives and false negatives
-  - Primary implication is regarding more likely to impact presence/absence ecological diversity analysis specifically alpha and beta diversity.
-  - Alpha diversity
-    - Though the number of features in a sample may not accurately reflect the true sample richness.
-    - It is unknown if true differences in richness can be detected using the different pipelines.
-    - Reference breakaway
-  -Beta diversity
-    - Impact of false negative and positive feature rates on beta diversity analysis.
-
-<!-- Potentially move to after qual assessment -->
-<!-- - 16S rRNA marker-gene-survey methods are better suited for community level analysis. -->
-<!-- is this an argument for true metagenomic seq instead of 16S? see recent bracken paper by Salzberg et al-->
-  <!-- - Feature-level analysis results, such as differential abundance,
-  are susceptible to unknown biases responsible for the observed outlier features.
-  - Whereas community level analysis, such as beta diversity, are more robust to the unknown feature-level biases observed in this study.
-  - Additional work is needed to further characterize these outliers to increase confidence in the results of feature-level analyses.
-  - potential issues with qualitative community analysis based on qualitative assessment.
-  - feature-level analysis results should be validated using orthogonal methods when appropriate -->
 
 
 ### Using Mixtures to Assess 16S rRNA Sequencing
@@ -168,17 +129,3 @@ Pipeline parameter optimization could address DADA2 false-negative issue.
 For the Mothur and QIIME pipelines, prevalence filtering will reduce the number of false-positive features.
 Feature-level results for any 16S rRNA marker-gene survey should be interpreted with care, as the biases responsible for poor quantitative assessment are unknown.
 Addressing both of these issues requires advances in both the molecular biology and computational components of the measurement process.
-
-
-<!-- There were two primary limitations of the study that were a product of the experimental design.
-Only features that were differentially abundant between the PRE and POST were used in the assessment.
-Using samples from the vaccine trial provided a specific features, _E. coli_ that could be used during method development.
-However, only a limited number of features were differentially abundant between the PRE and POST samples resulting in a smaller set of features that could be used in our assessment.
-Generating mixtures of samples with less similarity would increase the number of features used in the assessment.
-Additionally, using samples from other environments would increase the taxonomic diversity of features used in the assessment and potentially allowing for a more rigorus evaluation of the relationship between the assessment metrics and phylogeny.
-The second limitation of the experimental design was the difference in the proportion of bacterial DNA between the PRE and POST samples.
-We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentation of bacterial DNA across titration but we were unable to estimate the proportion of bacterial DNA in the unmixed samples using the qPCR data.
-Using the 16S sequencing data we inferred the proportion of bacterial DNA from the POST sample in each titration.
-However, the uncertainty and accuracy of the inferrence method is not known resulting in an unaccounted for error source.
-A better method for estimating the proportion of bacterial DNA in the unmixed samples would increase the accuracy of the error metrics.
-Alternatively samples that are primarily prokaryotic DNA could be used -->

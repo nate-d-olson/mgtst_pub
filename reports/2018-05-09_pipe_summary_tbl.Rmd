@@ -1,0 +1,24 @@
+---
+title: "Pipeline summary Table"
+author: "Nate Olson"
+date: "5/9/2018"
+output: bookdown::pdf_document2
+---
+
+```{r include = FALSE}
+library(tidyverse)
+library(kableExtra)
+```
+
+
+```{r}
+read_tsv("data/pipeline_summary.tsv") %>% spread(Pipelines, Value) %>% 
+      mutate(Measurand = factor(Measurand, 
+                                     levels = c("Presence/Absence", 
+                                                "Relative Abundance", 
+                                                "Differential Abundance"))) %>%
+      arrange(Measurand) %>% 
+    kable(format = "latex", booktabs = TRUE) %>% 
+    kableExtra::collapse_rows(columns = c(1,2))
+```
+

@@ -161,9 +161,3 @@ If the proportion of prokaryotic DNA is the same between PRE and POST samples th
 For subjects where the proportion of prokaryotic DNA is higher in the PRE samples, the slope will be negative and positive when the proportion is higher for POST samples.
 The slope estimates are significantly different from 0 for all subjects excluding E01JH0011 (Fig. \@ref(fig:bacPlot)).
 These results indicate that the proportion of prokaryotic DNA is lower in POST when compared to the PRE samples for E01JH0004 and E01JH0017 and higher for E01JH0016 and E01JH0038.
-<!-- Include statements about unmixed sample qPCR- maybe in discussion? -->
-<!-- Unable to measure prokaryotic DNA using qPCR -->
-
-<!-- Not sure relevance of the following sentences -->
-<!-- Across all titrations median prokaryotic DNA concentration varied by individual, with E01JH0011 having the highest concentration, `r round(max(bac_con_summary$median_quant),2)` $ng/\mu l$, and E01JH0038 having the lowest concentration, `r round(min(bac_con_summary$median_quant),2)` $ng/\mu l$.  -->
-<!-- As the DNA concentration for the unmixed samples was normalized to 12.5 $ng/\mu l$ prior to generating the titration series, the proportion of DNA in the samples targeted by 16S sequencing method ranged from `r round(min(bac_con_summary$prok_prop),2)` to `r round(max(bac_con_summary$prok_prop),2)`. -->

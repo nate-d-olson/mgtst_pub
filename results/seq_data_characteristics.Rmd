@@ -362,8 +362,4 @@ Regardless of threshold, for genus sets most genera were unique to individual pi
 Sets with QIIME had the fewest genera, excluding the DADA2-QIIME set.
 QIIME pipeline was the only one to use the open-reference clustering and the Greengenes database.
 Mothur and DADA2 both used the SILVA dataset.
-The Mothur and DADA2 pipeline use different implmentations of the RDP naïve Bayesian classifier, which may be partially responsible for the mothur, unclustered, and DADA2 differences. 
-
-
-<!-- The end of the second paragraph reads more like a discussion  -->
-<!-- Not sure what I want to say/ trying to say here -->
+The Mothur and DADA2 pipeline use different implmentations of the RDP naïve Bayesian classifier, which may be partially responsible for the mothur, unclustered, and DADA2 differences.

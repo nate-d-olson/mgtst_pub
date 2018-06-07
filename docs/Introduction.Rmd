@@ -8,19 +8,6 @@ output:
 bibliography: [mgtst.bib]
 ---
 
-<!-- Outline
-- 16S measurement process
-- Measurement process assessment
-- Quantitative assessment
-- Qualitative assessment
-- Using mixtures for measurement assessment
-- Study overview
-      - using mixtures
-      - quanitative assessment
-      - qualitative assessment 
--->
-
-
 Targeted sequencing of the 16S rRNA gene, 16S rRNA marker-gene-surveys, is a commonly used method for characterizing microbial communities, microbiomes.
 The 16S rRNA marker-gene-survey measurement process includes molecular (e.g. PCR and sequencing) and computational steps (e.g., sequence clustering) [@Goodrich2014].
 Molecular steps are used to selectively target and sequence the 16S rRNA gene from prokaryotic organisms within a sample.
@@ -35,18 +22,18 @@ Numerous studies have evaluated quantitative and qualitative characteristics of 
 To assess the 16S rRNA sequencing measurement process qualitative characteristics of a mock communities are commonly used [@bokulich2016mockrobiota].
 As the number of organisms in the mock community is known, the total number of features can be compared to the expected value.
 The number of observed features in a mock community is often significantly higher than the expected number of organism [@Kopylova2014].
-The higher than expected number of features is often attributed to sequencing and PCR artifacts as well as reagent contaminants [@Brooks2015; @Huse2010].
+The higher than expected number of features is often attributed to sequencing and PCR artifacts as well as reagent contaminants [@brooks2015truth; @Huse2010].
 A notable exception to this is mock community benchmarking studies evaluating sequencing inference method, such as DADA2 [@callahan2016dada2].
 Sequence inference methods aim to reduce the number of sequence artifacts features.
 While mock communities have a known value, they lack the feature diversity and relative abundance dynamic range of real samples [@bokulich2016mockrobiota].
-
-<!-- __False negatives__  Reference for total feature abundance comparisons for different pipelines -->
 
 
 The quantitative characteristics of 16S rRNA sequence data are normally assessed using mock communities and simulated data.
 Mock communities of equimolar and staggered concentration are used to assess relative abundance estimate quantitative accuracy [@Kopylova2014].
 Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample.
-These taxonomic specific effects have been attributed to primer mismatches and DNA extraction biases [@Brooks2015]. <!-- surely GC bias must have a role as well, seems like you generally need more discussion about sources of bias here, since that's the motivation for the whole paper? -->
+Taxonomic specific biases due to DNA extraction have been shown with Gram negatives having higher extraction efficiency compared to Gram negatives [@Costea2017, @Olson2012].
+Mismatches in the primer binding sites are also responsible for taxonomic specific effects [@brooks2015truth; @klindworth2012evaluation; @Gohl2016].
+Additionally, sequence template properties such as GC content, sequence secondary structure, and gene flanking regions have been attributed to taxon specific biases [@Pinto2012; @Hansen1998; @Gohl2016].
 Simulated count tables have been used to assess differential abundance method, where specific taxa are artificially overrepresented in one set of samples compared to another [@McMurdie2014].
 Using simulated data to assess log fold-change estimates only evaluates computational steps of the measurement process.
 

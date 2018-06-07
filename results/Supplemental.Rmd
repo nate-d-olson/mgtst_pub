@@ -3,8 +3,8 @@ title: "Supplemental"
 author: "Nate Olson"
 date: '`r Sys.Date()`'
 output:
-  bookdown::pdf_document2:
-    toc: FALSE
+      pdf_document:
+            toc: FALSE
 ---
 ```{r suppSetUp, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
@@ -32,8 +32,7 @@ theta_est_df %>% ungroup() %>%
                    caption = "Number of features used to estimate theta by biological replicate and pipeline.")
 ```
 
-\pagebreak
-
+\newpage
 # Relative Abundance
 ```{r loadRelAbu}
 prop_inferred <- readRDS("results/data/prop_inferred.RDS")
@@ -48,6 +47,7 @@ prop_inferred %>%
       knitr::kable(booktabs = TRUE, caption = "Number of features by pipeline and individual used in the relative abundance error rate analysis.")
 ```
 
+\newpage
 ```{r relAbuScatter, fig.cap = "Relationship between expected and observed relative abundance. Dark orange line indicates the expected 1-to-1 relationship."}
 prop_inferred %>%
       ggplot() +
@@ -62,11 +62,11 @@ prop_inferred %>%
 ```
 
 
-## Feature Characterization
+<!-- ## Feature Characterization -->
 
-\pagebreak
-
+\newpage
 # log Fold-Change
+
 ```{r loadLogFC, include = FALSE}
 logFC_pre <- readRDS("data/logFC_pre.RDS")
 ```
@@ -81,6 +81,7 @@ logFC_pre %>% filter(T1 == 0, T2 == 20) %>%
       knitr::kable(caption = "Number of PRE-specific and PRE-dominant features by individual and pipeline", booktabs = TRUE)
 ```
 
+\newpage
 ```{r logFCestVexp, fig.cap = "Relationship between log fold-change estimates and expected values. Orange line represents the expected 1-to-1 relationshion."}
 logFC_pre %>%
       filter(T1 != 0, T2 != 20) %>%
@@ -164,6 +165,6 @@ ggarrange(logFCestVexp,
           legend = "bottom")
 ```
 
-## Estimator Comparison
+<!-- ## Estimator Comparison -->
 
-## Feature Characterization
+<!-- ## Feature Characterization -->
