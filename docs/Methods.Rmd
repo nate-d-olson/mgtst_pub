@@ -53,9 +53,9 @@ The 45 samples (seven titrations and two unmixed samples for each of five subjec
 This protocol specifies an initial 16S rRNA PCR followed by a sample indexing PCR, followed by normalization and sequencing.
 
 A total of 192 16S rRNA PCR assays were run including four replicates per sample and 12 no-template controls, using Kapa HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
-The initial PCR assay targeted the V3-V5 region of the 16S rRNA gene, Bakt_341F and Bakt_806R [@klindworth2012evaluation]. 
+The initial PCR assay targeted the V3-V5 region of the 16S rRNA gene, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
 The V3-V5 region is 464 base pairs (bp) long, with forward and reverse reads overlapping by 136 bp, using 2 X 300 bp paired-end sequencing [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
-Primer sequences include overhang adapter sequences for library preparation (forward primer 5'- TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCCTACGGGNGGCWGCAG - 3' and reverse primer 5'- GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGGACTACHVGGGTATCTAATCC - 3').
+Primer sequences include overhang adapter sequences for library preparation (forward primer 5'- TCG TCG GCA GCG TCA GAT GTG TAT AAG AGA CAG CCT ACG GGN GGC WGC AG - 3' and reverse primer 5'- GTC TCG TGG GCT CGG AGA TGT GTA TAA GAG ACA GGA CTA CHV GGG TAT CTA ATC C - 3').
 For quality control, the PCR product was verified using agarose gel electrophoresis to check for appropriate size bands, and concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and normalization steps.
 DNA concentration was measured using SpextraMax Accuclear Nano dsDNA Assay Bulk Kit (Part# R8357#, Lot 215737, Molecular Devices LLC. Sunnyvale CA, USA) and fluorescent measurements were made with a Molecular Devices SpectraMax M2 spectraflourometer (Molecular Devices LLC. Sunnyvale CA, USA). <!-- Is that true for us as well?  @shao? We don't have such an instrument-->
 
@@ -86,7 +86,7 @@ Chimera filtering was performed using UChime (version v4.2.40) without a referen
 OTU clustering was performed using the OptiClust algorithm with a clustering threshold of 0.97 [@westcott2017opticlust].
 The RDP classifier implemented in mothur was used for taxonomic classification against the mothur provided version of the RDP v9 training set [@wang2007naive].
 
-The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (\url{http://nbviewer.jupyter.org/github/biocore/qiime/blob/1.9.1/examples/ipynb/illumina\_overview\_tutorial.ipynb}) using QIIME version 1.9.1 [@Caporaso2010].
+The QIIME open-reference clustering pipeline for paired-end Illumina data was performed according to the online tutorial (Illumina Overview Tutorial (an IPython Notebook): open reference OTU picking and core diversity analyses, \url{http://qiime.org/tutorials/}) using QIIME version 1.9.1 [@Caporaso2010].
 Briefly, the QIIME pipeline uses fastq-join (version 1.3.1) to merge paired-end reads [@aronesty2011ea] and the Usearch algorithm [@edgar2010search] with Greengenes database version 13.8 with a 97% similarity threshold [@desantis2006greengenes] was used for open-reference clustering.
 
 DADA2, an R native pipeline was also used to process the sequencing data [@callahan2016dada2].
