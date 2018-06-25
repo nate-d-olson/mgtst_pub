@@ -324,11 +324,11 @@ rel_abu_error_summary %>%
       arrange(Metric) %>%
      dplyr::select(Metric, Pipeline, E01JH0004, E01JH0011, E01JH0016, E01JH0017, E01JH0038) %>%
       knitr::kable(booktabs = TRUE, caption = "Maximum feature-level error rate bias (median error rate) and variance (robust COV) by pipeline and individual.", digits = 2) %>%
-      collapse_rows(columns = 1) %>% 
+      collapse_rows(columns = 1) %>%
     kable_styling(latex_options = c("scale_down"))
 ```
 
-For the relative abundance assessment, I evaluated the consistency of the observed and expected relative abundance estimates for a feature and titration as well as feature-level bias and variance.
+For the relative abundance assessment, we evaluated the consistency of the observed and expected relative abundance estimates for a feature and titration as well as feature-level bias and variance.
 The PRE and POST estimated relative abundance and inferred $\theta$ values were used to calculate titration and feature level error rates.
 Unclustered pipeline $\theta$ estimates were used to calculate the error rates for all pipelines to prevent over-fitting.
 Only features observed in all PRE and POST PCR replicates and PRE and POST specific features were included in the analysis (Table \@ref(tab:relAbuErrorTbl)).
@@ -337,7 +337,7 @@ There is lower confidence in PRE or POST feature relative abundance when the fea
 Overall, agreement between the inferred and observed relative abundance was high for all individuals and bioinformatic pipelines (Fig. \@ref(fig:relAbuError)A).
 The error rate distribution was similarly consistent across pipelines, including long tails (Fig. \@ref(fig:relAbuError)B)
 
-To assess quantitative accuracy I compared the feature-level relative abundance error rate bias (median error rate, Fig. \@ref(fig:relAbuErrorMetrics)A) and variance ($RCOV=(IQR)/|median|$ Fig. \@ref(fig:relAbuErrorMetrics)B) across pipelines and individuals using mixed effects models.
+To assess quantitative accuracy, we compared the feature-level relative abundance error rate bias (median error rate, Fig. \@ref(fig:relAbuErrorMetrics)A) and variance ($RCOV=(IQR)/|median|$ Fig. \@ref(fig:relAbuErrorMetrics)B) across pipelines and individuals using mixed effects models.
 Large bias and variance values were observed for all pipelines (Table  \@ref(tab:relAbuErrorTbl)).
 Features with large bias and variance metrics (outliers), defined as $1.5\times IQR$ from the median.
 To prevent the outliers from biasing the comparison they were not included in the dataset used to fit the mixed effects model.
@@ -348,4 +348,4 @@ DADA2 had the lowest mean feature-level bias (`r round(dada_error,2)`), followed
 Large variance metric values were observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)).
 The feature-level variance was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuErrorMetrics)B).
 I evaluated whether poor feature-level relative abundance metrics can be attributed to specific taxonomic groups or phylogenetic clades.
-While a significant overall phylogenetic signal was detected for both the bias and variance metric, I was unable to identify specific taxonomic groups or phylogenetic clades exceedingly poor performance in our assessment.
+While a significant overall phylogenetic signal was detected for both the bias and variance metric, no specific taxonomic groups or phylogenetic clades were identified as having an exceedingly poor performance in our assessment.

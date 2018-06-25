@@ -213,7 +213,7 @@ data_frame(pipe = names(mrexp),
       left_join(filter_rate_summary) %>%
       mutate(pipe = forcats::fct_recode(pipe, DADA2 = "dada2", Mothur = "mothur", QIIME = "qiime")) %>%
       dplyr::rename(Pipelines = pipe, `Total Abundance` = `Sample Coverage`, `Drop-out Rate` = `Filter Rate`) %>%
-      knitr::kable(caption = "Summary statistics for the different bioinformatic pipelines. DADA2 is a denoising sequence inference pipeline, QIIME is an open-reference clustering pipeline, and mothur is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and mothur) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum-maximum) per sample total abundance. Drop-out rate is the proportion of reads removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
+      knitr::kable(caption = "Summary statistics for the different bioinformatic pipelines. DADA2 is a denoising sequence inference pipeline, QIIME is an open-reference clustering pipeline, and Mothur  is a de-novo clustering pipeline. No template controls were excluded from summary statistics. Sparsity is the proportion of 0's in the count table. Features is the total number of OTUs (QIIME and Mothur ) or SVs (DADA2) in the count. Sample coverage is the median and range (minimum-maximum) per sample total abundance. Drop-out rate is the proportion of reads removed while processing the sequencing data for each bioinformatic pipeline.", booktabs = TRUE)
 ```
 
 
@@ -348,7 +348,7 @@ The pipelines evaluated employ different approaches for handling low quality rea
 QIIME pipeline has the highest drop-out rate and number of features per sample but fewer total features than Mothur.
 The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired-end reads, compared to other commonly used amplicons [@kozich2013development; @Walters2016-lf].
 The high drop-off rate is due to low basecall accuracy at the ends of the reads especially the reverse reads resulting in a high proportion of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B).
-Furthermore increasing the drop-out rate, QIIME excludes singletons, OTUs only observed once in the dataset, to remove potential sequencing artifacts from the dataset.
+Furthermore, increasing the drop-out rate, QIIME excludes singletons, OTUs only observed once in the dataset, to remove potential sequencing artifacts from the dataset.
 QIIME and DADA2 pipelines were similarly sparse (the fraction of zero values in count tables) despite differences in the number of features and drop-out rate.
 The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples, and four PCR replicates for each sample.
 With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts.
@@ -362,4 +362,4 @@ Regardless of threshold, for genus sets most genera were unique to individual pi
 Sets with QIIME had the fewest genera, excluding the DADA2-QIIME set.
 QIIME pipeline was the only one to use the open-reference clustering and the Greengenes database.
 Mothur and DADA2 both used the SILVA dataset.
-The Mothur and DADA2 pipeline use different implmentations of the RDP naïve Bayesian classifier, which may be partially responsible for the mothur, unclustered, and DADA2 differences.
+The Mothur and DADA2 pipeline use different implmentations of the RDP naïve Bayesian classifier, which may be partially responsible for the Mothur , unclustered, and DADA2 differences.

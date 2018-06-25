@@ -31,7 +31,7 @@ While mock communities have a known value, they lack the feature diversity and r
 The quantitative characteristics of 16S rRNA sequence data are normally assessed using mock communities and simulated data.
 Mock communities of equimolar and staggered concentration are used to assess relative abundance estimate quantitative accuracy [@Kopylova2014].
 Results from relative abundance estimates using mock communities generated from mixtures of DNA have shown taxonomic specific effects where individual taxa are under or over represented in a sample.
-Taxonomic specific biases due to DNA extraction have been shown with Gram negatives having higher extraction efficiency compared to Gram negatives [@Costea2017, @Olson2012].
+Taxonomic specific biases due to DNA extraction have been shown with Gram-negative bacteria having higher extraction efficiency compared to Gram-positive bacteria [@Costea2017; @Olson2012].
 Mismatches in the primer binding sites are also responsible for taxonomic specific effects [@brooks2015truth; @klindworth2012evaluation; @Gohl2016].
 Additionally, sequence template properties such as GC content, sequence secondary structure, and gene flanking regions have been attributed to taxon specific biases [@Pinto2012; @Hansen1998; @Gohl2016].
 Simulated count tables have been used to assess differential abundance method, where specific taxa are artificially overrepresented in one set of samples compared to another [@McMurdie2014].
@@ -43,14 +43,14 @@ While simulated data and mock communities are useful in evaluating and benchmark
 Data from environmental samples, which are real samples, are often used to benchmark new molecular laboratory and computational methods.
 However, without an expected value to compare to, only measurement precision can be evaluated.
 By mixing environmental samples, an expected value can be calculated using information from the unmixed samples and how they were mixed.
-Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq data[@parsons2015using; @pine2011adaptable; @thompson2005use].
+Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq data [@parsons2015using; @pine2011adaptable; @thompson2005use].
 
 
 In the present study, we developed a mixture dataset of extracted DNA from human stool samples for assessing 16S rRNA sequencing.
 The mixture datasets were processed using three bioinformatic pipelines.
 We developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results.
-The quantitative results were similar across pipelines but the qualitative results varied across pipelines.
-We have made both the dataset and metrics developed in this study publically available for evaluating new bioinformatic pipelines.
+The quantitative results were similar across pipelines, but the qualitative results varied across pipelines.
+We have made both the dataset and metrics developed in this study publicly available for evaluating bioinformatic pipelines.
 
 
 <!-- A key step in the measurement process is clustering, the grouping of sequences into biologically relevant units, or operational taxonomic units (OTUs).

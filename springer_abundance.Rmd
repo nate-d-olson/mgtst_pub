@@ -2,12 +2,12 @@
 title: "Assessing 16S marker gene survey data analysis methods using mixtures of human stool sample DNA extracts."
 shorttitle: "Abundance Assessment"
 authorrunning: Olson et al
-thanks: | 
-    Grants or other notes about the article that should go on the front 
+thanks: |
+    Grants or other notes about the article that should go on the front
     page should be placed here. General acknowledgments should be placed at the
     end of the article.
 
-authors: 
+authors:
 - name: ND Olson
   email: nolson@nist.gov
 - name: MS Kumar
@@ -18,15 +18,15 @@ authors:
 - name: H Corrada Bravo
 
 institute:
-- auth: ND Olson \and ML Salit 
-  address: Material Measurement Laboratory National Institute for Standards and Technology 
-- auth: ND Olson \and MS Kumar \and H Corrada Bravo  
+- auth: ND Olson \and ML Salit
+  address: Material Measurement Laboratory National Institute for Standards and Technology
+- auth: ND Olson \and MS Kumar \and H Corrada Bravo
   address: University of Maryland, College Park
-- auth: S Hao \and W Timp 
-  address: Department of Biomedical Engineering, Johns Hopkins University 
-- auth: OC Stine 
+- auth: S Hao \and W Timp
+  address: Department of Biomedical Engineering, Johns Hopkins University
+- auth: OC Stine
   address: School of Medicine, University of Maryland
- 
+
 
 
 keywords:
@@ -38,14 +38,15 @@ keywords:
 
 
 abstract: |
-      16S rRNA marker-gene surveys use targeted sequencing to characterize prokaryotic microbial communities. Analysis of these studies is confronted with numerous bioinformatic pipelines and downstream analysis methods, with limited guidance on how to decide between appropriate methods from simulation studies or limited complexity benchmark studies. Appropriate data sets and statistics for assessing these methods are needed. A mixture of environmental samples is one approach for generating assessment data sets with the real data complexity while providing an expected value.We developed a mixture dataset for assessing 16S rRNA bioinformatic pipelines and downstream analysis methods using samples collected from participants in a Enterotoxigenic _Escherichia coli_ (ETEC) vaccine trial participants. A two-sample titration mixture design was used where DNA from stool samples prior to ETEC exposure was titrated into stools samples collected after exposure, in effect diluting the amount of ETEC in the mixed sample. The sequencing data were processed using multiple bioinformatic pipelines, DADA2 a sequence inference method, Mothur a _de novo_ clustering method, and QIIME with open-reference clustering. The pipelines varied in the number of features and proportion of reads passing quality control but had similar sparsity. The mixture dataset was used to qualitatively and quantitatively assess the count tables generated using the pipelines. Statistical tests were used to determine if features only present in unmixed samples and titrations, _unmixed_- and _titration_-specific features, were had abundance value that could be explained by sampling alone. For Mothur and QIIME less than 5\% of  _unmixed_- and _titration_-specific feature abundance could not be explained by sampling alone where as for DADA2 greater than 50\% of _unmixed_-specific features and 10\% of _titration_- specific features could not be explained by sampling alone. The quantitative assessment evaluated pipeline performance by comparing observed to expected relative and differential abundance values. Expected relative abundance and differential abundance values were calculated using information from the unmixed samples and mixture design. Overall the observed relative abundance and differential abundance values were consistent with the expected values. We developed feature-level bias and variance metric to further characterize relative abudance and differential abundance quantitative performance.Relative abundance feature-level bias metric was significantly different across the three platforms with DADA2 having the lowest bias, followed by Mothur, and QIIME.The relative abundance feature-level variance metric and both the differential abundance feature-level bias and variance metrics did not differ significantly across the three pipelines.The dataset and methods developed for this study will serve as a valuable community resource for assessing 16S rRNA marker-gene survey bioinformatic methods.
+      We compared 16S rRNA bioinformatic pipeliens and downstream analysis methods using a dataset derived from mixing human stool samples. Analysis of 16S rRNA marker-gene surveys, used to characterize prokaryotic microbial communities, may be performed by numerous bioinformatic pipelines and downstream analysis methods. However, there is only limited guidance on how to decide between appropriate methods from simulation studies or limited complexity benchmark studies, appropriate data sets and statistics for assessing these methods are needed. We developed a mixture dataset that provides read data complexity and an expected value for assessing 16S rRNA bioinformatic pipelines and downstream analysis methods. We used samples collected from participants in an Enterotoxigenic _Escherichia coli_ (ETEC) vaccine trial participants. A two-sample titration mixture design was used where DNA from stool samples prior to ETEC exposure was titrated into stools samples collected after exposure, in effect diluting the amount of ETEC in the mixed sample. The sequencing data were processed using multiple bioinformatic pipelines, i) DADA2 a sequence inference method, ii) Mothur a _de novo_ clustering method, and iii) QIIME with open-reference clustering. The pipelines varied in the number of features and proportion of reads passing quality control but had similar sparsity. The mixture dataset was used to qualitatively and quantitatively assess the count tables generated using the pipelines. Statistical tests were used to determine if features only present in unmixed samples and titrations, _unmixed_- and _titration_-specific features, were had abundance value that could be explained by sampling alone. For Mothur and QIIME less than 5\% of  _unmixed_- and _titration_-specific feature abundance could not be explained by sampling alone whereas for DADA2 greater than 50\% of _unmixed_-specific features and 10\% of _titration_- specific features could not be explained by sampling alone. The quantitative assessment evaluated pipeline performance by comparing observed to expected relative and differential abundance values. Expected relative abundance and differential abundance values were calculated using information from the unmixed samples and mixture design. Overall the observed relative abundance and differential abundance values were consistent with the expected values. We developed feature-level bias and variance metric to further characterize relative abundance and differential abundance quantitative performance. Relative abundance feature-level bias metric was significantly different across the three platforms with DADA2 having the lowest bias, followed by Mothur, and QIIME. The relative abundance feature-level variance metric and both the differential abundance feature-level bias and variance metrics did not differ significantly across the three pipelines. The dataset and methods developed for this study will serve as a valuable community resource for assessing 16S rRNA marker-gene survey bioinformatic methods.
 
 output:
-      bookdown::pdf_document2:
-            template: springer_template.tex
+      bookdown::word_document2:
+      # bookdown::pdf_document2:
+            # template: springer_template.tex
             toc: FALSE
-            keep_tex: TRUE
-            citation_package: 'none'
+            # keep_tex: TRUE
+            # citation_package: 'none'
 bibliography: abundance_assessment.bib
 ---
 

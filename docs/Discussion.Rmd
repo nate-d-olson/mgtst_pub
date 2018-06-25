@@ -31,7 +31,7 @@ As a control, we compared our quantitative assessment results for the three pipe
 The unclustered features were generated using the Mothur pipeline preprocessing methods.
 
 
-#### Quantitative Assesssment
+#### Quantitative Assessment
 While the relative abundance bias metric was significantly different between pipelines overall, pipeline choice had minimal impact on the quantitative assessment results when accounting for subject-specific effects.
 Outlier features, those with extreme quantitative analysis bias and variance metrics, were observed for all pipelines and both relative and differential abundance assessments.
 Outlier features could not be attributed to bioinformatic pipelines and are likely due to biases in the molecular biology part of the measurement process.
@@ -40,7 +40,7 @@ We were unable to attribute outlier features to relative abundance values, log f
 Features with extreme metric values were not limited to any specific taxonomic group or phylogenetic clade.
 PCR amplification is a well-known bias molecular biology component of the measurement process.
 Mismatches in the primer binding regions impact PCR efficiency and are a potential cause for poor feature-specific performance [@wright2014exploiting].
-Additional research is needed before outlier features are attributed to mismatches in the primer binding regions. 
+Additional research is needed before outlier features are attributed to mismatches in the primer binding regions.
 
 
 #### Qualitative Assessment
@@ -69,7 +69,7 @@ Similarly, significantly more features than expected are commonly observed for m
 False positive features can be reduced, but not eliminated, using smaller amplicon and prevalence filtering.
 The 16S rRNA region sequenced in the study is larger than the region the _de-novo_, and open clustering pipelines were initially developed for, potentially explaining the higher than expected sparsity [@kozich2013development].
 @kozich2013development were reduced the sequence error rate from 0.29\% to 0.06\% when using paired-end reads that completely overlap.
-The larger region has a smaller overlap between the forward and reverse reads. As a result merging of the forward and reverse reads did not allow for the sequence error correction that occurs when a smaller amplicon is used.  However, even when targeting smaller regions of the 16S rRNA gene both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using mock communities.
+The larger region has a smaller overlap between the forward and reverse reads. As a result, merging of the forward and reverse reads did not allow for the sequence error correction that occurs when a smaller amplicon is used.  However, even when targeting smaller regions of the 16S rRNA gene both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using mock communities.
 Prevalence filtering is used to exclude low abundance features, likely predominantly measurement artifacts [@callahan2016].
 For example, a study exploring the microbial ecology of the Red-necked stint _Calidris ruficollis_, a migratory shorebird, used a hard filter to validate their study conclusions are not biases by false positive features.
 The study authors compared results with and without prevalence filter ensuring that the study conclusions were not biased by using the arbitrary filter or including the low abundant features [@risely2017gut].
@@ -118,9 +118,9 @@ Using more diverse samples to generate mixtures would address this issue.
 This two-sample-titration dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.
 The sequence dataset presented in this study can be processed with any 16S bioinformatic pipeline.
 Our quantitative and qualitative assessment can then be performed on the count table and the results compared to those obtained using the pipelines included in this study.
-The threee pipelines we evaluated produced sets of features varying in total feature abundance, number of features per samples, and total features.
+The three pipelines we evaluated produced sets of features varying in total feature abundance, number of features per samples, and total features.
 The objective of any pipeline is to differentiate true biological sequences from artifacts of the measurement process.
-In general based on our evaluation results we recommend using for DADA2 for feature-level abundance analysis, e.g. differential abundance testing.
+In general, based on our evaluation results we recommend using for DADA2 for feature-level abundance analysis, e.g. differential abundance testing.
 While DADA2 performed poorly in our qualitative assessment, the pipeline had performed better in the quantitative assessment compared to the other pipelines.
 Additionally, the DADA2 poor qualitative assessment results due to false-negative features are unlikely to negatively impact feature-level abundance analysis, though additional research is needed to validate this claim.
 When determining which pipeline to use for a study, users should consider whether minimizing false positives (DADA2) or false negatives (Mothur) is more appropriate for their study objectives.
