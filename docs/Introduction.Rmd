@@ -10,13 +10,12 @@ bibliography: [mgtst.bib]
 
 Targeted sequencing of the 16S rRNA gene, 16S rRNA marker-gene-surveys, is a commonly used method for characterizing microbial communities, microbiomes.
 The 16S rRNA marker-gene-survey measurement process includes molecular (e.g. PCR and sequencing) and computational steps (e.g., sequence clustering) [@Goodrich2014].
-Molecular steps are used to selectively target and sequence the 16S rRNA gene from prokaryotic organisms within a sample.
-The computational steps convert the raw sequence data into a matrix with feature (e.g., operational taxonomic units) relative abundance values for each sample [@Goodrich2014].
+The former are used to selectively target and sequence the 16S rRNA gene from prokaryotic organisms within a sample while the latter convert the raw sequence data into a matrix with feature (e.g., operational taxonomic units) relative abundance values for each sample [@Goodrich2014].
 Both molecular and computational measurement process steps contribute to the overall measurement bias and dispersion [@Amore2016; @Goodrich2014; @brooks2015truth].
-Proper measurement method evaluation allows for the characterization of how individual steps impact the measurement processes as a whole and determine where to focus efforts for improving the measurement process.
-Appropriate datasets and methods are needed to evaluate the 16S rRNA marker-gene-survey measurement process.
-A sample or dataset with "ground truth" is needed to characterize measurement process accuracy.
-Numerous studies have evaluated quantitative and qualitative characteristics of the 16S rRNA measurement process using mock communities, simulated data, and environmental samples.
+Proper measurement method evaluation allows for the characterization of how individual steps impact the measurement processes as a whole and determine where to focus efforts for improving the measurement process. 
+Appropriate datasets and methods are needed to evaluate the 16S rRNA marker-gene-survey measurement process accuracy, variability and robustness. 
+A sample or dataset with "ground truth" is needed to characterize measurement process accuracy, while environmental samples over complex microbial communities, may be used to assess variability and robustness.
+<!--Numerous studies have evaluated quantitative and qualitative characteristics of the 16S rRNA measurement process using mock communities, simulated data, and environmental samples.-->
 
 
 To assess the 16S rRNA sequencing measurement process qualitative characteristics of a mock communities are commonly used [@bokulich2016mockrobiota].
@@ -47,8 +46,7 @@ Mixtures of environmental samples have previously been used to evaluate gene exp
 
 
 In the present study, we developed a mixture dataset of extracted DNA from human stool samples for assessing 16S rRNA sequencing.
-The mixture datasets were processed using three bioinformatic pipelines.
-We developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results.
+As a first application of this assessment framework, the mixture datasets were processed using three bioinformatic pipelines and newly developed metrics for qualitative and quantitative assessment of the bioinformatic pipeline results were applied.
 The quantitative results were similar across pipelines, but the qualitative results varied across pipelines.
 We have made both the dataset and metrics developed in this study publicly available for evaluating bioinformatic pipelines.
 
