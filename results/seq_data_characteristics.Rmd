@@ -217,7 +217,7 @@ data_frame(pipe = names(mrexp),
 ```
 
 
-```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequence dataset characteristics. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. The dashed horizontal line indicates overall median library size. Excluding one PCR replicate from subject E01JH0016 titration 5	that had only 3,195 reads. (B) Smoothing spline of the base quality score (BQS) across the amplicon by subject. Vertical lines indicate approximate overlap region between forward and reverse reads. Forward reads go from position 0 to 300 and reverse reads from 464 to 164."}
+```{r qaPlots, warning=FALSE, message = FALSE, echo = FALSE, fig.cap = "Sequence dataset characteristics. (A) Distribution in the number of reads per barcoded sample (Library Size) by individual. Boxplots summarize data distribution with horizontal bar as median, boxes indicating interquartile range, whiskers \\pm 1.5\\times IQR, and black points outliers. The dashed horizontal line indicates overall median library size. Excluding one PCR replicate from subject E01JH0016 titration 5	that had only 3,195 reads. (B) Smoothing spline of the base quality score (BQS) across the amplicon by subject. Vertical lines indicate approximate overlap region between forward and reverse reads. Forward reads go from position 0 to 300 and reverse reads from 464 to 164."}
 lib_size_fig <- meta_df %>%
       filter(Read == "R1", biosample_id != "NTC") %>% unique() %>%
       filter(reads > 10000) %>%

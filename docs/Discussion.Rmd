@@ -95,7 +95,7 @@ These limitations are described below along with recommendations for addressing 
 
 Differences in the proportion of prokaryotic DNA in the samples used to generate the two-sample titrations series results in differences between the true mixture proportions and mixture design.
 We attempted to account for differences in mixture proportion from mixture design by estimating mixture proportions using sequence data.
-Similar to how the proportion of mRNA in RNA samples used in a previous mixture study.
+Similar to how the proportion of mRNA in RNA samples used in a previous mixture study [@parsons2015using].
 We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentration of bacterial DNA across titration, but unable to quantify the proportion of bacterial DNA in the unmixed samples using qPCR data.
 Using the 16S sequencing data we inferred the proportion of bacterial DNA from the POST sample in each titration.
 However, the uncertainty and accuracy of the inference method are not known resulting in an unaccounted for error source.

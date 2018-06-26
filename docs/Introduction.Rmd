@@ -8,7 +8,7 @@ output:
 bibliography: [mgtst.bib]
 ---
 
-Targeted sequencing of the 16S rRNA gene, 16S rRNA marker-gene-surveys, is a commonly used method for characterizing microbial communities, microbiomes.
+Targeted sequencing of the 16S rRNA gene, commonly known as 16S rRNA marker-gene-surveys, is a commonly used method for characterizing microbial communities, microbiomes.
 The 16S rRNA marker-gene-survey measurement process includes molecular (e.g. PCR and sequencing) and computational steps (e.g., sequence clustering) [@Goodrich2014].
 Molecular steps are used to selectively target and sequence the 16S rRNA gene from prokaryotic organisms within a sample.
 The computational steps convert the raw sequence data into a matrix with feature (e.g., operational taxonomic units) relative abundance values for each sample [@Goodrich2014].
@@ -41,7 +41,7 @@ Using simulated data to assess log fold-change estimates only evaluates computat
 Quantitative and qualitative assessment can also be performed using sequence data generated from mixtures of environmental samples.
 While simulated data and mock communities are useful in evaluating and benchmarking new methods one needs to consider that methods optimized for mock communities and simulated data are not necessarily optimized for the sequencing error profile and feature diversity of real samples.
 Data from environmental samples, which are real samples, are often used to benchmark new molecular laboratory and computational methods.
-However, without an expected value to compare to, only measurement precision can be evaluated.
+However, without an expected to compare to, only measurement precision can be evaluated.
 By mixing environmental samples, an expected value can be calculated using information from the unmixed samples and how they were mixed.
 Mixtures of environmental samples have previously been used to evaluate gene expression measurements microarrays and RNAseq data [@parsons2015using; @pine2011adaptable; @thompson2005use].
 

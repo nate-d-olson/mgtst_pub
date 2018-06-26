@@ -31,7 +31,7 @@ and the relative abundance of feature $j$ in the unmixed PRE and POST samples is
 \end{equation}
 
 
-```{r countExperimentalDesign, echo=FALSE, fig.width = 5, fig.cap="Sample selection and experimental design for the two-sample titration 16S rRNA marker-gene-survey assessment dataset. A) Pre- and post-exposure (PRE and POST) samples from five vaccine trial participants were selected based on \\textit{Escherichia coli} abundance measured using qPCR and 454 16S rRNA sequencing (454-NGS), data from @pop2016individual. PRE and POST samples are indicated with orange and green data points, respectively. Grey points are other samples from the vaccine trial time series. B) Proportion of DNA from PRE and POST samples in titration series samples. PRE samples were titrated into POST samples following a $log_2$ dilution series. The NA titration factor represents the unmixed PRE sample. C) PRE and POST samples from the five vaccine trial participants, subjects, were used to generate independent two-sample titration series. The result was a total of 45 samples, 7 titrations + 2 unmixed samples times 5 subjects. Four replicate PCRs were performed for each of the 45 samples resulting in 190 PCRs."}
+```{r countExperimentalDesign, echo=FALSE, fig.width = 5, fig.cap="Sample selection and experimental design for the two-sample titration 16S rRNA marker-gene-survey assessment dataset. A) Pre- and post-exposure (PRE and POST) samples from five vaccine trial participants were selected based on \\textit{Escherichia coli} abundance measured using qPCR and 454 16S rRNA sequencing (454-NGS), data from @pop2016individual. Counts represent normalized relative abundance values for 454-NGS and copies of the heal-labile toxin gene per \\muL, a marker gene for ETEC, for qPCR. PRE and POST samples are indicated with orange and green data points, respectively. Grey points are other samples from the vaccine trial time series. B) Proportion of DNA from PRE and POST samples in titration series samples. PRE samples were titrated into POST samples following a $log_2$ dilution series. The NA titration factor represents the unmixed PRE sample. C) PRE and POST samples from the five vaccine trial participants, subjects, were used to generate independent two-sample titration series. The result was a total of 45 samples, 7 titrations + 2 unmixed samples times 5 subjects. Four replicate PCRs were performed for each of the 45 samples resulting in 190 PCRs."}
 knitr::include_graphics("img/experimentalDesign.png")
 ```
 
@@ -72,16 +72,16 @@ The library was run on an Illumina MiSeq, and base calls were made using Illumin
 Sequencing data quality control metrics for the 384 fastq sequence files (192 samples with forward and reverse reads) were computed using the Bioconductor `Rqc` package [@Rqc;@Bioconductor].
 
 ### Sequence Processing
-Sequence data were processed using four bioinformatic pipelines: a _de-novo_ clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@Caporaso2010], and a sequence inference methods - DADA2 [@callahan2016dada2], and unclustered sequences as a control.
+Sequence data were processed using four bioinformatic pipelines: a _de-novo_ clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@Caporaso2010], and a sequence inference method - DADA2 [@callahan2016dada2], and unclustered sequences as a control.
 The code used to run the bioinformatic pipelines is available at \url{https://github.com/nate-d-olson/mgtst_pipelines}.
 
 
-The Mothur pipeline follows the developers MiSeq SOP [@schloss2009introducing;@kozich2013development].
+The Mothur pipeline follows the developer's MiSeq SOP [@schloss2009introducing;@kozich2013development].
 The pipeline was run using Mothur version 1.37 (\url{http://www.mothur.org/})
-As we sequenced a larger 16S rRNA region, with smaller overlap between the forward and reverse reads, than the 16S rRNA region the SOP was designed.
+We sequenced a larger 16S rRNA region, with smaller overlap between the forward and reverse reads, than the 16S rRNA region the SOP was designed.
 Pipeline parameters were modified to account for the difference in overlap are noted for individual steps below.
 The Makefile and scripts used to run the Mothur  pipeline are available https://github.com/nate-d-olson/mgtst_pipelines/blob/master/code/mothur.
-The Mothur pipeline included an initial preprocessing step where the forward and reverse reads are trimmed and filtered using base quality scores merged into contigs.
+The Mothur pipeline included an initial preprocessing step where the forward and reverse reads are trimmed and filtered using base quality scores and were merged into a single contig for each read pair.
 The following parameters were used for the initial contig filtering, no ambiguous bases, max contig length of 500 bp, and max homopolymer length of 8 bases.
 For the initial read filtering and merging step,
 low-quality reads were identified and filtered from the dataset based on the presence of ambiguous bases, failure to align to the SILVA reference database (V119, \url{https://www.arb-silva.de/}) [@quast2012silva], and identification as chimeras.
@@ -161,7 +161,7 @@ Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed 
 
 
 ### Quantitative Assessment
-Quantitative assessment compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.
+For quantitative assessment, we compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.
 Feature average relative abundance across PCR replicates was calculated using a negative binomial model, and used as observed relative abundance values ($obs$) for the relative abundance assessment.
 Average relative abundance values were used to reduce PCR replicate outliers from biasing the assessment results.
 Equation \@ref(eq:mixEq) and inferred $\theta$ values were used to calculate the expected relative abundance values ($exp$).
