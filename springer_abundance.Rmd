@@ -12,8 +12,12 @@ authors:
   email: nolson@nist.gov
 - name: MS Kumar
   email: smuthiah@umiacs.umd.edu 
+- name: Shan Li
+  email: sli1@epi.umaryland.edu
 - name: S Hao
   email: shao4@jhu.edu
+- name: D Catoe
+  email: david.catoe@nist.gov
 - name: W Timp
   email: wtimp@jhu.edu
 - name: ML Salit
@@ -131,5 +135,10 @@ logFC Error Rate Results
 # Methods {#methods}
 ```{r methods, child="docs/Methods.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
+
+# Acknowledgements  
+This work was partially supported by National Institutes of Health (NIH) [NIH R01HG005220 to H.C.B.]
+The authors would like to thank Mihai Pop, Scott Pine, Justin Zook, and Prachi Kulkarni for feedback on manuscript drafts. 
+Opinions expressed in this paper are the authors and do not necessarily reflect the policies and views of NIST, or affiliated venues. Certain commercial equipment, instruments, or materials are identified in this paper in order to specify the experimental procedure adequately. Such identification is not intended to imply recommendations or endorsement by NIST, nor is it intended to imply that the materials or equipment identified are necessarily the best available for the purpose. Official contribution of NIST; not subject to copyrights in USA.
 
 # References
