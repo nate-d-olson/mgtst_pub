@@ -1,0 +1,24 @@
+---
+title: "Conclusions"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2:
+    toc: FALSE
+bibliography: [mgtst.bib]
+---
+
+This two-sample-titration dataset can be used to evaluate and characterize bioinformatic pipelines and clustering methods.
+The sequence dataset presented in this study can be processed with any 16S bioinformatic pipeline.
+Our quantitative and qualitative assessment can then be performed on the count table and the results compared to those obtained using the pipelines included in this study.
+The three pipelines we evaluated produced sets of features varying in total feature abundance, number of features per samples, and total features.
+The objective of any pipeline is to differentiate true biological sequences from artifacts of the measurement process.
+In general, based on our evaluation results we recommend using for DADA2 for feature-level abundance analysis, e.g. differential abundance testing.
+While DADA2 performed poorly in our qualitative assessment, the pipeline had performed better in the quantitative assessment compared to the other pipelines.
+Additionally, the DADA2 poor qualitative assessment results due to false-negative features are unlikely to negatively impact feature-level abundance analysis, though additional research is needed to validate this claim.
+When determining which pipeline to use for a study, users should consider whether minimizing false positives (DADA2) or false negatives (Mothur) is more appropriate for their study objectives.
+When a sequencing dataset is processed using DADA2, the user can be more confident that an observed feature represents a member of the microbial community and not a measurement artifact.
+Pipeline parameter optimization could address DADA2 false-negative issue.
+For the Mothur and QIIME pipelines, prevalence filtering will reduce the number of false-positive features.
+Feature-level results for any 16S rRNA marker-gene survey should be interpreted with care, as the biases responsible for poor quantitative assessment are unknown.
+Addressing both of these issues requires advances in both the molecular biology and computational components of the measurement process.
