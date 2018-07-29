@@ -133,7 +133,7 @@ boot_theta_file <- "data/bootstrap_theta_estimates.RDS"
 boot_theta_hat <- calc_boot_theta(boot_theta_file, theta_est_df)
 ```
 
-To account for differences in the proportion of prokaryotic DNA in PRE and POST samples (Fig. \@ref(fig:bacPlot)) we inferred the proportion of POST sample prokaryotic DNA in a titration, $\theta$, using the 16S rRNA sequencing data (Fig. \@ref(fig:thetaHat)).
+Human stool sample DNA extracts vary in the proportion of eukaryotic (primarily human) and prokaryotic DNA in the sample. To account for differences in the proportion of prokaryotic DNA in PRE and POST samples (Fig. \@ref(fig:bacPlot)) we inferred the proportion of POST sample prokaryotic DNA in a titration, $\theta$, using the 16S rRNA sequencing data (Fig. \@ref(fig:thetaHat)).
 Overall the relationship between the inferred and mixture design $\theta$ values were consistent across pipelines but not subject whereas the 95\% CI varied by both subject and pipeline.
 For study subjects E01JH0004, E01JH0011, and E01JH0016 the inferred and mixture design $\theta$ values were in agreement, in contrast, to study subjects E01JH0017 and E01JH0038.
 For E01JH0017 the inferred values were consistently less than the mixture design values.

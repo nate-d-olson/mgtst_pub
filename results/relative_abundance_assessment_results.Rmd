@@ -369,8 +369,8 @@ The error rate distribution was similarly consistent across pipelines, including
 
 To assess quantitative accuracy, we compared the feature-level relative abundance error rate bias (median error rate, Fig. \@ref(fig:relAbuErrorMetrics)A) and variance ($RCOV=(IQR)/|median|$ Fig. \@ref(fig:relAbuErrorMetrics)B) across pipelines and individuals using mixed effects models.
 Large bias and variance values were observed for all pipelines (Table  \@ref(tab:relAbuErrorTbl)).
-Features with large bias and variance metrics (outliers), defined as $1.5\times IQR$ from the median.
-To prevent the outliers from biasing the comparison they were not included in the dataset used to fit the mixed effects model.
+Features with large bias and variance metrics, $1.5\times IQR$ from the median, were deemed outliers.
+To prevent these outliers from biasing the comparison they were not included in the dataset used to fit the mixed effects model.
 Multiple comparisons test (Tukey) was used to test for significant differences in feature-level bias and variance between pipelines.
 A one-sided alternative hypothesis was used to determine which pipelines had a smaller, feature-level error rate.
 The Mothur, DADA2, and QIIME feature-level bias were all significantly different from each other ($p < 1\times 10^{-8}$).

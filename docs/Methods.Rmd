@@ -19,7 +19,8 @@ To check for differences in the proportion of bacterial DNA in the PRE and POST 
 All samples were run in triplicate along with an in-house _E. coli_ DNA $log_{10}$ dilution standard curve.
 qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher).
 Amplification data and Ct values were exported as tsv files using QuantStudio™ Design and Analysis Software v1.4.1.
-Statistical analysis was performed on the exported data using custom scripts in R [@R, https://github.com/nate-d-olson/mgtst_pub].
+Statistical analysis was performed on the exported data using custom scripts in R [@R]. 
+The qPCR data and scripts used to analyze the data are available at https://github.com/nate-d-olson/mgtst_pub. 
 
 ### Sequencing
 The 45 samples (seven titrations and two unmixed samples for each of five subjects) were processed using the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, downloaded from \url{https://support.illumina.com}).
@@ -42,7 +43,8 @@ Prior to pooling purified sample concentration was normalized using SequalPrep N
 Pooled library concentration was checked using the Qubit dsDNA HS Assay Kit (Part# Q32851, Lot# 1735902, ThermoFisher, Waltham, MA USA).
 Due to the low pooled amplicon library DNA concentration, a modified protocol for low concentration libraries was used.
 The library was run on an Illumina MiSeq, and base calls were made using Illumina Real Time Analysis Software version 1.18.54.
-Sequencing data quality control metrics for the 384 fastq sequence files (192 samples with forward and reverse reads) were computed using the Bioconductor `Rqc` package [@Rqc;@Bioconductor].
+Sequencing data quality control metrics for the 384 fastq sequence files (192 samples with forward and reverse reads) were computed using the Bioconductor `Rqc` package [@Rqc;@Bioconductor]. 
+The sequence data is depositsed in the NCBI SRA archive under Bioproject PRJNA480312.
 
 ### Sequence Processing
 Sequence data were processed using four bioinformatic pipelines: a _de-novo_ clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@Caporaso2010], and a sequence inference method - DADA2 [@callahan2016dada2], and unclustered sequences as a control.
@@ -134,7 +136,7 @@ Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed 
 
 
 ### Quantitative Assessment
-For quantitative assessment, we compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.
+For quantitative assessment, we compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.  
 Feature average relative abundance across PCR replicates was calculated using a negative binomial model, and used as observed relative abundance values ($obs$) for the relative abundance assessment.
 Average relative abundance values were used to reduce PCR replicate outliers from biasing the assessment results.
 Equation \@ref(eq:mixEq) and inferred $\theta$ values were used to calculate the expected relative abundance values ($exp$).
@@ -150,9 +152,11 @@ these outliers were excluded from the mixed effects model to minimize biases due
 Log fold-change between samples in the titration series including PRE and POST were compared to the expected log fold-change values to assess differential abundance log fold-change estimates.
 Log fold-change estimates were calculated using EdgeR [@Robinson2010;@McCarthy2012].
 Expected log fold-change for feature $j$ between titrations $l$ and $m$ is calculated using equation \@ref(eq:expLogFC), where $\theta$ is the proportion of POST bacterial DNA in a titration, and $q$ is feature relative abundance.
-For features only present in PRE samples the expected log fold-change is independent of the observed counts for the unmixed samples and is calculated using \@ref(eq:expPreLogFC).
+For features only present in PRE samples the expected log fold-change is independent of the observed counts for the unmixed samples and is calculated using \@ref(eq:expPreLogFC). 
+Features only observed in POST samples, _POST-specific_, expected log fold-change values can be calculated in a similar manner. 
+However, _POST-specific_ features were rarely observed in more than one titration and therefore were not suitable for use in our assessment. 
 Due to a limited number of _PRE-specific_ features, both _PRE-specific_ and _PRE-dominant_ features were used in the differential abundance assessment.
-_PRE-specific_ features were defined as features observed in all four PRE PCR replicates and not observed in any of the POST PCR replicates and _PRE-dominant_ features were also observed in all four PRE PCR replicates and observed in one or more of the POST PCR replicates with a log fold-change between PRE and POST samples greater than 5.
+_PRE-specific_ features were defined as features observed in all four PRE PCR replicates and not observed in any of the POST PCR replicates and _PRE-dominant_ features were also observed in all four PRE PCR replicates and observed in one or more of the POST PCR replicates with a log fold-change between PRE and POST samples greater than 5. 
 
 
 \begin{equation}
