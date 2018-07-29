@@ -240,9 +240,15 @@ rcov_var <- ape::varcomp(rcov_fit)
 ```
 
 
-```{r relAbuError, fig.cap = "Relative abundance assessment. (A) A linear model of the relationship between the expected and observed relative abundance. The dashed grey line indicates expected 1-to-1 relationship. The plot is split by individual and color is used to indicate the different bioinformatic pipelines. A negative binomial model was used to calculate an average relative abundance estimate across the four PCR replicates. Points with observed and expected relative abundance values less than 1/median library size were excluded from the data used to fit the linear model. (B) Relative abundance error rate distribution by individual and pipeline.", echo = FALSE, warning=FALSE, message = FALSE}
+```{r relAbuError, fig.width = 6.68, fig.cap = "Relative abundance assessment. (A) A linear model of the relationship between the expected and observed relative abundance. The dashed grey line indicates expected 1-to-1 relationship. The plot is split by individual and color is used to indicate the different bioinformatic pipelines. A negative binomial model was used to calculate an average relative abundance estimate across the four PCR replicates. Points with observed and expected relative abundance values less than 1/median library size were excluded from the data used to fit the linear model. (B) Relative abundance error rate distribution by individual and pipeline.", echo = FALSE, warning=FALSE, message = FALSE}
 
 relAbuOvE <- prop_inferred %>%
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
     ggplot() +
       geom_smooth(aes(x = inferred_prop, y = nb_prop, color = pipe),
                   method = "lm") +
@@ -254,6 +260,12 @@ relAbuOvE <- prop_inferred %>%
       labs(x = "Expected", y = "Observed", color = "Pipeline")
 
 relAbuErrorDist <- rel_abu_error %>%
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
       mutate(inferred_error_rate = if_else(inferred_error_rate < 1e-2, 1e-2, inferred_error_rate)) %>%
       ggplot() +
       geom_boxplot(aes(x = biosample_id, y = inferred_error_rate, fill = pipe)) +
@@ -267,9 +279,15 @@ ggarrange(relAbuOvE,
           ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom")
 ```
 
-```{r relAbuErrorMetrics, fig.cap = "Comparison of pipeline relative abundance assessment feature-level error metrics. Distribution of feature-level relative abundance (A) bias metric - median error rate and (B) variance - robust coefficient of variation ($RCOV=(IQR)/|median|$) by individual and pipeline. Boxplot outliers, $1.5\\times IQR$ from the median were excluded from the figure to prevent extreme metric values from obscuring metric value visual comparisons.", echo = FALSE, warning=FALSE, message = FALSE}
+```{r relAbuErrorMetrics, fig.width = 6.68, fig.cap = "Comparison of pipeline relative abundance assessment feature-level error metrics. Distribution of feature-level relative abundance (A) bias metric - median error rate and (B) variance - robust coefficient of variation ($RCOV=(IQR)/|median|$) by individual and pipeline. Boxplot outliers, $1.5\\times IQR$ from the median were excluded from the figure to prevent extreme metric values from obscuring metric value visual comparisons.", echo = FALSE, warning=FALSE, message = FALSE}
 error_boxplot <- rel_abu_error %>% group_by(pipe, biosample_id, feature_id) %>%
     summarise(median_error = median(inferred_error_rate)) %>%
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
     ggplot() +
       geom_boxplot(aes(x = biosample_id, y = median_error, fill = pipe),
                    outlier.shape = NA) +
@@ -283,6 +301,12 @@ error_boxplot <- error_boxplot + coord_cartesian(ylim = c(ymin, ymax))
 
 
 rcov_boxplot <- rel_abu_error_summary %>%
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
     ggplot() +
       geom_boxplot(aes(x = biosample_id, y = rcov_error, fill = pipe),
                    outlier.shape = NA) +
@@ -318,6 +342,12 @@ rel_abu_error_summary %>%
       # Max values only
       mutate(Bias = max_med_error, Variance = max_rcov_error) %>%
      dplyr::select(pipe, biosample_id, Bias, Variance) %>%
+      ungroup() %>% 
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
       dplyr::rename(Pipeline = pipe, Individual = biosample_id) %>%
       gather("Metric","value", -Pipeline, -Individual) %>%
       spread(Individual, value) %>%
@@ -348,4 +378,4 @@ DADA2 had the lowest mean feature-level bias (`r round(dada_error,2)`), followed
 Large variance metric values were observed for all individuals and pipelines (Table \@ref(tab:relAbuErrorTbl)).
 The feature-level variance was not significantly different between pipelines, Mothur = `r round(mothur_rcov,2)`, QIIME = `r round(qiime_rcov,2) ` and DADA2 = `r round(dada_rcov)` (Fig. \@ref(fig:relAbuErrorMetrics)B).
 I evaluated whether poor feature-level relative abundance metrics can be attributed to specific taxonomic groups or phylogenetic clades.
-While a significant overall phylogenetic signal was detected for both the bias and variance metric, no specific taxonomic groups or phylogenetic clades were identified as having an exceedingly poor performance in our assessment.
+While a significant overall phylogenetic signal was detected for both the bias and variance metric, no specific taxonomic groups or phylogenetic clades were identified with exceptionally poor performance in our assessment.

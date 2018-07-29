@@ -155,7 +155,7 @@ mix_test_plot <- mix_binom_prop %>%
       ylim(0, 1)
 ```
 
-```{r qualPlot, message = FALSE, echo = FALSE, warning = FALSE, fig.cap = "Distribution of (A) observed count values for titration-specific features and (B) expected count values for unmixed-specific features by pipeline and individual. The orange horizontal dashed line indicates a count value of 1. (C) Proportion of unmix-specific features and (D) titration-specific features with an adjusted p-value < 0.05 for the Bayesian hypothesis test and binomial test respectively. We failed to accept the null hypothesis when the p-value < 0.05, indicating that the discrepancy between the feature only being observed in the titrations or unmixed samples cannot be explained by sampling alone."}
+```{r qualPlot, message = FALSE, echo = FALSE, warning = FALSE, fig.width = 6.68, fig.cap = "Distribution of (A) observed count values for titration-specific features and (B) expected count values for unmixed-specific features by pipeline and individual. The orange horizontal dashed line indicates a count value of 1. (C) Proportion of unmix-specific features and (D) titration-specific features with an adjusted p-value < 0.05 for the Bayesian hypothesis test and binomial test respectively. We failed to accept the null hypothesis when the p-value < 0.05, indicating that the discrepancy between the feature only being observed in the titrations or unmixed samples cannot be explained by sampling alone."}
 ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text"),
           mix_test_plot, unmix_test_plot,
           labels = "AUTO",

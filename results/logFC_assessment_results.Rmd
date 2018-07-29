@@ -128,9 +128,14 @@ r2_var <- ape::varcomp(r2_fit)
 ```
 
 
-```{r logFCerror, fig.cap = "(A) Linear model or the relationship between log fold-change estimates and expected values for PRE-specific and PRE-dominant features by pipeline and individual, line color indicates pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribution by pipeline and individual.", echo = FALSE, warning=FALSE, message = FALSE}
+```{r logFCerror, fig.width = 6.68, fig.cap = "(A) Linear model or the relationship between log fold-change estimates and expected values for PRE-specific and PRE-dominant features by pipeline and individual, line color indicates pipelines. Dashed grey line indicates expected 1-to-1 relationship between the estimated and expected log fold-change. (B) Log fold-change error (|exp-est|) distribution by pipeline and individual.", echo = FALSE, warning=FALSE, message = FALSE}
 
 logFCestVexp <- logFC_pre %>% filter(T1 != 0, T2 != 20) %>%
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
       ggplot() +
       geom_smooth(aes(x = exp_logFC, y = logFC, color = pipe), method = "lm") +
       geom_abline(aes(intercept = 0, slope = 1), color = "grey60",
@@ -141,6 +146,11 @@ logFCestVexp <- logFC_pre %>% filter(T1 != 0, T2 != 20) %>%
 
 
 logFC_error_dist <- logFC_error %>%
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
       mutate(error = if_else(error < 1e-2, 1e-2, error)) %>%
       ggplot() +
       geom_boxplot(aes(x = biosample_id, y = error, fill = pipe)) +
@@ -154,9 +164,14 @@ ggarrange(logFCestVexp,
           ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom")
 ```
 
-```{r logFcErrorMetrics, fig.cap = "Feature-level log-fold change error bias (A) and variance (B) metric distribution by subject and pipeline. The bias ($1 - slope$) and variance ($R^2$) metrics are derived from the linear model fit to the estimated and expected log fold-change values for individual features. Boxplot outliers, $1.5\\times IQR$ from the median were excluded from the figure to prevent extreme metric values from obscuring metric value visual comparisons.", echo = FALSE, warning=FALSE, message = FALSE}
+```{r logFcErrorMetrics, fig.width = 6.68, fig.cap = "Feature-level log-fold change error bias (A) and variance (B) metric distribution by subject and pipeline. The bias ($1 - slope$) and variance ($R^2$) metrics are derived from the linear model fit to the estimated and expected log fold-change values for individual features. Boxplot outliers, $1.5\\times IQR$ from the median were excluded from the figure to prevent extreme metric values from obscuring metric value visual comparisons.", echo = FALSE, warning=FALSE, message = FALSE}
 
 slope_logFC <- logFC_feature_summary %>%
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
       ggplot() +
 
       geom_boxplot(aes(x = biosample_id, y = slope_error, fill = pipe),
@@ -172,6 +187,11 @@ slope_logFC <- slope_logFC + coord_cartesian(ylim = c(ymin, ymax))
 
 ### logFC Variance: R2 ---------------------------------------------------------
 r2_logFC <- logFC_feature_summary %>%
+      mutate(pipe = forcats::fct_recode(pipe,
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
     ggplot() +
       geom_boxplot(aes(x = biosample_id, y = adj.r.squared, fill = pipe),
                    outlier.shape = NA) +

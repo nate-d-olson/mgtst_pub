@@ -141,7 +141,7 @@ Whereas for E01JH0038 the inferred values were consistently greater than the mix
 These results were consistent with the qPCR prokaryotic DNA concentration results with significantly positive slopes for E01JH0004 and E01JH0016 and a significantly negative slope for E01JH0038 (Fig. \@ref(fig:bacPlot)).
 
 
-```{r thetaHat, echo = FALSE, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicates mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black bar indicate expected theta values. Theta estimates below the expected theta indicate that the titrations contain less than expected bacterial DNA from the POST sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the PRE sample than expected."}
+```{r thetaHat, echo = FALSE, fig.width = 6.68, fig.cap = "Theta estimates by titration, biological replicate, and bioinformatic pipeline. The points indicates mean estimate of 1000 bootstrap theta estimates and errorbars 95\\% confidence interval. The black bar indicate expected theta values. Theta estimates below the expected theta indicate that the titrations contain less than expected bacterial DNA from the POST sample. Theta estimates greater than the expected theta indicate the titration contains more bacterial DNA from the PRE sample than expected."}
 # boot_theta_hat %>%
 #       ungroup() %>%
 #       mutate(pipe = factor(pipe, levels = c("unclustered","dada2","mothur","qiime"))) %>%
@@ -158,6 +158,11 @@ These results were consistent with the qPCR prokaryotic DNA concentration result
 boot_theta_hat %>%
       ungroup() %>%
       mutate(pipe = factor(pipe, levels = c("unclustered","dada2","mothur","qiime"))) %>%
+      mutate(pipe = forcats::fct_recode(pipe, 
+                                        Unclustered = "unclustered",
+                                        DADA2 = "dada2", 
+                                        Mothur = "mothur", 
+                                        QIIME = "qiime")) %>% 
       mutate(xpos = (as.numeric(pipe) - 2.5)/5 + as.numeric(t_fctr))  %>%
       ggplot() +
       geom_bar(aes(x = t_fctr, y =  theta), stat = "identity", position = "dodge") +
