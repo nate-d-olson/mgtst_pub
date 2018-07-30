@@ -220,18 +220,24 @@
 
 \parttitle{Background}
 Analysis of 16S rRNA marker-gene surveys, used to characterize prokaryotic microbial communities, may be performed by numerous bioinformatic pipelines and downstream analysis methods. 
-However, there is only limited guidance on how to decide between appropriate methods from simulation studies or limited complexity benchmark studies, appropriate data sets and statistics for assessing these methods are needed.
+However, there is only limited guidance on how to decide between methods, appropriate data sets and statistics for assessing these methods are needed.
 We developed a mixture dataset with real data complexity and an expected value for assessing 16S rRNA bioinformatic pipelines and downstream analysis methods. 
-A two-sample titration mixture design was used where DNA from stool samples prior to ETEC exposure was titrated into stools samples collected after exposure, in effect diluting the amount of ETEC in the mixed sample. 
+We generate an assessment dataset using a two-sample titration mixture design. 
 The sequencing data were processed using multiple bioinformatic pipelines, i) DADA2 a sequence inference method, ii) Mothur a \textit{de novo} clustering method, and iii) QIIME with open-reference clustering. 
-\parttitle{Results}
 The mixture dataset was used to qualitatively and quantitatively assess the count tables generated using the pipelines. 
-Statistical tests were used to determine if features only present in unmixed samples and titrations, \textit{unmixed}- and \textit{titration}-specific features, were had abundance value that could be explained by sampling alone. 
-For Mothur and QIIME less than 5\% of  \textit{unmixed}- and \textit{titration}-specific feature abundance could not be explained by sampling alone whereas for DADA2 greater than 50\% of \textit{unmixed}-specific features and 10\% of \textit{titration}- specific features could not be explained by sampling alone. 
+
+\parttitle{Results}
+The qualitative assessment was used to evalute features only present in unmixed samples and titrations. 
+The abundance of Mothur and QIIME features specific to unmixed samples and titrations were explained by sampling alone. 
+However, for DADA2 over a third of the unmixed sample and titration specific feature abundance could not be explained by sampling alone. 
 The quantitative assessment evaluated pipeline performance by comparing observed to expected relative and differential abundance values. 
 Overall the observed relative abundance and differential abundance values were consistent with the expected values. 
-\parttitle{Conclusions}
+Though outlier features were observed across all pipelines. 
+
+\parttitle{Conclusions} 
+Using a novel mixture dataset and assessment methods we quantitatively and qualitatively assessed count tables generated using three bioinformatic pipelines. 
 The dataset and methods developed for this study will serve as a valuable community resource for assessing 16S rRNA marker-gene survey bioinformatic methods. 
+
 \end{abstract}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
