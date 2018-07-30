@@ -82,8 +82,8 @@ rel_abu_error_summary <-  rel_abu_error %>%
               var_error = var(inferred_error_rate),
               cov_error = var_error/mean_error)
 
-saveRDS(rel_abu_error, "~/Desktop/rel_abu_error.RDS")
-saveRDS(rel_abu_error_summary, "~/Desktop/rel_abu_error_summary.RDS")
+saveRDS(rel_abu_error, "data/rel_abu_error.RDS")
+saveRDS(rel_abu_error_summary, "data/rel_abu_error_summary.RDS")
 
 ### Error rate boxplot and outlier annotation
 error_boxplot <- rel_abu_error %>% group_by(pipe, biosample_id, feature_id) %>%
