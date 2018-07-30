@@ -142,6 +142,7 @@ logFCestVexp <- logFC_pre %>% filter(T1 != 0, T2 != 20) %>%
                   linetype = 2) +
       facet_wrap( ~ biosample_id, nrow = 1) +
       theme_bw() +
+      theme(axis.text.x = element_text(angle = -45, hjust = 0)) + 
       labs(x = "Expected", y = "Estimate", color = "Pipeline")
 
 
