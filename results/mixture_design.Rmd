@@ -12,10 +12,10 @@ Samples from five trial participants were selected for our two-sample titration 
 Trial participants (subjects) and sampling timepoints were selected based on _E. coli_ abundance data collected using qPCR and 16S rRNA sequencing from @pop2016individual.
 Only individuals with no _E. coli_ detected in samples collected from trial participants prior to ETEC exposure (PRE) were used for our two-samples titrations.
 Post ETEC exposure (POST) samples were identified as the timepoint after exposure to ETEC with the highest _E. coli_ concentration for each subject (Fig. \@ref(fig:countExperimentalDesign)A).
-Due to limited sample availability, the timepoint with the second highest concentrations for E01JH0016 was used as the POST sample.
+Due to limited sample availability, for E01JH0016 the timepoint with the second highest _E. coli_ concentration was used as the POST sample.
 Independent titration series were generated for each subject, where POST samples were titrated into PRE samples with POST proportions of 1/2, 1/4, 1/8, 1/16, 1/32, 1/1,024, and 1/32,768 (Fig. \@ref(fig:countExperimentalDesign)B).
 Unmixed (PRE and POST) sample DNA concentration was measured using NanoDrop ND-1000 (Thermo Fisher Scientific Inc. Waltham, MA USA).
-Unmixed samples were diluted to 12.5 $ng/\mu L$ in tris-EDTA buffer before making the two-sample titrations.
+Unmixed samples were diluted to 12.5 $ng/\mu L$ in tris-EDTA buffer before mixing.
 
 
 For our two-sample titration mixture design, the expected feature relative abundance can be calculated using equation  \@ref(eq:mixEq),

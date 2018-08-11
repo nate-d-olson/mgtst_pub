@@ -78,7 +78,9 @@ knitr::opts_chunk$set(dpi = 300)
 ## Titration Series Validation
 To validate the two-sample titration dataset for use in abundance assessment we evaluated two assumptions about the titrations:
 1. The samples were mixed volumetrically in a $log_2$ dilution series according to the mixture design.
-2. The unmixed PRE and POST samples have the same proportion of prokaryotic DNA.
+2. The unmixed PRE and POST samples have the same proportion of prokaryotic DNA. 
+The stool samples used to generate the mixtures have both eukaryotic (primarily human) DNA and prokaryotic DNA. 
+If the proportion of prokaryotic DNA differs between the unmixed samples, then the amount of DNA from the unmixed samples in a titration targeted by 16S rRNA gene sequencing is not consistent with the mixture design.
 To validate the sample volumetric mixing exogenous DNA was spiked into the unmixed samples before mixing and quantified using qPCR .
 To evaluate if the PRE and POST samples had the same proportion of prokaryotic DNA total prokaryotic DNA in the titrations samples was quantified using a qPCR assay targeting the 16S rRNA gene.
 
@@ -87,7 +89,7 @@ To evaluate if the PRE and POST samples had the same proportion of prokaryotic D
 ```{r ercc, child="results/ercc_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
-### Bacterial DNA Concentration
+### Prokaryotic DNA Concentration
 ```{r bacCon, child="results/bac_con_validation.Rmd", warning=FALSE, message=FALSE, echo = FALSE}
 ```
 
@@ -97,7 +99,8 @@ To evaluate if the PRE and POST samples had the same proportion of prokaryotic D
 
 ## Measurement Assessment
 Next, we assessed the qualitative and quantitative nature of 16S rRNA measurement process using our two-sample titration dataset.
-For the qualitative assessment, we analyzed the relative abundance of features only observed in the unmixed samples or titrations which are not expected given the titration experimental design.
+For the qualitative assessment, we analyzed the relative abundance of features only observed in the unmixed samples or titrations. 
+These features are not expected given the titration experimental design.
 The quantitative assessment evaluated relative and differential abundance estimates.
 
 ### Qualitative Assessment
@@ -138,7 +141,7 @@ logFC Error Rate Results
 
 # Acknowledgements  
 This work was partially supported by National Institutes of Health (NIH) [NIH R01HG005220 to H.C.B.]
-The authors would like to thank Mihai Pop, Scott Pine, Justin Zook, and Prachi Kulkarni for feedback on manuscript drafts. 
+The authors would like to thank Mihai Pop, Scott Pine, Scott Jackson, Justin Zook, and Prachi Kulkarni for feedback on manuscript drafts. 
 Opinions expressed in this paper are the authors and do not necessarily reflect the policies and views of NIST, or affiliated venues. Certain commercial equipment, instruments, or materials are identified in this paper in order to specify the experimental procedure adequately. Such identification is not intended to imply recommendations or endorsement by NIST, nor is it intended to imply that the materials or equipment identified are necessarily the best available for the purpose. Official contribution of NIST; not subject to copyrights in USA.
 
 # References

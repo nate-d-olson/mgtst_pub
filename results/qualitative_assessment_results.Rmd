@@ -164,11 +164,12 @@ ggarrange(mix_count_plot + rremove("x.text"), unmix_count_plot + rremove("x.text
 ```
 
 Unmixed- and titration-specific features were observed for all pipelines (titration-specific: Fig. \@ref(fig:qualPlot)A, unmixed-specific: Fig. \@ref(fig:qualPlot)B).
-For mixture datasets the low abundance features present only in the unmixed samples and mixtures are expected due to random sampling.
-For our two-sample titration dataset there were unmixed-specific features with expected counts that could not be explained by sampling alone for all individuals and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C).
+For mixture datasets low abundance features present only in unmixed samples and mixtures are expected due to random sampling.
+For our two-sample titration dataset there were unmixed-specific features with expected counts not explained by sampling alone for all individuals and bioinformatic pipelines (Fig. \@ref(fig:qualPlot)C).
 However, the proportion of unmixed-specific features that could not be explained by sampling alone varied by bioinformatic pipeline.
-DADA2 had the highest rate of unmixed-specific features not explained by sampling whereas QIIME had the lowest rate.
-Consistent with the distribution of observed counts for titration-specific features more of the DADA2 features could not be explained by sampling alone compared to the other pipelines (Fig. \@ref(fig:qualPlot)D). Overall, DADA2 resulted in the largest number of observed features inconsistent with the titration experiment design, while the same phenomenon is significantly reduced in the other pipelines.
+DADA2 had the highest proportion of unmixed-specific features not explained by sampling whereas QIIME had the lowest proportion.
+Consistent with the distribution of observed counts for titration-specific features more of the DADA2 features could not be explained by sampling alone compared to the other pipelines (Fig. \@ref(fig:qualPlot)D). 
+Overall, the DADA2 count table had the largest number of observed features inconsistent with the titration experiment design, while the same phenomenon is significantly reduced in the other pipelines.
 
 
 <!-- Exploring unmix and titration specific feature numbers -->

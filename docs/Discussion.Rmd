@@ -20,7 +20,7 @@ We demonstrated our novel assessment approach by evaluating count tables generat
 The Mothur pipeline uses _de novo_ clustering for feature inference [@westcott2017opticlust; @schloss2009introducing].
 Pairwise distances used in clustering are calculated using a multiple sequence alignment.
 The quality filtered paired-end reads are merged into contigs.
-The pipeline the aligns contigs to a reference multiple sequence alignment and removes uninformative positions in the multiple sequence alignment.
+The pipeline then aligns contigs to a reference multiple sequence alignment and removes uninformative positions in the multiple sequence alignment.
 The QIIME pipeline uses open-reference clustering where merged paired-end reads are first assigned to reference cluster centers [@Rideout2014; @Caporaso2010].
 Next QIIME clusters unassigned reads _de novo_.
 Unlike Mothur, the QIIME clustering method uses pairwise sequence distances calculated from pairwise sequence alignments.
@@ -34,32 +34,32 @@ The unclustered features were generated using the Mothur pipeline preprocessing 
 #### Quantitative Assessment
 While the relative abundance bias metric was significantly different between pipelines overall, pipeline choice had minimal impact on the quantitative assessment results when accounting for subject-specific effects.
 Outlier features, those with extreme quantitative analysis bias and variance metrics, were observed for all pipelines and both relative and differential abundance assessments.
-Outlier features could not be attributed to bioinformatic pipelines and are likely due to biases in the molecular biology part of the measurement process.
 Outlier features are not likely a pipeline artifact as they were observed in count tables generated using the unclustered pipeline as well as standard bioinformatic pipelines.
 We were unable to attribute outlier features to relative abundance values, log fold-change between unmixed samples, and sequence GC content.
 Features with extreme metric values were not limited to any specific taxonomic group or phylogenetic clade.
-PCR amplification is a well-known bias molecular biology component of the measurement process.
+Outlier features could not be attributed to bioinformatic pipelines and are likely due to biases in the molecular biology part of the measurement process.
+PCR amplification is a well-known bias in the molecular biology part of the measurement process.
 Mismatches in the primer binding regions impact PCR efficiency and are a potential cause for poor feature-specific performance [@wright2014exploiting].
 Additional research is needed before outlier features are attributed to mismatches in the primer binding regions.
 
 
 #### Qualitative Assessment
 The qualitative assessment evaluated whether features only observed in unmixed samples or titrations could be explained by sampling alone.
-Features present only in the titrations or unmixed samples not due to random sampling are bioinformatic pipeline artifacts.
+Features present only in titrations or unmixed samples not due to random sampling are bioinformatic pipeline artifacts.
 These artifacts can be categorized as false negative or false positive features.
 A false negative occurs when a lower abundance sequence representing an organism within the sample is clustered with a higher abundance sequence from a different organism.
 False positives are sequencing or PCR artifacts not appropriately filtered or assigned to an appropriate feature by the bioinformatic pipeline.
 
 
 Count table sparsity, the proportion of zero-valued cells, provides additional insight into the qualitative assessment results.
-A high rate of false negative features is a potential explanation for the  DADA2 count table's poor performance in the qualitative assessment and comparable sparsity to the other pipelines despite having significantly fewer features (Fig. \@ref(fig:qualPlot), \@ref(tab:pipeQA)).
+A high rate of false negative features is a potential explanation for DADA2 count table's poor performance in the qualitative assessment and comparable sparsity to the other pipelines despite having significantly fewer features (Fig. \@ref(fig:qualPlot) and Table \@ref(tab:pipeQA)).
 The DADA2 feature inference algorithm may be aggressively grouping lower abundance true sequences with higher abundance sequences.
 As a result, the low abundance sequences are not present in samples leading to increased sparsity and higher abundance unmixed- and titration-specific features.
 Adjusting the DADA2 parameters, specifically the `OMEGA_A` parameter in `setDadaOpt`.
 Along these lines, the DADA2 documentation states that the default setting for `OMEGA_A` is conservative to prevent false positives at the cost of increasing false negatives [@callahan2016dada2].
 
-False positive features provide an explanation for Mothur and QIIME pipelines having lower proportion of unmixed- and titration-specific features not explained by sampling but high sparsity (Fig. \@ref(fig:qualPlot), \@ref(tab:pipeQA)).
-The statistical tests used to determine if the specific features could be explained by sampling only considers feature abundance.
+False positive features provide an explanation for Mothur and QIIME pipelines having lower proportion of unmixed- and titration-specific features not explained by sampling but high sparsity (Fig. \@ref(fig:qualPlot) and Table \@ref(tab:pipeQA)).
+The statistical tests used to determine if the specific features could be explained by sampling alone only considers feature abundance.
 Therefore, the statistical test is not able to distinguish between true low abundance unmixed- and titration-specific features and low abundance sequence artifacts.
 Mothur and QIIME count tables have ten times and three times more features compared to DADA2, respectively (Table \@ref(tab:pipeQA)).
 While microbial abundance distributions are known to have long tails, it is likely that the observed sparsity is an artifact of the 16S rRNA sequencing measurement process.
@@ -67,10 +67,11 @@ Similarly, significantly more features than expected are commonly observed for m
 
 
 False positive features can be reduced, but not eliminated, using smaller amplicon and prevalence filtering.
-The 16S rRNA region sequenced in the study is larger than the region the _de-novo_, and open clustering pipelines were initially developed for, potentially explaining the higher than expected sparsity [@kozich2013development].
-@kozich2013development were reduced the sequence error rate from 0.29\% to 0.06\% when using paired-end reads that completely overlap.
-The larger region has a smaller overlap between the forward and reverse reads. As a result, merging of the forward and reverse reads did not allow for the sequence error correction that occurs when a smaller amplicon is used.  However, even when targeting smaller regions of the 16S rRNA gene both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using mock communities.
-Prevalence filtering is used to exclude low abundance features, likely predominantly measurement artifacts [@callahan2016].
+The 16S rRNA region sequenced in the study is larger than the region the _de-novo_, and open clustering pipelines were developed for, potentially explaining the higher than expected sparsity [@kozich2013development].
+Kozich et al. [@kozich2013development] reduced the sequence error rate from 0.29\% to 0.06\% by using paired-end reads that completely overlap.
+The larger region used in this study has a smaller overlap between the forward and reverse reads. 
+As a result, merging the forward and reverse reads did not allow for sequence error correction that occurs when a smaller amplicon is used.  However, even when targeting smaller regions of the 16S rRNA gene both the _de-novo_ (Mothur) and open-reference clustering (QIIME) pipelines produced count tables with significantly more features than expected in evaluation studies using mock communities.
+Prevalence filtering is used to exclude low abundance features, predominantly measurement artifacts [@callahan2016].
 For example, a study exploring the microbial ecology of the Red-necked stint _Calidris ruficollis_, a migratory shorebird, used a hard filter to validate their study conclusions are not biases by false positive features.
 The study authors compared results with and without prevalence filter ensuring that the study conclusions were not biased by using the arbitrary filter or including the low abundant features [@risely2017gut].
 
@@ -78,11 +79,10 @@ The study authors compared results with and without prevalence filter ensuring t
 ### Using Mixtures to Assess 16S rRNA Sequencing
 Mixtures of environmental samples have previously been used to assess RNAseq and microarray gene expression measurements.
 However, this is the first time mixtures have been used to assess microbiome measurement methods.
-Our mixture dataset allowed us to develop novel methods for assessing marker-gene-survey computational methods.
-Our quantitative assessment allowed for the characterization of relative abundance values using a dataset with a larger number of features and dynamic range compared to assessments using mock communities.
-As a result, we were able to identify previously unknown feature specific biases.
-Based on our study results additional experiments can be performed to identify the cause of these biases and develop appropriate methods to account for them.
-Based on our subject-specific results observation, we recommend that studies based on stool samples seeking inferences in a longitudinal series of multiple subjects carefully estimate bacterial DNA proportions and adjust inferences accordingly.
+Using our mixture dataset we developed novel methods for assessing marker-gene-survey computational methods.
+Our quantitative assessment allowed for the characterization of relative abundance values using a dataset with a larger number of features and dynamic range compared to mock community assessments.
+As a result, we identified previously unknown feature specific biases.
+Based on our subject-specific results observation, we recommend that studies using stool samples seeking inferences in a longitudinal series of multiple subjects carefully estimate bacterial DNA proportions and adjust inferences accordingly.
 Additionally, our qualitative assessment results, when combined with sparsity information provide a new method for evaluating how well bioinformatic pipelines account for sequencing artifacts without loss of true biological sequences.
 
 
@@ -93,20 +93,20 @@ The number of features used in the different analysis.
 These limitations are described below along with recommendations for addressing them in future studies.
 
 
-Differences in the proportion of prokaryotic DNA in the samples used to generate the two-sample titrations series results in differences between the true mixture proportions and mixture design.
+Differences in the proportion of prokaryotic DNA in the samples used to generate the two-sample titrations series resulted in differences between the true mixture proportions and mixture design.
 We attempted to account for differences in mixture proportion from mixture design by estimating mixture proportions using sequence data.
-Similar to how the proportion of mRNA in RNA samples used in a previous mixture study [@parsons2015using].
-We were able to use an assay targeting the 16S rRNA gene to detect changes in the concentration of bacterial DNA across titration, but unable to quantify the proportion of bacterial DNA in the unmixed samples using qPCR data.
-Using the 16S sequencing data we inferred the proportion of bacterial DNA from the POST sample in each titration.
+Similar to how the proportion of mRNA in RNA samples was used in a previous mixture study [@parsons2015using].
+We used an assay targeting the 16S rRNA gene to detect changes in the concentration of prokaryotic DNA across titrations, but were unable to quantify the proportion of prokaryotic DNA in the unmixed samples using qPCR data.
+Using the 16S sequencing data we inferred the proportion of prokaryotic DNA from the POST sample in each titration.
 However, the uncertainty and accuracy of the inference method are not known resulting in an unaccounted for error source.
 
 
-A better method for quantifying sample bacterial DNA proportion or using samples with consistent proportions would increase the expected value and in-turn error metric accuracy.
-Limitations in the prokaryotic DNA qPCR concentration assay precision limit the suitability for use in mixture studies.
+A better method for quantifying sample prokaryotic DNA proportion or using samples with consistent proportions would increase confidence in the expected value and in-turn error metric accuracy.
+Limitations in the prokaryotic DNA qPCR assay's concentration precision limits the assay'ssuitability for use in mixture studies.
 Digital PCR provides a more precise alternative to qPCR and is, therefore, a more appropriate method.
 Alternatively using samples where the majority of the DNA is prokaryotic would minimize this issue.
 Mixtures of environmental samples can also be used to assess shotgun metagenomic methods as well.
-As shotgun metagenomics is not a targeted approach, differences in the proportion of bacterial DNA in a sample would not impact the assessment results in the same way as 16S rRNA marker-gene-surveys.
+As shotgun metagenomics is not a targeted approach, differences in the proportion of prokaryotic DNA in a sample would not impact the assessment results in the same way as 16S rRNA marker-gene-surveys.
 
 
 Using samples from a vaccine trial allowed for the use of a specific marker with an expected response, _E. coli_, during methods development.

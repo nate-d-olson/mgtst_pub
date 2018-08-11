@@ -11,10 +11,11 @@ bibliography: [mgtst.bib]
 ### Titration Validation
 
 qPCR was used to validate volumetric mixing and check for differences in the proportion of prokaryotic DNA across titrations.
-To ensure that the two-sample titrations were volumetrically mixed according to the mixture design, independent ERCC plasmids were spiked into the unmixed PRE and POST samples [@baker2005external] (NIST SRM SRM 2374) (Table \@ref(tab:erccTable)).
-The ERCC plasmids were resuspended in 100 $ng/\mu L$ tris-EDTA buffer and 2 $ng/\mu L$ was spiked into the appropriate unmixed sample.
+To ensure the two-sample titrations were volumetrically mixed according to the mixture design, independent ERCC plasmids were spiked into the unmixed PRE and POST samples [@baker2005external] (NIST SRM SRM 2374) (Table \@ref(tab:erccTable)).
+The ERCC plasmids were resuspended in 100 $\mu L$ tris-EDTA buffer and 2 $\mu L$ of resuspended plasmids was spiked into the appropriate unmixed sample.
 Plasmids were spiked into unmixed samples after unmixed sample concentration was normalized to 12.5 $ng/\mu L$.
-POST sample ERCC plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB) (Catalog # 4448892, ThermoFisher) specific to each ERCC plasmid using the TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA).
+POST sample ERCC plasmid abundance was quantified using TaqMan gene expression assays (FAM-MGB, Catalog # 4448892, ThermoFisher) specific to each ERCC plasmid and TaqMan Universal MasterMix II (Catalog # 4440040, ThermoFisher Waltham, MA USA).  
+
 To check for differences in the proportion of bacterial DNA in the PRE and POST samples, titration bacterial DNA concentration was quantified using the Femto Bacterial DNA quantification kit (Zymo Research, Irvine CA).
 All samples were run in triplicate along with an in-house _E. coli_ DNA $log_{10}$ dilution standard curve.
 qPCR assays were performed using the QuantStudio Real-Time qPCR (ThermoFisher).
@@ -24,13 +25,14 @@ The qPCR data and scripts used to analyze the data are available at https://gith
 
 ### Sequencing
 The 45 samples (seven titrations and two unmixed samples for each of five subjects) were processed using the Illumina 16S library protocol (16S Metagenomic Sequencing Library Preparation, posted date 11/27/2013, downloaded from \url{https://support.illumina.com}).
-This protocol specifies an initial 16S rRNA PCR followed by a sample indexing PCR, followed by normalization and sequencing.
+This protocol specifies an initial 16S rRNA gene PCR, followed by a sample indexing PCR, normalization, and sequencing.
 
 A total of 192 16S rRNA PCR assays were run including four replicates per sample and 12 no-template controls, using Kapa HiFi HotStart ReadyMix reagents (KAPA Biosystems, Inc. Wilmington, MA).
 The initial PCR assay targeted the V3-V5 region of the 16S rRNA gene, Bakt_341F and Bakt_806R [@klindworth2012evaluation].
 The V3-V5 region is 464 base pairs (bp) long, with forward and reverse reads overlapping by 136 bp, using 2 X 300 bp paired-end sequencing [@yang2016sensitivity] ( \url{http://probebase.csb.univie.ac.at}).
 Primer sequences include overhang adapter sequences for library preparation (forward primer 5'- TCG TCG GCA GCG TCA GAT GTG TAT AAG AGA CAG CCT ACG GGN GGC WGC AG - 3' and reverse primer 5'- GTC TCG TGG GCT CGG AGA TGT GTA TAA GAG ACA GGA CTA CHV GGG TAT CTA ATC C - 3').
-For quality control, the PCR product was verified using agarose gel electrophoresis to check for appropriate size bands, and concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and normalization steps.
+For quality control, the PCR product was verified using agarose gel electrophoresis to check amplicon size. 
+Concentration measurements were made after the initial 16S rRNA PCR, the indexing PCR, and normalization steps.
 DNA concentration was measured using the QuantIT Picogreen dsDNA Kit (Cat # P7589, ThermoFisher Scientific) and fluorescent measurements were made with a Synergy2 Multi-Detection MicroPlate Reader (BioTek Instruments, Inc, Winooski, VT).
 
 <!-- Assay and instrument used at NIST
@@ -44,7 +46,7 @@ Pooled library concentration was checked using the Qubit dsDNA HS Assay Kit (Par
 Due to the low pooled amplicon library DNA concentration, a modified protocol for low concentration libraries was used.
 The library was run on an Illumina MiSeq, and base calls were made using Illumina Real Time Analysis Software version 1.18.54.
 Sequencing data quality control metrics for the 384 fastq sequence files (192 samples with forward and reverse reads) were computed using the Bioconductor `Rqc` package [@Rqc;@Bioconductor]. 
-The sequence data is depositsed in the NCBI SRA archive under Bioproject PRJNA480312.
+The sequence data was deposited in the NCBI SRA archive under Bioproject PRJNA480312.
 
 ### Sequence Processing
 Sequence data were processed using four bioinformatic pipelines: a _de-novo_ clustering method - Mothur [@schloss2009introducing], an open-reference clustering method - QIIME [@Caporaso2010], and a sequence inference method - DADA2 [@callahan2016dada2], and unclustered sequences as a control.
@@ -52,11 +54,11 @@ The code used to run the bioinformatic pipelines is available at \url{https://gi
 
 
 The Mothur pipeline follows the developer's MiSeq SOP [@schloss2009introducing;@kozich2013development].
-The pipeline was run using Mothur version 1.37 (\url{http://www.mothur.org/})
+The pipeline was run using Mothur version 1.37 (\url{http://www.mothur.org/}).
 We sequenced a larger 16S rRNA region, with smaller overlap between the forward and reverse reads, than the 16S rRNA region the SOP was designed.
-Pipeline parameters were modified to account for the difference in overlap are noted for individual steps below.
+Pipeline parameters modified to account for difference in overlap are noted for individual steps below.
 The Makefile and scripts used to run the Mothur  pipeline are available https://github.com/nate-d-olson/mgtst_pipelines/blob/master/code/mothur.
-The Mothur pipeline included an initial preprocessing step where the forward and reverse reads are trimmed and filtered using base quality scores and were merged into a single contig for each read pair.
+The Mothur pipeline includes an initial preprocessing step where the forward and reverse reads are trimmed and filtered using base quality scores and were merged into single contigs for each read pair.
 The following parameters were used for the initial contig filtering, no ambiguous bases, max contig length of 500 bp, and max homopolymer length of 8 bases.
 For the initial read filtering and merging step,
 low-quality reads were identified and filtered from the dataset based on the presence of ambiguous bases, failure to align to the SILVA reference database (V119, \url{https://www.arb-silva.de/}) [@quast2012silva], and identification as chimeras.
@@ -77,17 +79,17 @@ Taxonomic classification of the unclustered sequences was performed using the sa
 To limit the size of the dataset the most abundant 40,000 OTUs (comparable to the Mothur  dataset), across all samples, were used as the unclustered dataset.
 
 ### Titration Proportion Estimates
-The following linear model \@ref(eq:thetaInf) was used to infer the proportion of prokaryotic DNA in each titration, $\theta$.
+The following linear model \@ref(eq:thetaInf) was used to infer the proportion of prokaryotic DNA, $\theta$, in each titration.
 Where $\textbf{Q}_{i}$ is a vector of titration $i$ feature relative abundance estimates and
 $\textbf{Q}_{pre}$ and $\textbf{Q}_{post}$ are vectors of feature relative abundance estimates for the unmixed PRE and POST samples.
-Average PCR replicate relative abundance values were calculated using a negative binomial model.
+Feature relative abundance estimates were calculated using a negative binomial model.
 
 \begin{equation}
   \textbf{Q}_{i} = \theta_i (\textbf{Q}_{post} -\textbf{Q}_{pre}) + \textbf{Q}_{pre}
   (\#eq:thetaInf)
 \end{equation}
 
-To fit the model and prevent uninformative and low abundance features from biasing $\theta$ estimates only informative features meeting the following criteria were used.
+To fit the model and prevent uninformative and low abundance features from biasing $\theta$ estimates, only features meeting the following criteria were used.
 Features included in the model were observed in at least 14 of the 28 total titration PCR replicates (4 replicates per 7 titrations),
 demonstrated greater than 2-fold difference in relative abundance between the PRE and POST samples,
 and were present in either all four or none of the PRE and POST PCR replicates.
@@ -95,7 +97,7 @@ and were present in either all four or none of the PRE and POST PCR replicates.
 
 16S rRNA sequencing count data is known to have a non-normal mean-variance relationship resulting in poor model fit for standard linear regression [@McMurdie2014].
 Generalized linear models provide an alternative to standard least-squares regression.
-The above model is additive and therefore unable to directly infer $\theta_i$ in log-space.
+The above model is additive and therefore $\theta_i$ cannot be directly inferred in log-space.
 To address this issue, we fit the model using a standard least-squares regression then obtained non-parametric 95 \% confidence intervals for the $\theta$ estimates by bootstrapping with 1000 replicates.
 
 ### Qualitative Assessment
@@ -130,13 +132,13 @@ Our assumption is that $\pi$ is less than $\pi_{min}$ for features not observed 
 \end{equation}
 
 \begin{equation}
-    p = \frac{P(C \geq C_{obs}| \pi < \pi_{min})}{P(C \geq C_{obs})}
+p = \frac{P(C \geq C_{obs}| \pi < \pi_{min})}{P(C \geq C_{obs})}
   (\#eq:bht2)
 \end{equation}
 
 
 ### Quantitative Assessment
-For quantitative assessment, we compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design.  
+For quantitative assessment, we compared observed relative abundance and log fold-changes to expected values derived from the titration experimental design. 
 Feature average relative abundance across PCR replicates was calculated using a negative binomial model, and used as observed relative abundance values ($obs$) for the relative abundance assessment.
 Average relative abundance values were used to reduce PCR replicate outliers from biasing the assessment results.
 Equation \@ref(eq:mixEq) and inferred $\theta$ values were used to calculate the expected relative abundance values ($exp$).

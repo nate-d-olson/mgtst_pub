@@ -346,26 +346,27 @@ We first characterize the number of reads per sample and base quality score dist
 The number of reads per sample and distribution of base quality scores by position was consistent across subjects (Fig. \@ref(fig:qaPlots)).
 Two barcoded experimental samples had less than 35,000 reads.
 The rest of the samples with less than 35,000 reads were no template PCR controls (NTC).
-Excluding the one failed reaction with 2,700 reads and NTCs, there were $`r median(lib_size)`$ (`r min(lib_size)`-`r max(lib_size)`) sequences per sample, median and range.
-The forward read has consistently higher base quality scores relative to the reverse read with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
+Excluding one failed reaction with 2,700 reads and NTCs, there were $`r median(lib_size)`$ (`r min(lib_size)`-`r max(lib_size)`) sequences per sample, median and range.
+Forward reads had consistently higher base quality scores relative to the reverse reads with a narrow overlap region with high base quality scores for both forward and reverse reads (Fig. \@ref(fig:qaPlots)B).
 
-The resulting count tables generated using the four bioinformatic pipelines were characterized for number of features, sparsity, and filter rate(Table \@ref(tab:pipeQA), Figs. \@ref(fig:readsVfeats)B).
-The pipelines evaluated employ different approaches for handling low quality reads resulting in the large differences in drop-out rate and  the fraction of raw sequences not included in the count table (Table \@ref(tab:pipeQA)).
+The resulting count tables generated using the four bioinformatic pipelines were characterized for number of features, sparsity, and filter rate (Table \@ref(tab:pipeQA), Figs. \@ref(fig:readsVfeats)B).
+The pipelines evaluated employ different approaches for handling low quality reads resulting in large differences in drop-out rate and  the fraction of raw sequences not included in the count table (Table \@ref(tab:pipeQA)).
 QIIME pipeline has the highest drop-out rate and number of features per sample but fewer total features than Mothur.
 The targeted amplicon region has a relatively small overlap region, 136 bp for 300 bp paired-end reads, compared to other commonly used amplicons [@kozich2013development; @Walters2016-lf].
-The high drop-off rate is due to low basecall accuracy at the ends of the reads especially the reverse reads resulting in a high proportion of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B).
-Furthermore, increasing the drop-out rate, QIIME excludes singletons, OTUs only observed once in the dataset, to remove potential sequencing artifacts from the dataset.
+The high drop-out rate is due to low basecall accuracy at the ends of the reads especially the reverse reads resulting in a high proportion of unsuccessfully merged reads pairs (Fig. \@ref(fig:qaPlots)B).
+Furthermore, increasing the drop-out rate, QIIME excludes singletons, features only observed once in the dataset, to remove potential sequencing artifacts from the dataset.
 QIIME and DADA2 pipelines were similarly sparse (the fraction of zero values in count tables) despite differences in the number of features and drop-out rate.
-The expectation is that this mixture dataset will be less sparse relative to other datasets due to the redundant nature of the samples where 35 of the samples are derived directly from the other 10 samples, and four PCR replicates for each sample.
+The expectation is that this mixture dataset will be less sparse relative to other datasets. 
+This is due to the redundant nature of the samples where the 35 titration samples are derived directly from the 10 unmixed samples, along with four PCR replicates for each sample.
 With sparsity greater than 0.9 for the three pipelines it is unlikely that any of the pipelines successfully filtered out a majority of the sequencing artifacts.
 
 
-The dataset taxonomic assignments also varied by pipeline (Fig. \@ref(fig:pipeTaxa)).
+Dataset taxonomic assignments also varied by pipeline (Fig. \@ref(fig:pipeTaxa)).
 Phylum and order relative abundance is similar across pipelines (Fig. \@ref(fig:pipeTaxa)A & B).
-Differences are attributed to different taxonomic classification methods and databases.
-The DADA2 and QIIME pipelines differed from Mothur and QIIME for Proteobacteria and Bacteriodetes.
-Regardless of threshold, for genus sets most genera were unique to individual pipelines (Fig. \@ref(fig:pipeTaxa)C & D).
-Sets with QIIME had the fewest genera, excluding the DADA2-QIIME set.
-QIIME pipeline was the only one to use the open-reference clustering and the Greengenes database.
+The observed differences are attributed to different taxonomic classification methods and databases used by the pipelines.
+DADA2 and QIIME pipelines differed from Mothur and QIIME for Proteobacteria and Bacteriodetes.
+Regardless of the relative abundance threshold, for genus sets most genera were unique to individual pipelines (Fig. \@ref(fig:pipeTaxa)C & D).
+Sets, shared taxa between pipelines, with QIIME had the fewest genera, excluding the DADA2-QIIME set.
+QIIME was the only pipeline to use open-reference clustering and the Greengenes database.
 Mothur and DADA2 both used the SILVA dataset.
-The Mothur and DADA2 pipeline use different implmentations of the RDP naïve Bayesian classifier, which may be partially responsible for the Mothur , unclustered, and DADA2 differences.
+The Mothur and DADA2 pipeline use different implmentations of the RDP naïve Bayesian classifier, which may be partially responsible for the Mothur, unclustered, and DADA2 differences.
