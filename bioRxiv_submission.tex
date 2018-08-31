@@ -253,11 +253,11 @@ The sequencing data were processed using multiple bioinformatic pipelines, i) DA
 The mixture dataset was used to qualitatively and quantitatively assess count tables generated using the pipelines. 
 
 \parttitle{Results}
-The qualitative assessment was used to evalute features only present in unmixed samples and titrations. 
-The abundance of Mothur and QIIME features specific to unmixed samples and titrations were explained by sampling alone. 
+The qualitative assessment was used to evaluate features only present in unmixed samples and titrations. 
+The abundance of Mothur and QIIME features specific to unmixed samples and titrations were explained by sampling alone.
 However, for DADA2 over a third of the unmixed sample and titration specific feature abundance could not be explained by sampling alone. 
 The quantitative assessment evaluated pipeline performance by comparing observed to expected relative and differential abundance values. 
-Overall the observed relative abundance and differential abundance values were consistent with the expected values. 
+Overall the observed relative and differential abundance values were consistent with the expected values. 
 Though outlier features were observed across all pipelines. 
 
 \parttitle{Conclusions} 
@@ -359,8 +359,8 @@ dynamic range of real samples \cite{bokulich2016mockrobiota}.
 
 The quantitative characteristics of 16S rRNA sequence data are normally
 assessed using mock communities and simulated data. Mock communities of
-equimolar and staggered concentration are used to assess relative
-abundance estimate quantitative accuracy \cite{Kopylova2014}. Results
+equimolar and staggered concentration are used to assess the quantitative accuracy of relative
+abundance estimates \cite{Kopylova2014}. Results
 from relative abundance estimates using mock communities generated from
 mixtures of single organism DNA have shown taxonomic specific effects
 where individual taxa are under or over represented in a sample. For
@@ -374,7 +374,7 @@ such as GC content, secondary structure, and gene flanking regions have
 been observed \cite{Pinto2012, Hansen1998, Gohl2016}. Simulated count
 tables have been used to assess differential abundance method (fold
 change differences in relative abundance), where specific taxa are
-artificially overrepresented in one set of samples compared to another
+artificially over represented in one set of samples compared to another
 \cite{McMurdie2014}. Using simulated data to assess log fold-change
 estimates only evaluates computational steps of the measurement process.
 
@@ -406,20 +406,20 @@ available for evaluating bioinformatic pipelines.
 
 \subsection*{Two-Sample Titration Design}
 
-Samples collected at multiple timepoints during a Enterotoxigenic
+Samples collected at multiple time points during a Enterotoxigenic
 \emph{E. coli} (ETEC) vaccine trial \cite{harro2011refinement} were
 used to generate a two-sample titration dataset for assessing the 16S
 rRNA marker-gene survey measurement process. Samples from five trial
 participants were selected for our two-sample titration dataset. Trial
-participants (subjects) and sampling timepoints were selected based on
+participants (subjects) and sampling time points were selected based on
 \emph{E. coli} abundance data collected using qPCR and 16S rRNA
 sequencing from Pop et al. \cite{pop2016individual}. Only individuals with no
 \emph{E. coli} detected in samples collected from trial participants
 prior to ETEC exposure (PRE) were used for our two-samples titrations.
-Post ETEC exposure (POST) samples were identified as the timepoint after
+Post ETEC exposure (POST) samples were identified as the time point after
 exposure to ETEC with the highest \emph{E. coli} concentration for each
 subject (Fig. \ref{fig:countExperimentalDesign}A). Due to limited sample
-availability, for E01JH0016 the timepoint with the second highest
+availability, for E01JH0016 the time point with the second highest
 \emph{E. coli} concentration was used as the POST sample. Independent
 titration series were generated for each subject, where POST samples
 were titrated into PRE samples with POST proportions of 1/2, 1/4, 1/8,
@@ -571,7 +571,7 @@ shared taxa between pipelines, with QIIME had the fewest genera,
 excluding the DADA2-QIIME set. QIIME was the only pipeline to use
 open-reference clustering and the Greengenes database. Mothur and DADA2
 both used the SILVA dataset. The Mothur and DADA2 pipeline use different
-implmentations of the RDP naïve Bayesian classifier, which may be
+implementations of the RDP naïve Bayesian classifier, which may be
 partially responsible for the Mothur, unclustered, and DADA2
 differences.
 
@@ -586,9 +586,9 @@ generate the mixtures have both eukaryotic (primarily human) DNA and
 prokaryotic DNA. If the proportion of prokaryotic DNA differs between
 the unmixed samples, then the amount of DNA from the unmixed samples in
 a titration targeted by 16S rRNA gene sequencing is not consistent with
-the mixture design. To validate the sample volumetric mixing exogenous
+the mixture design. To validate the sample volumetric mixing, exogenous
 DNA was spiked into the unmixed samples before mixing and quantified
-using qPCR . To evaluate if the PRE and POST samples had the same
+using qPCR. To evaluate if the PRE and POST samples had the same
 proportion of prokaryotic DNA total prokaryotic DNA in the titrations
 samples was quantified using a qPCR assay targeting the 16S rRNA gene.
 
@@ -679,8 +679,8 @@ differences in the proportion of prokaryotic DNA in PRE and POST samples
 prokaryotic DNA in a titration, \(\theta\), using the 16S rRNA
 sequencing data (Fig. \ref{fig:thetaHat}). Overall the relationship
 between the inferred and mixture design \(\theta\) values were
-consistent across pipelines but not subject whereas the \(\theta\)
-estimate 95\% CI varied by both subject and pipeline. For study subjects
+consistent across pipelines but not subject whereas the size of the \(\theta\)
+95\% CI varied by both subject and pipeline. For study subjects
 E01JH0004, E01JH0011, and E01JH0016 the inferred and mixture design
 \(\theta\) values were in agreement, in contrast to study subjects
 E01JH0017 and E01JH0038. For E01JH0017 the inferred values were
@@ -696,7 +696,7 @@ and E01JH0016 and significantly negative slope for E01JH0038 (Fig.
 \includegraphics[width=12cm]{springer_abundance_files/figure-latex/thetaHat-1.pdf}
 \caption{\label{fig:thetaHat}Theta estimates by titration, biological
 replicate, and bioinformatic pipeline. The points indicates mean
-estimate of 1000 bootstrap theta estimates and errorbars 95\% confidence
+estimate of 1000 bootstrap theta estimates and error bars 95\% confidence
 interval. The black bar indicate expected theta values. Theta estimates
 below the expected theta indicate that the titrations contain less than
 expected bacterial DNA from the POST sample. Theta estimates greater
@@ -736,7 +736,7 @@ Unmixed- and titration-specific features were observed for all pipelines
 (titration-specific: Fig. \ref{fig:qualPlot}A, unmixed-specific: Fig.
 \ref{fig:qualPlot}B). For mixture datasets low abundance features
 present only in unmixed samples and mixtures are expected due to random
-sampling. For our two-sample titration dataset there were
+sampling. For our two-sample titration dataset, there were
 unmixed-specific features with expected counts not explained by sampling
 alone for all individuals and bioinformatic pipelines (Fig.
 \ref{fig:qualPlot}C). However, the proportion of unmixed-specific
@@ -841,7 +841,7 @@ using mixed effects models. Large bias and variance metric values were
 observed for all pipelines (Table \ref{tab:relAbuErrorTbl}). Features
 with large bias and variance metrics, \(1.5\times IQR\) from the median,
 were deemed outliers. To prevent these outlier features from biasing the
-comparison they were not used to fit the mixed effects model. Multiple
+comparison, they were not used to fit the mixed effects model. Multiple
 comparisons test (Tukey) was used to test for significant differences in
 feature-level bias and variance between pipelines. A one-sided
 alternative hypothesis was used to determine which pipelines had smaller
@@ -953,7 +953,7 @@ trial participants (subjects) were mixed following a \(log_2\) dilution
 series (Fig. \ref{fig:countExperimentalDesign}). Qualitative count table
 characteristics were assessed using relative abundance information for
 features observed only in titrations and unmixed samples. We
-quantitatively assed count tables by comparing feature relative and
+quantitatively assessed count tables by comparing feature relative and
 differential abundance to expected values.
 
 \subsubsection*{Count Table Assessment Demonstration}
@@ -1121,7 +1121,7 @@ A better method for quantifying sample prokaryotic DNA proportion or
 using samples with consistent proportions would increase confidence in
 the expected value and in-turn error metric accuracy. Limitations in the
 prokaryotic DNA qPCR assay's concentration precision limits the
-assay'ssuitability for use in mixture studies. Digital PCR provides a
+assay's suitability for use in mixture studies. Digital PCR provides a
 more precise alternative to qPCR and is, therefore, a more appropriate
 method. Alternatively using samples where the majority of the DNA is
 prokaryotic would minimize this issue. Mixtures of environmental samples
@@ -1498,8 +1498,7 @@ All authors provided feedback on manuscript drafts and approved the final manusc
 
 
 \subsection*{Acknowledgements}
- The authors would like to thank Mihai
-Pop, Scott Pine, Scott Jackson, Justin Zook, and Prachi Kulkarni for
+The authors would like to thank Mihai Pop, Scott Pine, Scott Jackson, Justin Zook, and Prachi Kulkarni for
 feedback on manuscript drafts. Opinions expressed in this paper are the
 authors and do not necessarily reflect the policies and views of NIST,
 or affiliated venues. Certain commercial equipment, instruments, or
