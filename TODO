@@ -1,57 +1,23 @@
 ## Manuscript Revisions
-Google doc with notes for revisions
+- Text revisions
+      - review text for flow
+
+- Google doc with notes for revisions
       https://docs.google.com/document/d/1edrGulddMo1-PMYqaNwiWAFx_aZ5fJDjmxdDdZ7pzeg/edit#
 
-- Revise methods
-  - more pipeline details
-    - QIIME
-    - DADA2
-
-- Revise figures/ tables
-  - logFC to match relative abundance
-  - figure 1 based on Scott's recommendations
-  - figures 2 and 3 merge, incorporate some values into table?
-  - Table with relative abundance exp v. obs slopes
-- Revise methods
-
-- post-specific feature logFC why not use
-
-- Address other issues
-      - use of term relative abundance
-      - log2 for titrations and theta
-
-- qualitative assessment results
-  - number of PCR replicates: unmix specific
-  - titration specific: #titrations and PCR reps
-  - relate to false positive and false negative conclusions
-    - prevalence plot?
-
-## Supplemental
-- add phylosignal
-- logFC norm
-
+- fix latex formatting issues 
+      - Copy paste body into tex 
+      - rename sections using section*
+      - replace \autocite with \cite
+            - \textcite to \citet (does not work)
+            - multiple references \cite{r1,r2,...}
+      -adding packages to bmcart.tex preamble
+            \usepackage{booktabs,longtable,multirow}
+            \usepackage{threeparttable}
+            \usepackage{pdflscape}
+            \usepackage{makecell}
+            Uncomment asmmath and hyperref
+      - change springer_abundance_files to springerAbundanceFiles
+                                                  
 ## Data Archiving
-* qPCR
-* seq
 * count tables
-
-## Project cleanup
-- Cache figure and table data
-- Move processing code to munge
-- 00 munge to get phyloseq and MRexp objects
-- Use munge/scripts for scripts to generate intermediate RDS files
-- Add data descriptions
-- Comment code
-- remove pre-processing code from manuscript
-
-
-
-## Potential Relevant References
-* single cell RNAseq
-  - https://www.biorxiv.org/content/early/2017/12/16/235382?%3Fcollection=
-* False negative rate for differentially abundant features
-  - http://msystems.asm.org/content/2/6/e00092-17?etoc=
-* PCR bias characterization
-  - http://onlinelibrary.wiley.com/store/10.1111/1462-2920.12259/asset/emi12259.pdf?v=1&t=jdym5rzg&s=a398d44b62a049dae799d99a7d28b52222d5f2e3
-* Differential abundance method
-  - https://www.biorxiv.org/content/early/2018/04/04/294678
