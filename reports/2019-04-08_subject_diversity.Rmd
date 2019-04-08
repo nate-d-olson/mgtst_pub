@@ -1,0 +1,90 @@
+---
+title: "Subject Pre-Post Community Comparison"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2:
+    toc: FALSE
+---
+
+
+
+```{r samCompSetup, include=FALSE}
+library(tidyverse)
+library(phyloseq)
+library(ggpubr)
+```
+
+```{r}
+dada_ps <- readRDS("../../mgtst_pipelines/dada2/dada_ps.rds")
+
+pre_post_ps <- subset_samples(dada_ps, titration %in% c(20,0)) %>% 
+      {prune_taxa(taxa_sums(.) > 0, .)}
+sample_data(pre_post_ps)$Titration <- factor(sample_data(pre_post_ps)$titration,
+                                             levels = c(20,0),
+                                             labels = c("PRE", "POST"))
+sample_data(pre_post_ps)$titration <- factor(sample_data(pre_post_ps)$titration)
+```
+
+## Alpha diversity 
+
+```{r}
+alpha_plot <- plot_richness(pre_post_ps, 
+              x = "Titration",
+              color = "biosample_id",
+              shape ="Titration", 
+              measures=c("Observed","Chao1", "Shannon")) +
+      theme_bw() +
+      labs("Subject") +
+      facet_grid(variable~biosample_id, scales = "free") +
+      theme(legend.position = "none") +
+      labs(x = "Titration")
+alpha_plot
+```
+
+## Beta Diversity Between Pre- and Post-Treatment Samples 
+Using DADA2 as an example, potentially provide other pipelines as supplemental for comparison.
+
+```{r}
+pre_post_ord <- ordinate(pre_post_ps, "PCoA", "bray")
+beta_plot <- plot_ordination(physeq = pre_post_ps, pre_post_ord, 
+                type = "sample", color = "biosample_id", shape = "Titration") +
+      theme_bw() +
+      labs(color = "Individual")
+beta_plot
+```
+
+
+```{r ordPlots, results='hold', fig.cap = "Pre- and Post-treatment PCoA for Bray-Curtis Beta diversity.", fig.width = 3, fig.height = 3}
+# pl_list <- map2(subset_obj, subset_ord, plot_ordination, 
+#                 type = "sample",color = "biosample_id", shape = "titration")
+# pl_list$dada2 + ggtitle("DADA2 Ordination") + theme_bw() + theme(legend.position = "none")
+# pl_list$mothur + ggtitle("Mothur Ordination") + theme_bw() + theme(legend.position = "none")
+# pl_list$qiime + ggtitle("QIIME Ordination") + theme_bw() 
+```
+
+## Taxonomy
+```{r}
+taxa_df <- tax_table(pre_post_ps) %>% 
+            as.data.frame() %>%
+            tibble::rownames_to_column(var = "feature_id") %>% 
+            mutate_all(funs(str_remove(.,".__")))
+
+## Can generate plot with NB relative abu estimates if we want
+```
+
+## Combined Plot
+```{r fig.height = 6, fig.width = 6}
+ggarrange(alpha_plot, beta_plot,ncol = 1, nrow = 2)
+ggsave("../../MGTST-Manuscript/sample_div.pdf", width = 170,units = "mm")
+```
+
+
+# Session information
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+
+```

@@ -16,7 +16,7 @@ These features either represent different copies of the 16S gene, different Esch
 
 ```{r eschData, include = FALSE}
 ## logFC 
-logFC_edgeR <- readRDS("../data/logFC_edgeR_df.RDS") 
+logFC_edgeR <- readRDS("data/logFC_edgeR_df.RDS") 
 logFC_edgeR <- logFC_edgeR %>% rename(feature_id = OTUname)
 logFC_esch <- logFC_edgeR %>% 
       filter(Rank5 == "f__Enterobacteriaceae" | Rank6 == "Escherichia/Shigella")
@@ -32,7 +32,7 @@ esch_features <- logFC_esch %>%
 
 
 ## Raw Counts
-raw_counts <- readRDS("../data/raw_counts.RDS")
+raw_counts <- readRDS("data/raw_counts.RDS")
 raw_counts_esch <- raw_counts %>% 
       right_join(esch_features) %>% 
       filter(biosample_id != "NTC") %>% 
@@ -45,7 +45,7 @@ esch_features <- raw_counts_esch %>% ungroup() %>%
       select(pipe, feature_id) %>% unique()
 
 ## NB Counts  
-nb_counts <- readRDS("../data/nb_counts_titrations.RDS")
+nb_counts <- readRDS("data/nb_counts_titrations.RDS")
 nb_counts_esch <- nb_counts %>% 
       right_join(esch_features) %>% 
       filter(biosample_id != "NTC")
@@ -169,7 +169,7 @@ ec_11_exp_counts %>% filter(pipe == "dada2", feature_id == "SV1") %>%
       theme_bw() +
       scale_y_continuous(trans = "log2", labels = scaleFUN, name = "Relative Abundance") +
       labs(x = "Titration") + theme(legend.position = "none")
-ggsave("~/Desktop/ecoli_metrics.png", height = 3, width = 5)
+ggsave("~/Projects/MGTST-Manuscript/ecoli_metrics.pdf", height = 3, width = 5)
 ```
 ## Pipeline comparisons 
 ```{r relAbuSetup, include=FALSE}
@@ -183,9 +183,9 @@ library(forcats)
 library(stringr)
 library(ggpubr)
 library(ggridges)
-nb_counts <- readRDS("../data/nb_counts_titrations.RDS")
-pa_summary_anno_df <- readRDS("../data/pa_summary_anno_df.RDS")
-theta_est <- readRDS("../data/bootstrap_theta_estimates.rds")
+nb_counts <- readRDS("data/nb_counts_titrations.RDS")
+pa_summary_anno_df <- readRDS("data/pa_summary_anno_df.RDS")
+theta_est <- readRDS("data/bootstrap_theta_estimates.rds")
 ```
 
 ```{r relAbuMunge, echo = FALSE, message = FALSE, warning = FALSE}
