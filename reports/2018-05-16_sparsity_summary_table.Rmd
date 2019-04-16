@@ -1,0 +1,96 @@
+---
+title: "Sparsity Summary Table"
+author: "Nate Olson"
+date: "5/16/2018"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+pipeline_dir <- "~/Projects/mgtst_pipelines/"
+mrexp_files <- list(
+      dada2 = file.path(pipeline_dir, "dada2/dada_mrexp.rds"),
+      mothur =  file.path(pipeline_dir, "mothur/mothur_mrexp.rds"),
+      qiime =  file.path(pipeline_dir, "qiime/qiime_mrexp.rds")
+)
+mrexp <- mrexp_files %>% map(readRDS)
+```
+
+```{r}
+extract_samples <- function(mrobj){
+      sam_names <- pData(mrobj) %>% rownames_to_column() %>%
+            filter(biosample_id != "NTC") %>% .$rowname
+      mrobj[,colnames(mrobj) %in% sam_names]
+}
+
+extract_biosample <- function(mrobj, biosample){
+      mrobj[,pData(mrobj)$biosample_id == biosample]
+}
+
+filter_singletons <- function(mrobj){
+     mrobj[rowSums(mrobj) > 1,]
+}
+
+calc_sparsity <- function(mat){
+      nentry <- length(mat)
+      nzero <- sum(mat == 0)
+      ## calculate sparsity
+      nzero/nentry
+}
+
+sparsity <- mrexp %>% map(extract_samples) %>% 
+      map(MRcounts, sl = 1) %>% 
+      map_dbl(calc_sparsity)
+```
+
+- Sparsity with and without singletons
+- sparsity by subject
+- sparsity by PCR rep
+## singletons 
+```{r}
+singletons <- map_int(mrexp, ~sum(rowSums(.) == 1))
+data_frame(pipe = names(mrexp), singletons)
+```
+
+```{r}
+mrexp_nosingle <- map(mrexp, filter_singletons)
+```
+
+
+## Sparsity by subject
+```{r}
+## Split mrexp into list by subject
+mrobj <- mrexp$dada2
+biosample_id_list <- pData(mrobj) %>% 
+      filter(biosample_id != "NTC") %>% 
+      .$biosample_id %>% unique() %>% 
+      as.list() %>% set_names(.)
+
+map_extract_biosample <- function(mrobj, 
+                                  biosample_id_list, 
+                                  extract_biosample){
+      map(biosample_id_list, extract_biosample, mrobj)
+}
+
+biosample_mrexp <- map(mrexp, 
+                       map_extract_biosample, 
+                       biosample_id_list, 
+                       extract_biosample)
+
+mrexp_df <- tibble(pipe = names(mrexp), mrobj = mrexp) %>% 
+      add_column(biosample = list(biosample_id_list)) %>% 
+      unnest(biosample, .drop = FALSE) %>% 
+      mutate(biosample = unlist(biosample))
+
+mrexp_df
+subset_mrexp <- mrexp_df %>% 
+      mutate(subset_mrexp = map(mrobj, 
+                                ~.[,pData(.)$biosample_id == biosample]))
+
+## Not subsetting by biosample within map
+sub_mrexp <- mrobj[,pData(mrobj)$biosample_id == "E01JH0004"]
+pData(sub_mrexp)
+subset_mrexp
+pData(subset_mrexp$subset_mrexp[[6]])
+```
+

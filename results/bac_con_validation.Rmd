@@ -149,8 +149,9 @@ bac_con_plot_dat %>%
                     label = paste0("R^2 == ", signif(adj.r.squared,2))),
                 hjust = 0, parse = TRUE) +
       facet_grid(~biosample_id, scales = "free") +
-      theme_bw() + labs(x = expression(theta), y = "DNA concentration (ng/ul)") +
+      theme_bw() + labs(x = "Proportion POST DNA", y = "DNA concentration (ng/ul)") +
       theme(legend.position = "none")
+#ggsave("~/Projects/MGTST-Manuscript/bacPlot-1.pdf", width = 170, height = 100, units = "mm")
 ```
 
 

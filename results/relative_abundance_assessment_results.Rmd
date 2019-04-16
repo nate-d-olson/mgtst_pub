@@ -252,12 +252,13 @@ relAbuOvE <- prop_inferred %>%
     ggplot() +
       geom_smooth(aes(x = inferred_prop, y = nb_prop, color = pipe),
                   method = "lm") +
-      geom_abline(aes(intercept = 0, slope = 1), color = "grey60",
+      geom_abline(aes(intercept = 0, slope = 1), #color = "grey40",
                   linetype = 2) +
       facet_wrap( ~ biosample_id, nrow = 1) +
       scale_y_log10() + scale_x_log10() +
       theme_bw() +
-      labs(x = "Expected", y = "Observed", color = "Pipeline")
+      theme(axis.text.x = element_text(angle = -45, hjust = 0)) +
+      labs(x = "Expected Rel. Abu.", y = "Observed Rel. Abu.", color = "Pipeline")
 
 relAbuErrorDist <- rel_abu_error %>%
       ungroup() %>% 
@@ -270,7 +271,7 @@ relAbuErrorDist <- rel_abu_error %>%
       ggplot() +
       geom_boxplot(aes(x = biosample_id, y = inferred_error_rate, fill = pipe)) +
       theme_bw() +
-      labs(y = "Error Rate", x = "Subject", fill = "Pipeline") +
+      labs(y = "Rel. Abu. Error Rate", x = "Individual", fill = "Pipeline") +
       scale_y_log10()
 
 ggarrange(relAbuOvE,
@@ -278,6 +279,11 @@ ggarrange(relAbuOvE,
           labels = "AUTO", align = "v",
           ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom")
 ```
+
+```{r}
+ggsave("~/Projects/MGTST-Manuscript/relAbuError-1.pdf",width = 170, units = "mm")
+```
+
 
 ```{r relAbuErrorMetrics, fig.width = 6.68, fig.cap = "Comparison of pipeline relative abundance assessment feature-level error metrics. Distribution of feature-level relative abundance (A) bias metric - median error rate and (B) variance - robust coefficient of variation ($RCOV=(IQR)/|median|$) by individual and pipeline. Boxplot outliers, $1.5\\times IQR$ from the median were excluded from the figure to prevent extreme metric values from obscuring metric value visual comparisons.", echo = FALSE, warning=FALSE, message = FALSE}
 error_boxplot <- rel_abu_error %>% group_by(pipe, biosample_id, feature_id) %>%

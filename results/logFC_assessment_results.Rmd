@@ -234,3 +234,32 @@ To compare bias and variance metrics across pipelines mixed-effects models were 
 The log fold-change bias and variance metrics were not significantly different between pipelines (Bias: F = `r round(slope_f,2)`, p = `r round(slope_p,2)`, \@ref(fig:logFCerror)B, Variance: F = `r round(r2_f,2)`, p = `r round(r2_p,2)`, Fig. \@ref(fig:logFCerror)C).
 We also evaluated whether poor feature-level metrics could be attributed to specific clades for taxonomic groups.
 Similar to the relative abundance estimate, while a phylogenetic signal was detected for both the bias and variance metrics, no specific taxonomic groups or phylogenetic clades that performed poorly were identified.
+
+```{r eval=FALSE}
+## Example feature for assessment framework diagram
+logFCexample <- logFC_pre %>% filter(T1 != 0, T2 != 20, 
+                                     pipe == "dada2", 
+                                     biosample_id == "E01JH0011",
+                                     feature_id == "SV88") 
+
+logfc_fit <- lm(logFC~exp_logFC, data =logFCexample)
+slope_est <- logfc_fit$coefficients[[2]] %>% round(2)
+r2_est <- summary(logfc_fit)$adj.r.squared %>% round(2)
+
+logFCexample %>%
+      ggplot() +
+      geom_smooth(aes(x = exp_logFC, y = logFC), method = "lm") +
+      geom_text(aes(x = exp_logFC, y = logFC, label = paste0(T1,"-",T2))) +
+      geom_text(aes(x = 0.075, y = 1.1), label = paste0("1-Slope: ", 1- slope_est)) + 
+      geom_text(aes(x = 0.05, y = 1.0), label = paste0("R2: ", r2_est)) + 
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = -45, hjust = 0)) +
+      labs(x = "Expected", y = "Estimate") +
+      theme(legend.position = "none")
+ggsave("~/Projects/MGTST-Manuscript/diff_abu_metrics.pdf", height = 3, width = 5)
+```
+
+```{r}
+logFCestVexp
+```
+
